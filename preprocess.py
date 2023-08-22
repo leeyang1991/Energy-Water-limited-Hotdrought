@@ -20,7 +20,8 @@ class GIMMS_NDVI:
     def run(self):
         # self.resample()
         # self.monthly_compose()
-        self.per_pix()
+        # self.per_pix()
+        self.per_pix_biweekly()
         # self.per_pix_anomaly()
         # self.per_pix_anomaly_detrend()
         # self.per_pix_anomaly_detrend_GS()
@@ -47,6 +48,12 @@ class GIMMS_NDVI:
     def per_pix(self):
         fdir = join(self.datadir,'tif')
         outdir = join(self.datadir,'per_pix')
+        T.mk_dir(outdir)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_biweekly(self):
+        fdir = join(self.datadir,'bi_weekly_05')
+        outdir = join(self.datadir,'per_pix_biweekly')
         T.mk_dir(outdir)
         Pre_Process().data_transform(fdir,outdir)
 
