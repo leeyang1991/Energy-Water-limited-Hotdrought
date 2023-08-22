@@ -3483,7 +3483,8 @@ class Phenology:
     def run(self):
         # self.hants_interpolation()
         # self.pick_phenology()
-        self.phenology_df()
+        # self.phenology_df()
+        self.check_phenology()
         pass
 
     def hants_interpolation(self):
@@ -3634,6 +3635,29 @@ class Phenology:
             # 'dormant_season_mon':[self.__doy_to_month(i) for i in range(0,early_start)]+[self.__doy_to_month(i) for i in range(late_end,365)],
         }
         return result
+
+    def check_phenology(self):
+        fpath = join(self.this_class_arr,'phenology_df/phenology_df.df')
+        df = T.load_df(fpath)
+        cols = list(df.columns)
+        print(cols)
+        spatial_dict = {}
+        for i,row in df.iterrows():
+            pix = row['pix']
+            early_start = row['early_start']
+            early_start_dict = dict(early_start)
+            vals_list = []
+            for year in early_start_dict:
+                val = early_start_dict[year]
+                vals_list.append(val)
+            mean = np.nanmean(vals_list)
+            # print(early_start_dict)
+            # exit()
+            spatial_dict[pix] = mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        plt.imshow(arr,cmap='jet',interpolation='nearest')
+        plt.colorbar()
+        plt.show()
 
     def __doy_to_month(self,doy):
         '''

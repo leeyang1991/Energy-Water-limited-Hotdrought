@@ -174,6 +174,10 @@ class Meta_information:
                 'path': join(data_root, f'CRU_tmp/anomaly/{year_range}'),
                 'path_type': 'dir',
             },
+            'Temperature-anomaly_detrend': {
+                'path': join(data_root, f'CRU_tmp/anomaly_detrend/{year_range}'),
+                'path_type': 'dir',
+            },
             'Precipitation-detrend': {
                 'path': join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy'),
                 'path_type': 'file',
@@ -184,6 +188,10 @@ class Meta_information:
             },
             'Precipitation-anomaly': {
                 'path': join(data_root, f'CRU_precip/anomaly/{year_range}'),
+                'path_type': 'dir',
+            },
+            'Precipitation-anomaly_detrend': {
+                'path': join(data_root, f'CRU_precip/anomaly_detrend/{year_range}'),
                 'path_type': 'dir',
             },
             'Radiation': {
