@@ -2,6 +2,7 @@
 import turtledemo.chaos
 
 import matplotlib.pyplot as plt
+import tqdm
 import tweepy.utils
 
 from __init__ import *
@@ -1441,20 +1442,21 @@ class ERA_SM:
         plt.imshow(arr)
         plt.show()
 
-class GLEAM_SMRoot:
+class GLEAM:
 
     def __init__(self):
-        self.datadir = data_root + 'GLEAM_SMRoot/'
+        self.datadir = data_root + 'GLEAM/'
         T.mk_dir(self.datadir)
         pass
 
 
     def run(self):
-        self.nc_to_tif()
+        # self.nc_to_tif()
         # self.resample()
-        # self.tif_to_perpix_1982_2015()
+        # self.tif_to_perpix_1982_2020()
         # self.anomaly()
         # self.detrend()
+        self.check()
         pass
 
 
@@ -1521,7 +1523,7 @@ class GLEAM_SMRoot:
 
     def resample(self):
         fdir = join(self.datadir,'tif')
-        outdir = join(self.datadir,'tif_05_deg')
+        outdir = join(self.datadir,'tif_05')
         T.mk_dir(outdir)
         for f in tqdm(T.listdir(fdir)):
             fpath = join(fdir,f)
@@ -1529,33 +1531,47 @@ class GLEAM_SMRoot:
             ToRaster().resample_reproj(fpath,outpath,res=0.5)
         pass
 
-    def tif_to_perpix_1982_2015(self):
-        fdir = join(self.datadir,'tif_05_deg')
-        outdir = join(self.datadir,'perpix/1982-2015')
+    def tif_to_perpix_1982_2020(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'per_pix/',global_year_range)
         T.mk_dir(outdir,force=True)
         selected_tif_list = []
-        for y in range(1982,2016):
+        for y in range(global_start_year,global_end_year+1):
             for m in range(1,13):
                 f = '{}{:02d}.tif'.format(y,m)
                 selected_tif_list.append(f)
         Pre_Process().data_transform_with_date_list(fdir,outdir,selected_tif_list)
 
     def anomaly(self):
-        fdir = join(self.datadir, 'perpix/1982-2015')
-        outdir = join(self.datadir, 'anomaly/1982-2015')
+        fdir = join(self.datadir, 'per_pix',global_year_range)
+        outdir = join(self.datadir, 'anomaly',global_year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
         pass
 
     def detrend(self):
-        fdir = join(self.datadir, 'anomaly/1982-2015')
-        outdir = join(self.datadir, 'detrend/1982-2015')
+        fdir = join(self.datadir, 'anomaly',global_year_range)
+        outdir = join(self.datadir, 'anomaly_detrend',global_year_range)
         T.mk_dir(outdir,force=True)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict_detrend = T.detrend_dic(spatial_dict)
-        outf = join(outdir,'GLEAM_ET.npy')
+        outf = join(outdir,'detrend.npy')
         T.save_npy(spatial_dict_detrend,outf)
         pass
+
+    def check(self):
+
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            mean = np.nanmean(vals)
+            spatial_dict_mean[pix] = mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        plt.imshow(arr,vmin=0,vmax=0.5,cmap='jet',interpolation='nearest')
+        plt.colorbar()
+        plt.show()
 
 class ERA_2m_T:
 
@@ -2167,18 +2183,269 @@ class MODIS_LAI_Chen:
             DIC_and_TIF().pix_dic_to_tif(trend_dict,outf)
         pass
 
+
+class CCI_SM_v7:
+    def __init__(self):
+        self.datadir = join(data_root, 'CCI_SM_v7')
+        pass
+
+    def run(self):
+        # self.download()
+        # self.check_download_nc()
+
+        # self.nc_to_tif()
+        # self.tif_clean()
+        # self.monthly_compose()
+        # self.resample()
+        # self.per_pix()
+        # self.anomaly()
+        self.anomaly_detrend()
+        pass
+
+    def download(self):
+        outdir = join(self.datadir,'nc')
+        year_range_list = global_year_range_list
+        params_list = []
+        for year in year_range_list:
+            params = [outdir,year]
+            params_list.append(params)
+            # self.kernel_download(params)
+        MULTIPROCESS(self.kernel_download,params_list).run(process=10, process_or_thread='t')
+
+
+    def kernel_download(self,params):
+        outdir,year = params
+        url = f'https://data.ceda.ac.uk/neodc/esacci/soil_moisture/data/daily_files/COMBINED/v07.1/{year}?json'
+        req = requests.request('GET', url)
+        content = req.content
+        json_obj = json.loads(content)
+        json_formatted_str = json.dumps(json_obj, indent=4)
+        items = json_obj['items']
+        for i in range(len(items)):
+            dict_i = dict(items[i])
+            download_url = dict_i['download']
+            path = dict_i['path']
+            name = dict_i['name']
+            path2 = path.split('/')[-4:-1]
+            outdir_i = join(outdir, *path2)
+            outpath = join(outdir_i, name)
+            T.mk_dir(outdir_i, force=True)
+            self.download_f(download_url, outpath)
+
+    def download_f(self,url,outf):
+        if os.path.isfile(outf):
+            return None
+        req = requests.request('GET', url)
+        content = req.content
+        fw = open(outf, 'wb')
+        fw.write(content)
+
+    def check_download_nc(self):
+        fdir = join(self.datadir,'nc','COMBINED/v07.1')
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            for f in tqdm(T.listdir(folder),desc=year):
+                fpath = join(folder,f)
+                try:
+                    nc = Dataset(fpath,'r')
+                except:
+                    os.remove(fpath)
+                    print(fpath)
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc','COMBINED/v07.1')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+        param_list = []
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            for f in tqdm(T.listdir(folder),desc=year):
+                fpath = join(folder,f)
+                outdir_i = join(outdir,year)
+                T.mk_dir(outdir_i,force=True)
+                outf = join(outdir,outdir_i)
+                param = [fpath,'sm',outdir_i]
+                param_list.append(param)
+                # self._nc_to_tif(param)
+        MULTIPROCESS(self._nc_to_tif,param_list).run(process=6,process_or_thread='p')
+
+
+    def _nc_to_tif(self, params):
+        fname, var_name, outdir = params
+        try:
+            ncin = Dataset(fname, 'r')
+            # print(ncin.variables.keys())
+
+        except:
+            raise UserWarning('File not supported: ' + fname)
+        try:
+            lat = ncin.variables['lat'][:]
+            lon = ncin.variables['lon'][:]
+        except:
+            try:
+                lat = ncin.variables['latitude'][:]
+                lon = ncin.variables['longitude'][:]
+            except:
+                try:
+                    lat = ncin.variables['lat_FULL'][:]
+                    lon = ncin.variables['lon_FULL'][:]
+                except:
+                    raise UserWarning('lat or lon not found')
+        shape = np.shape(lat)
+        try:
+            time = ncin.variables['time_counter'][:]
+            basetime_str = ncin.variables['time_counter'].units
+        except:
+            time = ncin.variables['time'][:]
+            basetime_str = ncin.variables['time'].units
+
+        basetime_unit = basetime_str.split('since')[0]
+        basetime_unit = basetime_unit.strip()
+        # print(basetime_unit)
+        # print(basetime_str)
+        if basetime_unit == 'days':
+            timedelta_unit = 'days'
+        elif basetime_unit == 'years':
+            timedelta_unit = 'years'
+        elif basetime_unit == 'month':
+            timedelta_unit = 'month'
+        elif basetime_unit == 'months':
+            timedelta_unit = 'month'
+        elif basetime_unit == 'seconds':
+            timedelta_unit = 'seconds'
+        elif basetime_unit == 'hours':
+            timedelta_unit = 'hours'
+        else:
+            raise Exception('basetime unit not supported')
+        basetime = basetime_str.strip(f'{timedelta_unit} since ')
+        basetime = basetime.split(' ')[0]
+        # exit()
+        try:
+            basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d')
+        except:
+            try:
+                basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M:%S')
+            except:
+                try:
+                    basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M:%S.%f')
+                except:
+                    try:
+                        basetime = datetime.datetime.strptime(basetime, '%Y-%m-%d %H:%M')
+                    except:
+                        try:
+                            basetime = datetime.datetime.strptime(basetime, '%Y-%m')
+                        except:
+                            raise UserWarning('basetime format not supported')
+        data = ncin.variables[var_name]
+        if len(shape) == 2:
+            xx, yy = lon, lat
+        else:
+            xx, yy = np.meshgrid(lon, lat)
+        for time_i in range(len(time)):
+            if basetime_unit == 'days':
+                date = basetime + datetime.timedelta(days=int(time[time_i]))
+            elif basetime_unit == 'years':
+                date1 = basetime.strftime('%Y-%m-%d')
+                base_year = basetime.year
+                date2 = f'{int(base_year + time[time_i])}-01-01'
+                delta_days = Tools().count_days_of_two_dates(date1, date2)
+                date = basetime + datetime.timedelta(days=delta_days)
+            elif basetime_unit == 'month' or basetime_unit == 'months':
+                date1 = basetime.strftime('%Y-%m-%d')
+                base_year = basetime.year
+                base_month = basetime.month
+                date2 = f'{int(base_year + time[time_i] // 12)}-{int(base_month + time[time_i] % 12)}-01'
+                delta_days = Tools().count_days_of_two_dates(date1, date2)
+                date = basetime + datetime.timedelta(days=delta_days)
+            elif basetime_unit == 'seconds':
+                date = basetime + datetime.timedelta(seconds=int(time[time_i]))
+            elif basetime_unit == 'hours':
+                date = basetime + datetime.timedelta(hours=int(time[time_i]))
+            else:
+                raise Exception('basetime unit not supported')
+            time_str = time[time_i]
+            mon = date.month
+            year = date.year
+            day = date.day
+            outf_name = f'{year}{mon:02d}{day:02d}.tif'
+            outpath = join(outdir, outf_name)
+            if isfile(outpath):
+                continue
+            arr = data[time_i]
+            arr = np.array(arr)
+            lon_list = xx.flatten()
+            lat_list = yy.flatten()
+            val_list = arr.flatten()
+            lon_list[lon_list > 180] = lon_list[lon_list > 180] - 360
+            df = pd.DataFrame()
+            df['lon'] = lon_list
+            df['lat'] = lat_list
+            df['val'] = val_list
+            lon_list_new = df['lon'].tolist()
+            lat_list_new = df['lat'].tolist()
+            val_list_new = df['val'].tolist()
+            DIC_and_TIF().lon_lat_val_to_tif(lon_list_new, lat_list_new, val_list_new, outpath)
+
+
+    def tif_clean(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_clean')
+        T.mk_dir(outdir,force=True)
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            for f in tqdm(T.listdir(folder),desc=year):
+                fpath = join(folder,f)
+                outpath = join(outdir,f)
+                array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+                array[array<0] = np.nan
+                ToRaster().array2raster(outpath, originX, originY, pixelWidth, pixelHeight, array)
+
+    def monthly_compose(self):
+        fdir = join(self.datadir,'tif_clean')
+        outdir = join(self.datadir,'tif_monthly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().monthly_compose(fdir,outdir)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif_monthly')
+        outdir = join(self.datadir,'tif_monthly_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outf,0.5)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_monthly_05')
+        outdir = join(self.datadir,'per_pix',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'anomaly',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def anomaly_detrend(self):
+        fdir = join(self.datadir,'anomaly',global_year_range)
+        outdir = join(self.datadir,'anomaly_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().detrend(fdir,outdir)
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
-    Precipitation().run()
+    # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
     # ERA_SM().run()
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
+    CCI_SM_v7().run()
     # VOD_Kband().run()
     # VOD_AMSRU().run()
     # CSIF().run()
@@ -2186,7 +2453,7 @@ def main():
     # ERA().run()
     # SPI().run()
     # GLEAM_ET().run()
-    # GLEAM_SMRoot().run()
+    # GLEAM().run()
     # ERA_2m_T().run()
     # ERA_Precip().run()
     # GPCC().run()

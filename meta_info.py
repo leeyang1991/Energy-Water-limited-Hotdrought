@@ -123,7 +123,15 @@ class Meta_information:
                 'path_type': 'dir',
             },
             'GLEAM-SMRoot-origin': {
-                'path': join(data_root, f'GLEAM_SMRoot/perpix/{year_range}'),
+                'path': join(data_root, f'GLEAM_SMRoot/per_pix/{year_range}'),
+                'path_type': 'dir',
+            },
+            'GLEAM-SMRoot-anomaly': {
+                'path': join(data_root, f'GLEAM/anomaly/{year_range}'),
+                'path_type': 'dir',
+            },
+            'GLEAM-SMRoot-anomaly_detrend': {
+                'path': join(data_root, f'GLEAM/anomaly_detrend/{year_range}'),
                 'path_type': 'dir',
             },
             'SPI': {
