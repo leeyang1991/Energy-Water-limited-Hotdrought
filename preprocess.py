@@ -1328,14 +1328,14 @@ class ERA_SM:
         self.datadir = data_root + 'ERA-SM/'
 
     def run(self):
-        self.download_sm()
+        # self.download_sm()
         # self.nc_to_tif()
         # self.resample()
         # self.clean()
-        # self.tif_to_perpix_1982_2015()
-        # self.anomaly()
+        # self.tif_to_perpix_1982_2020()
+        self.anomaly()
         # self.detrend()
-        self.check_cci_sm()
+        # self.check_cci_sm()
         pass
 
     def download_sm(self):
@@ -1374,7 +1374,7 @@ class ERA_SM:
         T.nc_to_tif(f,'swvl1',outdir)
 
     def resample(self):
-        fdir = join(self.datadir,'tif')
+        fdir = join(self.datadir,'tif','sum_all_layers')
         outdir = join(self.datadir,'tif_05')
         T.mk_dir(outdir)
         for f in tqdm(T.listdir(fdir)):
@@ -1395,20 +1395,20 @@ class ERA_SM:
             array[array<=0] = np.nan
             ToRaster().array2raster(outpath, originX, originY, pixelWidth, pixelHeight, array)
 
-    def tif_to_perpix_1982_2015(self):
-        fdir = join(self.datadir,'tif_05_clean')
-        outdir = join(self.datadir,'perpix/1982-2015')
+    def tif_to_perpix_1982_2020(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'per_pix/',global_year_range)
         T.mk_dir(outdir,force=True)
         selected_tif_list = []
-        for y in range(1982,2016):
+        for y in range(global_start_year,global_end_year+1):
             for m in range(1,13):
                 f = '{}{:02d}01.tif'.format(y,m)
                 selected_tif_list.append(f)
         Pre_Process().data_transform_with_date_list(fdir,outdir,selected_tif_list)
 
     def anomaly(self):
-        fdir = join(self.datadir, 'perpix/1982-2015')
-        outdir = join(self.datadir, 'anomaly/1982-2015')
+        fdir = join(self.datadir, 'per_pix',global_year_range)
+        outdir = join(self.datadir, 'anomaly',global_year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
         pass
@@ -2197,9 +2197,9 @@ class CCI_SM_v7:
         # self.tif_clean()
         # self.monthly_compose()
         # self.resample()
-        # self.per_pix()
+        self.per_pix()
         # self.anomaly()
-        self.anomaly_detrend()
+        # self.anomaly_detrend()
         pass
 
     def download(self):
@@ -2441,11 +2441,11 @@ def main():
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
-    # ERA_SM().run()
+    ERA_SM().run()
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
-    CCI_SM_v7().run()
+    # CCI_SM_v7().run()
     # VOD_Kband().run()
     # VOD_AMSRU().run()
     # CSIF().run()

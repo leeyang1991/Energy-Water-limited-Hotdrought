@@ -115,11 +115,19 @@ class Meta_information:
                 'path_type':'multi-files',
             },
             'CCI-SM-origin': {
-                'path': join(data_root, f'CCI-SM/per_pix_no_nan/{year_range}'),
+                'path': join(data_root, f'CCI_SM_v7/per_pix/{year_range}'),
                 'path_type': 'dir',
             },
-            'ERA-SM-origin': {
-                'path': join(data_root, f'ERA-SM/perpix/{year_range}'),
+            'CCI-SM-anomaly': {
+                'path': join(data_root, f'CCI_SM_v7/anomaly/{year_range}'),
+                'path_type': 'dir',
+            },
+            'CCI-SM-anomaly_detrend': {
+                'path': join(data_root, f'CCI_SM_v7/anomaly_detrend/{year_range}'),
+                'path_type': 'dir',
+            },
+            'ERA-SM-anomaly': {
+                'path': join(data_root, f'ERA-SM/anomaly/{year_range}'),
                 'path_type': 'dir',
             },
             'GLEAM-SMRoot-origin': {
