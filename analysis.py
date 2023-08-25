@@ -820,24 +820,31 @@ class Pick_Drought_Events_SM:
         # self.pick_normal_hot_events_t_anomaly()
         # self.pick_normal_hot_events_t_quantile()
         # self.pick_single_events(year_range_str)
-        self.check_drought_events()
+        # self.check_drought_events()
         # self.drought_timing()
-        # self.drought_timing_df()
+        self.drought_timing_df()
         pass
     def pick_normal_drought_events(self):
         outdir = join(self.this_class_arr, 'picked_events')
         T.mk_dir(outdir)
         threshold = -1.5
         # SM_dict = Meta_information().load_data('GLEAM-SMRoot-anomaly_detrend')
-        SM_dict = Meta_information().load_data('GLEAM-SMRoot-anomaly')
+        # SM_dict = Meta_information().load_data('GLEAM-SMRoot-anomaly')
+        # SM_dict = Meta_information().load_data('CCI-SM-anomaly')
+        # SM_dict = Meta_information().load_data('CCI-SM-origin')
+        SM_dict = Meta_information().load_data('ERA-SM-anomaly')
 
         events_dic = {}
         for pix in tqdm(SM_dict):
             vals = SM_dict[pix]
             vals = np.array(vals)
+            if np.nanstd(vals) == 0:
+                continue
 
-            params = (vals, threshold)
-            # drought_index = vals < threshold
+            vals[vals < -999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+
             drought_index = []
             for i, val in enumerate(vals):
                 if val < threshold:
@@ -879,6 +886,8 @@ class Pick_Drought_Events_SM:
                         hot_drought_index.append(dr)
                     else:
                         spi_drought_index_spare.append(dr)
+                hot_dic[pix] = hot_drought_index
+                normal_dic[pix] = spi_drought_index_spare
 
             hot_outf = join(outdir, f'hot-drought.npy')
             normal_outf = join(outdir, f'normal-drought.npy')
@@ -932,9 +941,9 @@ class Pick_Drought_Events_SM:
         outdir = join(self.this_class_arr, 'drought_events_df')
         T.mk_dir(outdir)
         outf = join(outdir, 'drought_events.df')
-        if isfile(outf):
-            df = T.load_df(outf)
-            return df
+        # if isfile(outf):
+        #     df = T.load_df(outf)
+        #     return df
         drought_events_dir = join(self.this_class_arr, 'normal_hot_events')
         spatial_dict_all = {}
         for f in T.listdir(drought_events_dir):
@@ -951,8 +960,8 @@ class Pick_Drought_Events_SM:
     def check_drought_events(self):
         drought_events_df = self.__get_drought_events()
         T.print_head_n(drought_events_df, 10)
-        # drought_spatial_dict = T.df_to_spatial_dic(drought_events_df, 'hot-drought')
-        drought_spatial_dict = T.df_to_spatial_dic(drought_events_df, 'normal-drought')
+        drought_spatial_dict = T.df_to_spatial_dic(drought_events_df, 'hot-drought')
+        # drought_spatial_dict = T.df_to_spatial_dic(drought_events_df, 'normal-drought')
 
         spatial_dict = {}
         for pix in drought_spatial_dict:
@@ -966,9 +975,6 @@ class Pick_Drought_Events_SM:
         plt.imshow(arr,cmap='jet',interpolation='nearest',vmin=0,vmax=50)
         plt.colorbar()
         plt.show()
-
-
-
         pass
 
     def pick_single_events(self, year_range_str):
@@ -1093,37 +1099,53 @@ class Pick_Drought_Events_SM:
         pass
 
     def drought_timing_df(self):
+        fdir = join(self.this_class_arr,'normal_hot_events')
         outdir = join(self.this_class_arr, 'drought_timing_df')
         T.mk_dir(outdir)
-        fdir = join(self.this_class_arr,'drought_timing')
-        fpath_year = join(fdir,f'drought_year.npy')
-        fpath_mon = join(fdir,f'drought_mon.npy')
-        year_dict = T.load_npy(fpath_year)
-        mon_dict = T.load_npy(fpath_mon)
+        hot_f = join(fdir,'hot-drought.npy')
+        normal_f = join(fdir,'normal-drought.npy')
+
+        hot_dict = T.load_npy(hot_f)
+        normal_dict = T.load_npy(normal_f)
+
+        drought_type_list = []
+        drought_index_list = []
         pix_list = []
-        year_list = []
-        mon_list = []
-        for pix in year_dict:
-            events = year_dict[pix]
+        for pix in tqdm(hot_dict,desc='hot-drought'):
+            events = hot_dict[pix]
             if len(events) == 0:
                 continue
-            events_mon = mon_dict[pix]
-            for i in range(len(events)):
-                event = events[i]
-                event_mon = events_mon[i]
+            for e in events:
+                drought_type_list.append('hot-drought')
+                drought_index_list.append(e)
                 pix_list.append(pix)
-                year_list.append(event)
-                mon_list.append(event_mon)
+
+        for pix in tqdm(normal_dict,desc='normal-drought'):
+            events = normal_dict[pix]
+            if len(events) == 0:
+                continue
+            for e in events:
+                drought_type_list.append('normal-drought')
+                drought_index_list.append(e)
+                pix_list.append(pix)
         df = pd.DataFrame()
         df['pix'] = pix_list
-        df['year'] = year_list
-        df['mon'] = mon_list
+        df['drought_type'] = drought_type_list
+        df['drought_event'] = drought_index_list
+        # sort dataframe by pix
+        df.sort_values(by=['pix'], inplace=True)
+        drought_timing_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df),desc='drought_timing'):
+            pix = row['pix']
+            drought_event = row['drought_event']
+            drought_mon = drought_event % 12 + 1
+            timing = global_season_mon_dict[drought_mon]
+            drought_timing_list.append(timing)
+        df['drought_timing'] = drought_timing_list
         outf = join(outdir,'drought_timing.df')
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
         T.open_path_and_file(outdir)
-
-        pass
 
 
 class Resistance_Resilience:
