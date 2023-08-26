@@ -289,6 +289,142 @@ class Meta_information:
         return spatial_dict
 
 
+class Load_Data:
+
+    def __init__(self):
+
+        pass
+
+    def SPEI(self,year_range=global_year_range):
+        data_path = join(data_root, 'SPEI/per_pix_clean', year_range)
+        path_type = 'multi-files'
+        var_name = 'SPEI'
+        return self.__load_data(data_path, path_type), var_name
+    
+    def CCI_SM_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'CCI_SM_v7/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'CCI-SM-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def CCI_SM_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'CCI_SM_v7/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'CCI-SM-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def CCI_SM_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'CCI_SM_v7/anomaly_detrend/{year_range}')
+        path_type = 'dir'
+        var_name = 'CCI-SM-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def ERA_SM_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'ERA-SM/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'ERA-SM-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def GLEAM_SMRoot_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'GLEAM_SMRoot/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'GLEAM-SMRoot-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def GLEAM_SMRoot_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'GLEAM/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'GLEAM-SMRoot-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def GLEAM_SMRoot_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'GLEAM/anomaly_detrend/{year_range}')
+        path_type = 'dir'
+        var_name = 'GLEAM-SMRoot-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def SPI(self,year_range=global_year_range):
+        data_path = join(data_root, 'SPI/per_pix',year_range)
+        path_type = 'dir'
+        var_name = 'SPI'
+        return self.__load_data(data_path, path_type), var_name
+
+    def NDVI_origin(self,year_range=global_year_range):
+        data_path = join(data_root, 'NDVI4g/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def NDVI_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, 'NDVI4g/per_pix_anomaly_detrend', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Temperature_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmp/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'Temperature-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Temperature_origin_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmp/per_pix_detrend/{year_range}')
+        path_type = 'dir'
+        var_name = 'Temperature-origin_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Temperature_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmp/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'Temperature-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Temperature_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmp/anomaly_detrend/{year_range}')
+        path_type = 'dir'
+        var_name = 'Temperature-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Precipitation_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy')
+        path_type = 'file'
+        var_name = 'Precipitation-detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Precipitation_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_precip/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'Precipitation-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Precipitation_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_precip/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'Precipitation-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Precipitation_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_precip/anomaly_detrend/{year_range}')
+        path_type = 'dir'
+        var_name = 'Precipitation-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def __load_data(self, data_path,path_type):
+        if path_type == 'file':
+            spatial_dict = T.load_npy(data_path)
+        elif path_type == 'dir':
+            spatial_dict = T.load_npy_dir(data_path)
+        elif path_type == 'multi-files':
+            spatial_dict = {}
+            for f in T.listdir(data_path):
+                print(f'loading {f}')
+                key = f.split('.')[0]
+                spatial_dict_i = T.load_npy(join(data_path, f))
+                spatial_dict[key] = spatial_dict_i
+        else:
+            raise ValueError('path_type not recognized')
+        return spatial_dict
+
 
 def get_rs_rt_cols():
     post_n_list = [1, 2, 3, 4]
