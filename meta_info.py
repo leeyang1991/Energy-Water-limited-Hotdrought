@@ -81,20 +81,20 @@ global_all_spei_list = [
 global_all_spi_list = [i.replace('spei','spi') for i in global_all_spei_list]
 global_ELI_bins = np.arange(-0.8, 0.75, .05)
 global_lag_list = list(range(0, 7))
-global_drought_season_list = ['early','mid','late']
+global_drought_season_list = ['spring','summer','autumn']
 global_drought_season_dict = {
-    'early': [5,6],
-    'mid': [7,8],
-    'late': [9,10],
+    'spring': [5,6],
+    'summer': [7,8],
+    'autumn': [9,10],
 }
 
 global_season_mon_dict = {
-    5: 'early',
-    6: 'early',
-    7: 'mid',
-    8: 'mid',
-    9: 'late',
-    10: 'late',
+    5: 'spring',
+    6: 'spring',
+    7: 'summer',
+    8: 'summer',
+    9: 'autumn',
+    10: 'autumn',
     1:'other',
     2:'other',
     3:'other',
