@@ -2945,7 +2945,9 @@ class Long_term_correlation:
         # # ---------------------------------------
         # self.correlation_tif()
         # self.plot_correlation_tif()
-        self.plot_correlation_bar()
+        # self.plot_correlation_bar()
+        # self.plot_correlation_bar_all_region()
+        self.correlation_statistic()
 
 
 
@@ -3140,11 +3142,103 @@ class Long_term_correlation:
 
             plt.tight_layout()
             outf = join(outdir,f'{ELI_class}.pdf')
-            plt.savefig(outf,dpi=300)
-            plt.close()
+            # plt.savefig(outf,dpi=300)
+            # plt.close()
+            plt.show()
+        # T.open_path_and_file(outdir)
+        # plt.show()
+
+    def plot_correlation_bar_all_region(self):
+        # import statistic
+        season_list = ['spring','summer','autumn'][::-1]
+        fdir = join(self.this_class_arr, 'seasonal_correlation')
+        outdir = join(self.this_class_png, 'plot_correlation_bar')
+        T.mk_dir(outdir, force=True)
+        plt.figure(figsize=(6, 4))
+        for season in season_list:
+            for folder in T.listdir(fdir):
+                fdir_i = join(fdir, folder)
+                for f in T.listdir(fdir_i):
+                    if not f.endswith('.df'):
+                        continue
+                    if not season in f:
+                        continue
+                    fpath = join(fdir_i, f)
+                    x_name = f.replace('.df','')
+                    df = T.load_df(fpath)
+                    # df = statistic.Dataframe_func(df).df
+                    # T.save_df(df,fpath)
+                    # T.df_to_excel(df,fpath)
+                    # T.print_head_n(df)
+                    df_ELI = df
+                    total = len(df_ELI)
+
+                    positive_df = df_ELI[df_ELI['r'] > 0]
+                    negative_df = df_ELI[df_ELI['r'] < 0]
+
+                    positive_sig_df = positive_df[positive_df['p'] < 0.05]
+                    negative_sig_df = negative_df[negative_df['p'] < 0.05]
+
+                    positive_non_sig_df = positive_df[positive_df['p'] >= 0.05]
+                    negative_non_sig_df = negative_df[negative_df['p'] >= 0.05]
+
+                    positive_ratio = len(positive_df) / total
+                    negative_ratio = len(negative_df) / total
+
+                    positive_sig_ratio = len(positive_sig_df) / total
+                    negative_sig_ratio = len(negative_sig_df) / total
+                    print(x_name)
+                    x_name = x_name.replace('_vs_NDVI-anomaly_detrend','')
+
+                    plt.barh([x_name,x_name],[positive_ratio,-negative_ratio],color='w',edgecolor='k',zorder=-1)
+                    plt.barh([x_name,x_name],[positive_sig_ratio,-negative_sig_ratio],color=['r'],edgecolor='k',zorder=1)
+                    plt.text(positive_ratio,x_name,f'{positive_ratio:.2f} ({positive_sig_ratio:.2f})',ha='left',va='center')
+                    plt.text(-negative_ratio,x_name,f'{negative_ratio:.2f} ({negative_sig_ratio:.2f})',ha='right',va='center')
+        plt.xlim(-2,2)
+        plt.title('all')
+
+        plt.tight_layout()
+        outf = join(outdir,f'all.pdf')
+        plt.savefig(outf,dpi=300)
+        plt.close()
+        # plt.show()
         T.open_path_and_file(outdir)
         # plt.show()
 
+    def correlation_statistic(self):
+        outdir = join(self.this_class_arr,'correlation_statistic')
+        T.mk_dir(outdir,force=True)
+
+        season_list = ['spring', 'summer', 'autumn'][::-1]
+        fdir = join(self.this_class_arr, 'seasonal_correlation')
+        ELI_class_list = global_ELI_class_list
+        result_dict = {}
+        for ELI_class in ELI_class_list:
+            for season in season_list:
+                for folder in T.listdir(fdir):
+                    fdir_i = join(fdir, folder)
+                    for f in T.listdir(fdir_i):
+                        if not f.endswith('.df'):
+                            continue
+                        if not season in f:
+                            continue
+                        fpath = join(fdir_i, f)
+                        x_name = f.replace('.df', '')
+                        df = T.load_df(fpath)
+                        df_ELI = df[df['ELI_class'] == ELI_class]
+                        r_mean = np.nanmean(df_ELI['r'])
+                        r_std = np.nanstd(df_ELI['r'])
+                        key = f'{x_name}_{ELI_class}_{season}'
+                        result_dict[key] = {
+                            'r_mean':r_mean,
+                            'r_std':r_std,
+                            'ELI_class':ELI_class,
+                            'season':season,
+                        }
+        df = T.dic_to_df(result_dict,'key')
+        outf = join(outdir,'correlation_statistic.df')
+        T.df_to_excel(df,outf)
+        T.open_path_and_file(outdir)
 
     def phenology_anomaly_dict(self,phenology_dict):
         vals = list(phenology_dict.values())
@@ -3238,7 +3332,7 @@ def main():
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
     # Phenology().run()
-    # Long_term_correlation().run()
+    Long_term_correlation().run()
 
     # gen_world_grid_shp()
     pass
