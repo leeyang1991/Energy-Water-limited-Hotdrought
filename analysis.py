@@ -496,12 +496,13 @@ class Pick_Drought_Events:
             T.mk_class_dir('Pick_Drought_Events', result_root_this_script, mode=2)
 
     def run(self):
-        self.pick_normal_drought_events()
+        # self.pick_normal_drought_events()
         # self.pick_normal_hot_events()
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
         # self.drought_timing()
         # self.drought_timing_df()
+        self.gen_dataframe()
         pass
 
     def pick_normal_hot_events(self):
@@ -808,6 +809,58 @@ class Pick_Drought_Events:
         T.open_path_and_file(outdir)
 
         pass
+
+    def gen_dataframe(self):
+        outdir = join(self.this_class_arr,'drought_dataframe')
+        T.mk_dir(outdir)
+        drought_events_dir = join(self.this_class_arr, 'normal_hot_events')
+        drought_timing_dir = join(self.this_class_arr,'drought_timing')
+        drought_year_f = join(drought_timing_dir,'drought_year.npy')
+        drought_mon_f = join(drought_timing_dir,'drought_mon.npy')
+
+        drought_year_dict = T.load_npy(drought_year_f)
+        drought_mon_dict = T.load_npy(drought_mon_f)
+
+        pix_list = []
+        drought_year_list = []
+        drought_type_list = []
+        for f in T.listdir(drought_events_dir):
+            fpath = join(drought_events_dir, f)
+            var_i = f.split('.')[0]
+            drought_type = var_i.split('_')[0]
+            spatial_dict = T.load_npy(fpath)
+            for pix in spatial_dict:
+                events = spatial_dict[pix]
+                for e in events:
+                    pix_list.append(pix)
+                    drought_year_list.append(e)
+                    drought_type_list.append(drought_type)
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['drought_year'] = drought_year_list
+        df['drought_type'] = drought_type_list
+        # add drought timing
+        # drought_timing_year_list = []
+        drought_mon_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            year = row['drought_year']
+            drought_year = drought_year_dict[pix]
+            drought_year = list(drought_year)
+            drought_mon = drought_mon_dict[pix]
+            drought_mon = list(drought_mon)
+            drought_year_index = drought_year.index(year)
+            drought_mon_i = drought_mon[drought_year_index]
+            drought_mon_list.append(drought_mon_i)
+
+        df['drought_mon'] = drought_mon_list
+        df = df.sort_values(by=['pix','drought_type','drought_year'])
+        # re index dataframe
+        df = df.reset_index(drop=True)
+
+        outf = join(outdir,'drought_dataframe.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
 
 class Pick_Drought_Events_SM:
 
@@ -1201,7 +1254,7 @@ class Resistance_Resilience:
 
     def run(self):
         # self.check_lag_and_scale()
-        # self.gen_dataframe()
+        self.gen_dataframe()
         df = self.__gen_df_init()
         # df = self.add_max_lag_and_scale(df)
         # df = self.add_max_r(df)
@@ -1486,7 +1539,7 @@ class Net_effect_annual:
         pass
 
     def run(self):
-        # self.gen_dataframe()
+        self.gen_dataframe()
         df = self.__gen_df_init()
         # df = self.add_max_lag_and_scale(df)
         # df = self.add_post_n_year_average(df)
@@ -3326,13 +3379,13 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    # Pick_Drought_Events().run()
+    Pick_Drought_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
     # Phenology().run()
-    Long_term_correlation().run()
+    # Long_term_correlation().run()
 
     # gen_world_grid_shp()
     pass
