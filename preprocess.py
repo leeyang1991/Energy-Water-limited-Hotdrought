@@ -1006,7 +1006,7 @@ class Terraclimate:
     def nc_to_tif_srad(self):
         outdir = self.datadir + '/srad/tif/'
         T.mk_dir(outdir,force=True)
-        fdir = self.datadir + '/srad/nc11/'
+        fdir = self.datadir + '/srad/nc/'
         for fi in T.listdir(fdir):
             print(fi)
             if fi.startswith('.'):
@@ -1134,8 +1134,8 @@ class Terraclimate:
                 # exit()
 
     def resample(self):
-        var_i = 'aet'
-        # var_i = 'srad'
+        # var_i = 'aet'
+        var_i = 'srad'
         fdir = join(self.datadir, f'{var_i}/tif')
         outdir = join(self.datadir, f'{var_i}/tif_05')
         T.mk_dir(outdir, force=True)
@@ -1149,14 +1149,14 @@ class Terraclimate:
         # var_i = 'aet'
         var_i = 'srad'
         fdir = join(self.datadir, f'{var_i}/tif_05')
-        outdir = join(self.datadir, f'{var_i}/per_pix_05')
+        outdir = join(self.datadir, f'{var_i}/per_pix')
         T.mk_dir(outdir, force=True)
         Pre_Process().data_transform(fdir, outdir)
 
     def anomaly(self):
         # var_i = 'aet'
         var_i = 'srad'
-        fdir = join(self.datadir, f'{var_i}/per_pix_05')
+        fdir = join(self.datadir, f'{var_i}/per_pix')
         outdir = join(self.datadir, f'{var_i}/anomaly')
         T.mk_dir(outdir, force=True)
         Pre_Process().cal_anomaly(fdir, outdir)
@@ -1165,7 +1165,7 @@ class Terraclimate:
         # var_i = 'aet'
         var_i = 'srad'
         fdir = join(self.datadir,f'{var_i}/anomaly')
-        outdir = join(self.datadir,f'{var_i}/detrend')
+        outdir = join(self.datadir,f'{var_i}/anomaly_detrend')
         outf = join(outdir,f'{var_i}.npy')
         T.mk_dir(outdir)
         spatial_dict = T.load_npy_dir(fdir)
@@ -1176,14 +1176,15 @@ class Terraclimate:
     def download_all(self):
         param_list = []
         # product_list = ['def','ws','vap','pdsi','pet','ppt','soil','tmax','vpd']
-        product_list = ['aet']
+        # product_list = ['aet']
         # product_list = ['vpd']
+        product_list = ['srad']
         for product in product_list:
             for y in range(1982, 2021):
                 param_list.append([product,str(y)])
                 params = [product,str(y)]
-                self.download(params)
-        # MULTIPROCESS(self.download, param_list).run(process=8, process_or_thread='t')
+                # self.download(params)
+        MULTIPROCESS(self.download, param_list).run(process=8, process_or_thread='t')
 
     def download(self,params):
         product, y = params
@@ -1191,19 +1192,19 @@ class Terraclimate:
         T.mk_dir(outdir, force=True)
         url = 'https://climate.northwestknowledge.net/TERRACLIMATE-DATA/TerraClimate_{}_{}.nc'.format(product, y)
         print(url)
-        # while 1:
-        #     try:
-        #         outf = join(outdir, '{}_{}.nc'.format(product, y))
-        #         if os.path.isfile(outf):
-        #             return None
-        #         req = requests.request('GET', url)
-        #         content = req.content
-        #         fw = open(outf, 'wb')
-        #         fw.write(content)
-        #         return None
-        #     except Exception as e:
-        #         print(url, 'error sleep 5s')
-        #         time.sleep(5)
+        while 1:
+            try:
+                outf = join(outdir, '{}_{}.nc'.format(product, y))
+                if os.path.isfile(outf):
+                    return None
+                req = requests.request('GET', url)
+                content = req.content
+                fw = open(outf, 'wb')
+                fw.write(content)
+                return None
+            except Exception as e:
+                print(url, 'error sleep 5s')
+                time.sleep(5)
 
 
 class GLEAM_ET:
@@ -2441,8 +2442,8 @@ def main():
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
-    ERA_SM().run()
-    # Terraclimate().run()
+    # ERA_SM().run()
+    Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
     # CCI_SM_v7().run()

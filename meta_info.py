@@ -409,6 +409,24 @@ class Load_Data:
         var_name = 'Precipitation-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
 
+    def Srad_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'Terraclimate/srad/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'Radiation-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Srad_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'Terraclimate/srad/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'Radiation-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def Srad_anomaly_detrend(self,year_range=global_year_range):
+        data_path = join(data_root, f'Terraclimate/srad/anomaly_detrend/{year_range}/srad.npy')
+        path_type = 'file'
+        var_name = 'Radiation-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
     def __load_data(self, data_path,path_type):
         if path_type == 'file':
             spatial_dict = T.load_npy(data_path)
