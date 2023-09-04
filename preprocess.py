@@ -2434,6 +2434,100 @@ class CCI_SM_v7:
         T.mk_dir(outdir,force=True)
         Pre_Process().detrend(fdir,outdir)
 
+class FAPAR:
+
+    def __init__(self):
+        self.datadir = join(data_root, 'FAPAR')
+        pass
+
+    def run(self):
+        # self.download()
+        # self.check_nc()
+        self.nc_to_tif()
+        pass
+
+    def download(self):
+        from bs4 import BeautifulSoup
+        outdir = join(self.datadir,'nc')
+        father_url = 'https://www.ncei.noaa.gov/data/avhrr-land-leaf-area-index-and-fapar/access/'
+        year_list = global_year_range_list
+        for year in year_list:
+            outdir_i = join(outdir,f'{year}')
+            T.mk_dir(outdir_i,force=True)
+            url = father_url + f'{year}/'
+            url_html = requests.get(url)
+            soup = BeautifulSoup(url_html.text, 'html.parser')
+            nc_list = []
+            for link in soup.find_all('a'):
+                link = link.get('href')
+                if link.endswith('.nc'):
+                    nc_list.append(link)
+            param_list = []
+            for i in range(len(nc_list)):
+                url_i = url + nc_list[i]
+                fpath_i = join(outdir_i,nc_list[i])
+                param = [url_i,fpath_i]
+                param_list.append(param)
+                # self.kernel_download(param)
+            print(year)
+            MULTIPROCESS(self.kernel_download,param_list).run(process=10,process_or_thread='t')
+
+    def kernel_download(self,param):
+        url, outf = param
+        while 1:
+            try:
+                if os.path.isfile(outf):
+                    return None
+                req = requests.request('GET', url)
+                content = req.content
+                fw = open(outf, 'wb')
+                fw.write(content)
+                return None
+            except Exception as e:
+                print(url, 'error sleep 5s')
+                time.sleep(5)
+
+    def check_nc(self):
+        fdir = join(self.datadir,'nc')
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            for f in tqdm(T.listdir(folder),desc=year):
+                fpath = join(folder,f)
+                try:
+                    nc = Dataset(fpath,'r')
+                except:
+                    print(fpath)
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+        param_list = []
+        for year in T.listdir(fdir):
+            param = [fdir,year,outdir]
+            # self.kernel_nc_to_tif(param)
+            param_list.append(param)
+        MULTIPROCESS(self.kernel_nc_to_tif,param_list).run(process=6,process_or_thread='p')
+
+    def kernel_nc_to_tif(self,param):
+        fdir,year,outdir = param
+        folder = join(fdir, year)
+        outdir_i = join(outdir, year)
+        T.mk_dir(outdir_i, force=True)
+        for f in T.listdir(folder):
+            date = f.split('_')[-2]
+            outf = join(outdir_i, f'{date}.tif')
+            if isfile(outf):
+                continue
+            fpath = join(folder, f)
+            ncin = Dataset(fpath, 'r')
+            # print(ncin['time'])
+            arrs = ncin['FAPAR'][:]
+            for arr in arrs:
+                arr = np.array(arr, dtype=float)
+                arr[arr <= 0] = np.nan
+                ToRaster().array2raster(outf, -180, 90, 0.05, -0.05, arr)
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -2443,7 +2537,7 @@ def main():
     # VPD().run()
     # CCI_SM().run()
     # ERA_SM().run()
-    Terraclimate().run()
+    # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
     # CCI_SM_v7().run()
@@ -2462,6 +2556,7 @@ def main():
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
+    FAPAR().run()
 
     pass
 
