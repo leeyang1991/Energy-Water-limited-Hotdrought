@@ -356,9 +356,9 @@ class SPI:
 
     def run(self):
         # self.cal_spi()
-        # self.pick_SPI_year_range()
+        self.pick_SPI_year_range()
         # self.every_month()
-        self.check_spi()
+        # self.check_spi()
         pass
 
     def cal_spi(self):
@@ -424,7 +424,7 @@ class SPI:
             outf = join(outdir,f)
             dic = T.load_npy(fpath)
             picked_vals_dic = {}
-            for pix in tqdm(dic):
+            for pix in tqdm(dic,desc=f):
                 vals = dic[pix]
                 dic_i = dict(zip(date_list,vals))
                 picked_vals = []
@@ -584,7 +584,9 @@ class TMP:
         # self.per_pix()
         # self.detrend()
         # self.anomaly()
-        self.anomaly_detrend()
+        # self.anomaly_detrend()
+        # self.anomaly_juping()
+        self.anomaly_juping_detrend()
         pass
 
     def per_pix(self):
@@ -608,6 +610,35 @@ class TMP:
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
         pass
+
+    def anomaly_juping(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'anomaly_juping',global_year_range)
+        T.mk_dir(outdir,force=True)
+
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            spatial_dict_i = T.load_npy(fpath)
+            result_dict_i = {}
+            for pix in spatial_dict_i:
+                vals = spatial_dict_i[pix]
+                vals[vals<-999] = np.nan
+                if T.is_all_nan(vals):
+                    continue
+                pix_anomaly = Pre_Process().climatology_anomaly(vals)
+                result_dict_i[pix] = pix_anomaly
+            outf = join(outdir,f)
+            T.save_npy(result_dict_i,outf)
+        pass
+
+    def anomaly_juping_detrend(self):
+        fdir = join(self.datadir,'anomaly_juping',global_year_range)
+        outdir = join(self.datadir,'anomaly_juping_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'detrend.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
 
     def anomaly_detrend(self):
         fdir = join(self.datadir,'anomaly',global_year_range)
@@ -994,7 +1025,7 @@ class Terraclimate:
         pass
 
     def run(self):
-        # self.nc_to_tif_srad()
+        self.nc_to_tif_srad()
         # self.nc_to_tif_aet()
         # self.resample()
         # self.per_pix()
@@ -2443,7 +2474,12 @@ class FAPAR:
     def run(self):
         # self.download()
         # self.check_nc()
-        self.nc_to_tif()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.monthly_compose()
+        # self.per_pix()
+        # self.anomaly()
+        self.detrend()
         pass
 
     def download(self):
@@ -2505,18 +2541,23 @@ class FAPAR:
         param_list = []
         for year in T.listdir(fdir):
             param = [fdir,year,outdir]
-            # self.kernel_nc_to_tif(param)
-            param_list.append(param)
-        MULTIPROCESS(self.kernel_nc_to_tif,param_list).run(process=6,process_or_thread='p')
+            self.kernel_nc_to_tif(param)
+            # param_list.append(param)
+        # MULTIPROCESS(self.kernel_nc_to_tif,param_list).run(process=1,process_or_thread='p')
 
     def kernel_nc_to_tif(self,param):
         fdir,year,outdir = param
+        # outdir1 = '/Users/liyang/Projects_data/temp_dir'
+        # outdir1_i = join(outdir1, year)
+        # T.mk_dir(outdir1_i, force=True)
         folder = join(fdir, year)
         outdir_i = join(outdir, year)
         T.mk_dir(outdir_i, force=True)
-        for f in T.listdir(folder):
+        # for f in T.listdir(folder):
+        for f in tqdm(T.listdir(folder),desc=year):
             date = f.split('_')[-2]
             outf = join(outdir_i, f'{date}.tif')
+            # outf_1 = join(outdir1_i, f'{date}.tif')
             if isfile(outf):
                 continue
             fpath = join(folder, f)
@@ -2527,11 +2568,53 @@ class FAPAR:
                 arr = np.array(arr, dtype=float)
                 arr[arr <= 0] = np.nan
                 ToRaster().array2raster(outf, -180, 90, 0.05, -0.05, arr)
+                ToRaster().resample_reproj(outf,outf,0.5)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        for year in T.listdir(fdir):
+            for f in tqdm(T.listdir(join(fdir,year)),desc=year):
+                fpath = join(fdir,year,f)
+                outf = join(fdir,year,f)
+                ToRaster().resample_reproj(fpath,outf,0.5)
+                # exit()
+
+    def monthly_compose(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_monthly')
+        T.mk_dir(outdir,force=True)
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            Pre_Process().monthly_compose(folder,outdir,date_fmt='yyyymmdd')
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_monthly')
+        outdir = join(self.datadir,'per_pix',global_year_range)
+        T.mk_dir(outdir,force=True)
+        selected_tif_list = []
+        for y in global_year_range_list:
+            for m in range(1, 13):
+                f = '{}{:02d}.tif'.format(y, m)
+                selected_tif_list.append(f)
+        Pre_Process().data_transform_with_date_list(fdir, outdir, selected_tif_list)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'anomaly',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly',global_year_range)
+        outdir = join(self.datadir,'anomaly_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().detrend(fdir,outdir)
+
 
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
-    # SPI().run()
+    SPI().run()
     # TMP().run()
     # Precipitation().run()
     # VPD().run()
@@ -2556,7 +2639,7 @@ def main():
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
-    FAPAR().run()
+    # FAPAR().run()
 
     pass
 

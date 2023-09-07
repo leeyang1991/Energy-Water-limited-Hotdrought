@@ -501,7 +501,6 @@ class Pick_Drought_Events:
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
         # self.drought_timing()
-        # self.drought_timing_df()
         self.gen_dataframe()
         pass
 
@@ -518,7 +517,7 @@ class Pick_Drought_Events:
             drought_events_dict = T.load_npy(fpath)
             hot_dic = {}
             normal_dic = {}
-            for pix in tqdm(drought_events_dict):
+            for pix in tqdm(drought_events_dict,desc=f'{scale}'):
                 spi_drought_year = drought_events_dict[pix]
                 temp_anomaly = t_anomaly_dic[pix]
                 # if not pix in global_gs_dict:
@@ -554,27 +553,29 @@ class Pick_Drought_Events:
         outdir = join(self.this_class_arr, 'picked_events')
         T.mk_dir(outdir)
         threshold = -1
-        SPI_dict = Meta_information().load_data('SPI')
+        SPI_dict_all,_ = Load_Data().SPI()
 
-        events_dic = {}
-        params_list = []
-        for pix in tqdm(SPI_dict):
-            vals = SPI_dict[pix]
-            vals = np.array(vals)
-            params = (vals, threshold)
-            params_list.append(params)
-            events_list = self.kernel_find_drought_period(params)
-            if len(events_list) == 0:
-                continue
-            drought_year_list = []
-            for drought_range in events_list:
-                min_index = T.pick_min_indx_from_1darray(vals, drought_range)
-                drought_year = min_index // 12 + global_start_year
-                drought_year_list.append(drought_year)
-            drought_year_list = np.array(drought_year_list)
-            events_dic[pix] = drought_year_list
-        outf = join(outdir, 'drought_events')
-        T.save_npy(events_dic, outf)
+        for scale in SPI_dict_all:
+            SPI_dict = SPI_dict_all[scale]
+            events_dic = {}
+            params_list = []
+            for pix in tqdm(SPI_dict,desc=f'{scale}'):
+                vals = SPI_dict[pix]
+                vals = np.array(vals)
+                params = (vals, threshold)
+                params_list.append(params)
+                events_list = self.kernel_find_drought_period(params)
+                if len(events_list) == 0:
+                    continue
+                drought_year_list = []
+                for drought_range in events_list:
+                    min_index = T.pick_min_indx_from_1darray(vals, drought_range)
+                    drought_year = min_index // 12 + global_start_year
+                    drought_year_list.append(drought_year)
+                drought_year_list = np.array(drought_year_list)
+                events_dic[pix] = drought_year_list
+            outf = join(outdir, f'{scale}')
+            T.save_npy(events_dic, outf)
 
     def kernel_find_drought_period(self, params):
         # 根据不同干旱程度查找干旱时期
@@ -745,89 +746,69 @@ class Pick_Drought_Events:
     def drought_timing(self):
         outdir = join(self.this_class_arr, 'drought_timing')
         T.mk_dir(outdir)
-        threshold = -2
+        threshold = -1
 
-        SPI_dict = Meta_information().load_data('SPI')
-        events_dic = {}
-        events_mon_dic = {}
-        params_list = []
-        for pix in tqdm(SPI_dict):
-            vals = SPI_dict[pix]
-            vals = np.array(vals)
-            params = (vals, threshold)
-            params_list.append(params)
-            events_list = self.kernel_find_drought_period(params)
-            if len(events_list) == 0:
-                continue
-            drought_year_list = []
-            drought_month_list = []
-            for drought_range in events_list:
-                min_index = T.pick_min_indx_from_1darray(vals, drought_range)
-                drought_year = min_index // 12 + global_start_year
-                drought_month = min_index % 12 + 1
-                drought_year_list.append(drought_year)
-                drought_month_list.append(drought_month)
-            drought_year_list = np.array(drought_year_list)
-            drought_month_list = np.array(drought_month_list)
-            events_dic[pix] = drought_year_list
-            events_mon_dic[pix] = drought_month_list
-        outf_year = join(outdir, 'drought_year.npy')
-        outf_mon = join(outdir, 'drought_mon.npy')
-        T.save_npy(events_dic, outf_year)
-        T.save_npy(events_mon_dic, outf_mon)
-        pass
+        SPI_dict_all,_ = Load_Data().SPI()
+        for scale in SPI_dict_all:
+            SPI_dict = SPI_dict_all[scale]
+            events_dic = {}
+            events_mon_dic = {}
+            params_list = []
+            for pix in tqdm(SPI_dict):
+                vals = SPI_dict[pix]
+                vals = np.array(vals)
+                params = (vals, threshold)
+                params_list.append(params)
+                events_list = self.kernel_find_drought_period(params)
+                if len(events_list) == 0:
+                    continue
+                drought_year_list = []
+                drought_month_list = []
+                for drought_range in events_list:
+                    min_index = T.pick_min_indx_from_1darray(vals, drought_range)
+                    drought_year = min_index // 12 + global_start_year
+                    drought_month = min_index % 12 + 1
+                    drought_year_list.append(drought_year)
+                    drought_month_list.append(drought_month)
+                drought_year_list = np.array(drought_year_list)
+                drought_month_list = np.array(drought_month_list)
+                events_dic[pix] = drought_year_list
+                events_mon_dic[pix] = drought_month_list
+            outf_year = join(outdir, f'{scale}_drought_year.npy')
+            outf_mon = join(outdir, f'{scale}_drought_mon.npy')
+            T.save_npy(events_dic, outf_year)
+            T.save_npy(events_mon_dic, outf_mon)
+            pass
 
-    def drought_timing_df(self):
-        outdir = join(self.this_class_arr, 'drought_timing_df')
-        T.mk_dir(outdir)
-        fdir = join(self.this_class_arr,'drought_timing')
-        fpath_year = join(fdir,f'drought_year.npy')
-        fpath_mon = join(fdir,f'drought_mon.npy')
-        year_dict = T.load_npy(fpath_year)
-        mon_dict = T.load_npy(fpath_mon)
-        pix_list = []
-        year_list = []
-        mon_list = []
-        for pix in year_dict:
-            events = year_dict[pix]
-            if len(events) == 0:
-                continue
-            events_mon = mon_dict[pix]
-            for i in range(len(events)):
-                event = events[i]
-                event_mon = events_mon[i]
-                pix_list.append(pix)
-                year_list.append(event)
-                mon_list.append(event_mon)
-        df = pd.DataFrame()
-        df['pix'] = pix_list
-        df['year'] = year_list
-        df['mon'] = mon_list
-        outf = join(outdir,'drought_timing.df')
-        T.save_df(df,outf)
-        T.df_to_excel(df,outf)
-        T.open_path_and_file(outdir)
-
-        pass
 
     def gen_dataframe(self):
         outdir = join(self.this_class_arr,'drought_dataframe')
         T.mk_dir(outdir)
         drought_events_dir = join(self.this_class_arr, 'normal_hot_events')
         drought_timing_dir = join(self.this_class_arr,'drought_timing')
-        drought_year_f = join(drought_timing_dir,'drought_year.npy')
-        drought_mon_f = join(drought_timing_dir,'drought_mon.npy')
+        # drought_year_f = join(drought_timing_dir,'drought_year.npy')
+        # drought_mon_f = join(drought_timing_dir,'drought_mon.npy')
 
-        drought_year_dict = T.load_npy(drought_year_f)
-        drought_mon_dict = T.load_npy(drought_mon_f)
 
         pix_list = []
         drought_year_list = []
         drought_type_list = []
-        for f in T.listdir(drought_events_dir):
+        drought_scale_list = []
+        drought_year_dict_all = {}
+        drought_mon_dict_all = {}
+        for scale in global_all_spi_list:
+            drought_year_f = join(drought_timing_dir,f'{scale}_drought_year.npy')
+            drought_mon_f = join(drought_timing_dir,f'{scale}_drought_mon.npy')
+            drought_year_dict = T.load_npy(drought_year_f)
+            drought_mon_dict = T.load_npy(drought_mon_f)
+            drought_year_dict_all[scale] = drought_year_dict
+            drought_mon_dict_all[scale] = drought_mon_dict
+
+        for f in tqdm(T.listdir(drought_events_dir)):
             fpath = join(drought_events_dir, f)
             var_i = f.split('.')[0]
             drought_type = var_i.split('_')[0]
+            scale = var_i.split('_')[1]
             spatial_dict = T.load_npy(fpath)
             for pix in spatial_dict:
                 events = spatial_dict[pix]
@@ -835,19 +816,25 @@ class Pick_Drought_Events:
                     pix_list.append(pix)
                     drought_year_list.append(e)
                     drought_type_list.append(drought_type)
+                    drought_scale_list.append(scale)
+        # exit()
         df = pd.DataFrame()
         df['pix'] = pix_list
         df['drought_year'] = drought_year_list
         df['drought_type'] = drought_type_list
+        df['drought_scale'] = drought_scale_list
+        # T.print_head_n(df)
+        # exit()
         # add drought timing
         # drought_timing_year_list = []
         drought_mon_list = []
         for i,row in tqdm(df.iterrows(),total=len(df)):
             pix = row['pix']
             year = row['drought_year']
-            drought_year = drought_year_dict[pix]
+            scale = row['drought_scale']
+            drought_year = drought_year_dict_all[scale][pix]
             drought_year = list(drought_year)
-            drought_mon = drought_mon_dict[pix]
+            drought_mon = drought_mon_dict_all[scale][pix]
             drought_mon = list(drought_mon)
             drought_year_index = drought_year.index(year)
             drought_mon_i = drought_mon[drought_year_index]
@@ -2987,20 +2974,23 @@ class Long_term_correlation:
         # A_data_obj = Load_Data().SPI
         # A_data_obj = Load_Data().Temperature_anomaly_detrend
         # A_data_obj = Load_Data().Precipitation_anomaly_detrend
+        # A_data_obj = Load_Data().FAPAR_anomaly_detrend
+        # A_data_obj = Load_Data().Srad_anomaly_detrend
         # # --------------
         # B_data_obj = Load_Data().NDVI_anomaly_detrend
         # # ---------------------------------------
         # self.A_vs_B_seasonal_correlation(A_data_obj,B_data_obj)
 
-
-        # self.phenology_correlation()
+        # pheno_str = 'early_start'
+        # pheno_str = 'late_end'
+        # self.phenology_correlation(pheno_str,A_data_obj)
 
         # # ---------------------------------------
         # self.correlation_tif()
-        # self.plot_correlation_tif()
+        self.plot_correlation_tif()
         # self.plot_correlation_bar()
         # self.plot_correlation_bar_all_region()
-        self.correlation_statistic()
+        # self.correlation_statistic()
 
 
 
@@ -3044,8 +3034,9 @@ class Long_term_correlation:
             T.save_df(df,outf)
             T.df_to_excel(df,outf)
 
-    def phenology_correlation(self):
-        pheno_str = 'early_start'
+
+    def phenology_correlation(self,pheno_str,B_data_obj):
+        # pheno_str = 'early_start'
         # pheno_str = 'late_end'
 
         pix_list = DIC_and_TIF().void_spatial_dic()
@@ -3062,7 +3053,7 @@ class Long_term_correlation:
         # A_dict, A_var_name = A_data_obj()
         A_dict = pheno_spatial_dict
         A_var_name = pheno_str
-        B_dict, B_var_name = Load_Data().NDVI_anomaly_detrend()
+        B_dict, B_var_name = B_data_obj()
         outdir = join(self.this_class_arr, 'seasonal_correlation', f'{A_var_name}_vs_{B_var_name}')
         T.mk_dir(outdir, force=True)
         drought_season_dict = global_drought_season_dict
@@ -3135,6 +3126,7 @@ class Long_term_correlation:
                 fpath_p = join(fdir_i,f.replace('.tif','_p.tif'))
                 outpath = join(outdir_i,f'{f.split(".")[0]}.png')
                 m,ret = Plot().plot_ortho(fpath,vmin=-.8,vmax=.8)
+                # m,ret = Plot().plot_ortho(fpath,vmin=-.5,vmax=.5)
                 Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root)
                 plt.title(f.split('.')[0])
                 plt.savefig(outpath,dpi=300)
