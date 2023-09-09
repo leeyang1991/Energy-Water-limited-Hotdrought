@@ -53,14 +53,9 @@ global_threshold = 0.05
 global_VIs_list = ['NDVI','VOD-anomaly','CSIF-anomaly']
 global_VIs_origin_list = ['NDVI-origin','VOD-origin','CSIF-origin']
 global_VIs_year_range_dict = {
-    'NDVI': '1982-2015',
-    'NDVI-origin': '1982-2015',
-    'VOD-origin': '2003-2015',
-    'VOD-anomaly': '2003-2015',
-    'CSIF-origin': '2001-2015',
-    'CSIF-anomaly': '2001-2015',
-    'VOD-k-band-origin': '1988-2015',
-    'VOD-k-band-anomaly': '1988-2015',
+    'NDVI3g': '1982-2015',
+    'NDVI4g': '1982-2020',
+    'CSIF': '2000-2020',
 }
 global_color_list = [
     '#844000',
@@ -116,6 +111,12 @@ class Load_Data:
         path_type = 'multi-files'
         var_name = 'SPI'
         return self.__load_data(data_path, path_type), var_name
+
+    def SPI_scale(self,scale,year_range=global_year_range):
+        data_path = join(data_root, 'SPI/per_pix', year_range,f'SPI{scale:02d}.npy')
+        path_type = 'file'
+        var_name = f'SPI{scale:02d}'
+        return self.__load_data(data_path, path_type), var_name
     
     def CCI_SM_origin(self,year_range=global_year_range):
         data_path = join(data_root, f'CCI_SM_v7/per_pix/{year_range}')
@@ -169,6 +170,18 @@ class Load_Data:
         data_path = join(data_root, 'NDVI4g/per_pix_anomaly_detrend', year_range)
         path_type = 'dir'
         var_name = 'NDVI-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def NDVI_3g_origin(self,year_range=global_VIs_year_range_dict['NDVI3g']):
+        data_path = join(data_root, 'NDVI3g/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI3g-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def NDVI_3g_anomaly_detrend(self,year_range=global_VIs_year_range_dict['NDVI3g']):
+        data_path = join(data_root, 'NDVI3g/per_pix_anomaly_detrend', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI3g-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
 
     def Temperature_origin(self,year_range=global_year_range):
@@ -259,6 +272,24 @@ class Load_Data:
         data_path = join(data_root, f'FAPAR/anomaly_detrend/{year_range}')
         path_type = 'dir'
         var_name = 'FAPAR-anomaly_detrend'
+        return self.__load_data(data_path, path_type), var_name
+
+    def CSIF_origin(self,year_range=global_VIs_year_range_dict['CSIF']):
+        data_path = join(data_root, 'CSIF/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'CSIF-origin'
+        return self.__load_data(data_path, path_type), var_name
+
+    def CSIF_anomaly(self,year_range=global_VIs_year_range_dict['CSIF']):
+        data_path = join(data_root, 'CSIF/anomaly', year_range)
+        path_type = 'dir'
+        var_name = 'CSIF-anomaly'
+        return self.__load_data(data_path, path_type), var_name
+
+    def CSIF_anomaly_detrend(self,year_range=global_VIs_year_range_dict['CSIF']):
+        data_path = join(data_root, 'CSIF/anomaly_detrend', year_range)
+        path_type = 'dir'
+        var_name = 'CSIF-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
 
     def __load_data(self, data_path,path_type):

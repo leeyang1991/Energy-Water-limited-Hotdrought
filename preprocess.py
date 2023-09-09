@@ -405,7 +405,9 @@ class SPI:
 
     def pick_SPI_year_range(self):
         fdir = join(self.datadir,'per_pix','1930-2020')
-        outdir = join(self.datadir,'per_pix',global_year_range)
+        # year_range = global_VIs_year_range_dict['NDVI3g']
+        year_range = global_VIs_year_range_dict['CSIF']
+        outdir = join(self.datadir,'per_pix',year_range)
         T.mk_dir(outdir)
         start_year = 1930
         end_year = 2020
@@ -415,7 +417,9 @@ class SPI:
                 date = f'{y}-{m:02d}'
                 date_list.append(date)
         pick_date_list = []
-        for y in range(1982, end_year + 1):
+        pick_year_start = int(year_range.split('-')[0])
+        pick_year_end = int(year_range.split('-')[1])
+        for y in range(pick_year_start, pick_year_end + 1):
             for m in range(1, 13):
                 date = f'{y}-{m:02d}'
                 pick_date_list.append(date)
@@ -861,7 +865,6 @@ class CCI_SM:
         arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dic1)
         plt.imshow(arr)
         plt.show()
-
 
 class CSIF:
 
@@ -2531,7 +2534,7 @@ class FAPAR:
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
-    # SPI().run()
+    SPI().run()
     # TMP().run()
     # Precipitation().run()
     # VPD().run()
@@ -2543,7 +2546,7 @@ def main():
     # CCI_SM_v7().run()
     # VOD_Kband().run()
     # VOD_AMSRU().run()
-    CSIF().run()
+    # CSIF().run()
     # Terraclimate().run()
     # ERA().run()
     # SPI().run()
