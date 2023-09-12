@@ -1,9 +1,4 @@
 # coding=utf-8
-import turtledemo.chaos
-
-import matplotlib.pyplot as plt
-import tqdm
-import tweepy.utils
 
 from __init__ import *
 import xarray as xr
@@ -2531,10 +2526,45 @@ class FAPAR:
         Pre_Process().detrend(fdir,outdir)
 
 
+class Aridity_Index:
+
+    def __init__(self):
+        self.datadir = join(data_root, 'Aridity_Index')
+        pass
+
+    def run(self):
+        # self.Binary_tif()
+        self.plot_binary_tif()
+        pass
+
+    def Binary_tif(self):
+        fpath = join(self.datadir,'aridity_index.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        binary_spatial_dict = {}
+        for pix in tqdm(spatial_dict):
+            val = spatial_dict[pix]
+            if np.isnan(val):
+                continue
+            if val < 0.65:
+                binary_spatial_dict[pix] = 0
+            else:
+                binary_spatial_dict[pix] = 1
+        outf = join(self.datadir,'aridity_index_binary.tif')
+        DIC_and_TIF().pix_dic_to_tif(binary_spatial_dict,outf)
+
+    def plot_binary_tif(self):
+        fpath = join(self.datadir,'aridity_index_binary.tif')
+        Plot().plot_ortho(fpath,cmap='RdBu',vmin=-.3,vmax=1.3)
+        outf = join(self.datadir,'aridity_index_binary.png')
+        plt.savefig(outf,dpi=300)
+        plt.close()
+        T.open_path_and_file(self.datadir)
+        pass
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
-    SPI().run()
+    # SPI().run()
     # TMP().run()
     # Precipitation().run()
     # VPD().run()
@@ -2560,6 +2590,7 @@ def main():
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
+    Aridity_Index().run()
 
     pass
 

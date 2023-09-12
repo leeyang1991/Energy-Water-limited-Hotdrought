@@ -9,7 +9,8 @@ class Different_VIS_analysis:
 
     def __init__(self):
         # self.VI_name = 'NDVI3g'
-        self.VI_name = 'CSIF'
+        self.VI_name = 'NDVI4g'
+        # self.VI_name = 'CSIF'
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
             f'Different_VIS_analysis/{self.VI_name}',
             result_root_this_script, mode=2)
@@ -17,20 +18,22 @@ class Different_VIS_analysis:
         pass
 
     def run(self):
-        # self.copy_df()
+        self.copy_df()
         # ----------------------------
         df = self.__gen_df_init()
-        # df = self.add_GS_VI(df)
-        # df = self.add_percentage_process(df)
-        #
-        # T.save_df(df,self.dff)
-        # T.df_to_excel(df,self.dff)
-        # ----------------------------
-        # self.tif_drought_year(df)
-        # self.delta_tif(df)
-        # self.plot_delta_tif()
+        df = self.add_GS_VI(df)
+        df = self.add_percentage_process(df)
+
+        T.save_df(df,self.dff)
+        T.df_to_excel(df,self.dff)
+        ############ ----------------------------
+        self.tif_drought_year(df)
+        self.delta_tif(df)
         self.Drought_year_percentage_spatial_tif(df)
         self.Drought_year_percentage_sig_spatial_tif()
+        self.delta_percentage_sig()
+        self.plot_delta_tif()
+
         self.plot_tif_drought_year()
 
         self.bar_percentage()
@@ -57,6 +60,8 @@ class Different_VIS_analysis:
             spatial_dict,var_name = Load_Data().NDVI_3g_anomaly_detrend()
         elif self.VI_name == 'CSIF':
             spatial_dict,var_name = Load_Data().CSIF_anomaly_detrend()
+        elif self.VI_name == 'NDVI4g':
+            spatial_dict,var_name = Load_Data().NDVI_anomaly_detrend()
         else:
             raise IOError('VI_name error')
         year_list = year_range_str_to_list(global_VIs_year_range_dict[self.VI_name])
@@ -88,6 +93,8 @@ class Different_VIS_analysis:
             NDVI_spatial_dict,var_name = Load_Data().NDVI_3g_origin()
         elif self.VI_name == 'CSIF':
             NDVI_spatial_dict,var_name = Load_Data().CSIF_origin()
+        elif self.VI_name == 'NDVI4g':
+            NDVI_spatial_dict,var_name = Load_Data().NDVI_origin()
         else:
             raise
         NDVI_percentage_spatial_dict = {}
@@ -152,6 +159,9 @@ class Different_VIS_analysis:
                     mean_progress_reshape = np.array(mean_progress).reshape(-1, 6)
                 except:
                     continue
+                if len(mean_progress_reshape) != 6:
+                    continue
+                # print(mean_progress_reshape)
                 mean_progress_reshape_drought_year = mean_progress_reshape[1]
                 mean_drought_year_NDVI = np.nanmean(mean_progress_reshape_drought_year)
                 if mean_drought_year_NDVI > 50:
@@ -245,15 +255,37 @@ class Different_VIS_analysis:
         outf = join(outdir,'delta.tif')
         DIC_and_TIF().pix_dic_to_tif(delta_dict,outf)
 
+    def delta_percentage_sig(self):
+        fdir = join(self.this_class_tif,'Drought_year_percentage_spatial_tif')
+        outdir = join(self.this_class_tif,'delta_percentage_sig')
+        T.mk_dir(outdir)
+        fpath_hot = join(fdir,'hot-drought.tif')
+        fpath_normal = join(fdir,'normal-drought.tif')
+        spatial_dic_hot = DIC_and_TIF().spatial_tif_to_dic(fpath_hot)
+        spatial_dic_normal = DIC_and_TIF().spatial_tif_to_dic(fpath_normal)
+        spatial_dic_delta = {}
+        for pix in spatial_dic_hot:
+            delta = spatial_dic_hot[pix] - spatial_dic_normal[pix]
+            if delta >5 or delta < -5:
+                sig_val = 0.0001
+            else:
+                sig_val = 1
+            spatial_dic_delta[pix] = sig_val
+        outf = join(outdir,'delta_percentage_sig.tif')
+        DIC_and_TIF().pix_dic_to_tif(spatial_dic_delta,outf)
+        pass
+
     def plot_delta_tif(self):
         fdir = join(self.this_class_tif,'delta')
         outdir = join(self.this_class_png, 'plot_delta_tif')
         T.mk_dir(outdir,force=True)
+        sig_fpath = join(self.this_class_tif,'delta_percentage_sig','delta_percentage_sig.tif')
 
         for f in T.listdir(fdir):
             fpath = join(fdir,f)
             outf = join(outdir,f.replace('.tif','.png'))
             m,ret = Plot().plot_ortho(fpath,vmin=-0.5,vmax=.5,cmap='Spectral')
+            Plot().plot_ortho_significance_scatter(m,sig_fpath,temp_root)
             plt.savefig(outf,dpi=300)
             plt.close()
         T.open_path_and_file(outdir)
@@ -535,7 +567,7 @@ class Multi_SPI_scale_analysis:
             'Multi_SPI_scale_analysis',
             result_root_this_script, mode=2)
         self.dff = join(self.this_class_arr, 'dataframe.df')
-        self.spi_scale_list = ['spi03','spi06','spi09','spi12']
+        self.spi_scale_list = global_selected_spi_list
         pass
 
     def run(self):
@@ -547,7 +579,9 @@ class Multi_SPI_scale_analysis:
         # T.df_to_excel(df,self.dff)
 
         # self.tif_drought_year(df)
-        self.plot_tif_drought_year()
+        # self.plot_tif_drought_year()
+        # self.delta_tif()
+        self.plot_delta_tif()
         pass
 
     def copy_df(self):
@@ -624,6 +658,40 @@ class Multi_SPI_scale_analysis:
         T.open_path_and_file(outdir)
         pass
 
+    def delta_tif(self):
+        fdir = join(self.this_class_tif,'drought_year')
+        outdir = join(self.this_class_tif,'delta')
+        T.mk_dir(outdir,force=True)
+        spi_scale_list = global_selected_spi_list
+        for scale in spi_scale_list:
+            hot_tif = join(fdir,f'{scale}_hot-drought.tif')
+            normal_tif = join(fdir,f'{scale}_normal-drought.tif')
+            hot_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(hot_tif)
+            normal_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(normal_tif)
+
+            delta_dict = {}
+            for pix in hot_spatial_dict:
+                hot_val = hot_spatial_dict[pix]
+                if not pix in normal_spatial_dict:
+                    continue
+                normal_val = normal_spatial_dict[pix]
+                delta = hot_val - normal_val
+                delta_dict[pix] = delta
+            outf = join(outdir,f'{scale}_delta.tif')
+            DIC_and_TIF().pix_dic_to_tif(delta_dict,outf)
+
+    def plot_delta_tif(self):
+        fdir = join(self.this_class_tif,'delta')
+        outdir = join(self.this_class_png, 'plot_delta_tif')
+        T.mk_dir(outdir,force=True)
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            outf = join(outdir,f.replace('.tif','.png'))
+            m,ret = Plot().plot_ortho(fpath,vmin=-0.5,vmax=.5,cmap='Spectral')
+            plt.title(f.replace('.tif',''))
+            plt.savefig(outf,dpi=300)
+            plt.close()
+        T.open_path_and_file(outdir)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -645,7 +713,6 @@ class Multi_SPI_scale_analysis:
 
 def main():
     Different_VIS_analysis().run()
-    # CSIF_analysis().run()
     # Multi_SPI_scale_analysis().run()
     pass
 
