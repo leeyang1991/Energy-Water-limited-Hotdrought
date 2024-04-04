@@ -1215,6 +1215,283 @@ class Long_term_correlation:
         return phenology_anomaly_list
 
 
+class Optimal_temperature:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Optimal_temperature', result_root_this_script, mode=2)
+
+    def run(self):
+        step = .5
+        # self.cal_opt_temp(step)
+        # self.tif_opt_temp()
+        # self.plot_test_cal_opt_temp(step)
+        self.resample()
+        pass
+
+    def cal_opt_temp(self,step):
+        # dff = join(Dataframe_SM().this_class_arr,'dataframe/-0.5.df')
+        # df_global = T.load_df(dff)
+        # pix_list = T.get_df_unique_val_list(df_global,'pix')
+
+        # step = 1  # Celsius
+        # outdir = join(self.this_class_tif,f'optimal_temperature')
+
+
+        # temp_dic,_ = Load_Data().ERA_Tair_origin()
+        temp_dic,_ = Load_Data().Temperature_origin()
+        ndvi_dic,vege_name = Load_Data().NDVI_origin()
+        # ndvi_dic,vege_name = Load_Data().LT_Baseline_NT_origin()
+        # T_dir = join(data_root,'TerraClimate/tmax/per_pix/1982-2020')
+        # NDVI_dir = join(data_root,'NDVI4g/per_pix/1982-2020')
+        # vege_name = 'NDVI4g'
+        # vege_name = 'LT_Baseline_NT'
+        outdir = join(self.this_class_arr, f'optimal_temperature',f'{vege_name}_step_{step}_celsius')
+        outf = join(outdir,f'{vege_name}_step_{step}_celsius')
+        T.mk_dir(outdir,force=True)
+        # outdir_i = join(outdir,f'{vege_name}_step_{step}_celsius.tif')
+        optimal_temp_dic = {}
+        for pix in tqdm(temp_dic):
+            if not pix in ndvi_dic:
+                continue
+            ndvi = ndvi_dic[pix]
+            temp = temp_dic[pix]
+            temp = np.array(temp)
+            temp[temp<0] = np.nan
+            if T.is_all_nan(temp):
+                continue
+            if np.nanstd(temp) == 0:
+                continue
+            # temp = np.array(temp) - 273.15  # Kelvin to Celsius
+            df = pd.DataFrame()
+            df['ndvi'] = ndvi
+            df['temp'] = temp
+            df = df[df['ndvi'] > 0]
+            df = df.dropna()
+            if len(df) == 0:
+                continue
+            max_t = max(df['temp'])
+            min_t = int(min(df['temp']))
+            t_bins = np.arange(start=min_t, stop=max_t, step=step)
+            df_group, bins_list_str = T.df_bin(df, 'temp', t_bins)
+            quantial_90_list = []
+            x_list = []
+            for name, df_group_i in df_group:
+                vals = df_group_i['ndvi'].tolist()
+                if len(vals) == 0:
+                    continue
+                quantile_90 = np.nanquantile(vals, 0.9)
+                left = name[0].left
+                x_list.append(left)
+                quantial_90_list.append(quantile_90)
+            # multi regression to find the optimal temperature
+            # parabola fitting
+            x = np.array(x_list)
+            y = np.array(quantial_90_list)
+            if len(x) < 3:
+                continue
+            if len(y) < 3:
+                continue
+            a, b, c = self.nan_parabola_fit(x, y)
+            y_fit = a * x ** 2 + b * x + c
+            T_opt = x[np.argmax(y_fit)]
+            # print(T_opt)
+            # exit()
+            optimal_temp_dic[pix] = T_opt
+        T.save_npy(optimal_temp_dic, outf)
+
+    def tif_opt_temp(self):
+        outdir = join(self.this_class_tif,f'optimal_temperature')
+        T.mk_dir(outdir,force=True)
+        fpath = join(self.this_class_arr,'optimal_temperature/NDVI-origin_step_0.5_celsius/NDVI-origin_step_0.5_celsius.npy')
+        spatial_dict = T.load_npy(fpath)
+        spatial_dict_new = {}
+        for pix in spatial_dict:
+            val = spatial_dict[pix]
+            # val = val + 273.15
+            spatial_dict_new[pix] = val
+        outf = join(outdir,f'optimal_temperature.tif')
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_new,outf)
+
+    def kernel_cal_opt_temp(self,params):
+        NDVI_dir,T_dir,outdir,step,f,pix_list = params
+        fpath_NDVI = join(NDVI_dir, f)
+        fpath_T = join(T_dir, f)
+        ndvi_dic = T.load_npy(fpath_NDVI)
+        temp_dic = T.load_npy(fpath_T)
+        optimal_temp_dic = {}
+        for pix in pix_list:
+            if not pix in ndvi_dic:
+                continue
+            ndvi = ndvi_dic[pix]
+            temp = temp_dic[pix]
+            temp = np.array(temp)
+            # temp = np.array(temp) - 273.15  # Kelvin to Celsius
+            df = pd.DataFrame()
+            df['ndvi'] = ndvi
+            df['temp'] = temp
+            df = df[df['ndvi'] > 0]
+            df = df.dropna()
+            if len(df) == 0:
+                continue
+            max_t = max(df['temp'])
+            min_t = int(min(df['temp']))
+            t_bins = np.arange(start=min_t, stop=max_t, step=step)
+            df_group, bins_list_str = T.df_bin(df, 'temp', t_bins)
+            quantial_90_list = []
+            x_list = []
+            for name, df_group_i in df_group:
+                vals = df_group_i['ndvi'].tolist()
+                if len(vals) == 0:
+                    continue
+                quantile_90 = np.nanquantile(vals, 0.9)
+                left = name[0].left
+                x_list.append(left)
+                quantial_90_list.append(quantile_90)
+            # multi regression to find the optimal temperature
+            # parabola fitting
+            x = np.array(x_list)
+            y = np.array(quantial_90_list)
+            if len(x) < 3:
+                continue
+            if len(y) < 3:
+                continue
+            a, b, c = self.nan_parabola_fit(x, y)
+            y_fit = a * x ** 2 + b * x + c
+            T_opt = x[np.argmax(y_fit)]
+            optimal_temp_dic[pix] = T_opt
+        outf = join(outdir, f)
+        T.save_npy(optimal_temp_dic, outf)
+
+    def plot_test_cal_opt_temp(self,step):
+
+        # step = 1  # Celsius
+
+        temp_dic,_ = Load_Data().Temperature_origin()
+        ndvi_dic,_ = Load_Data().NDVI_origin()
+        # ndvi_dic,_ = Load_Data().LT_Baseline_NT_origin()
+        optimal_temp_dic = {}
+        for pix in tqdm(temp_dic):
+            ndvi = ndvi_dic[pix]
+            temp = temp_dic[pix]
+            ndvi = np.array(ndvi)
+            temp = np.array(temp)
+            temp[temp < 0] = np.nan
+            if T.is_all_nan(temp):
+                continue
+            if np.nanstd(temp) == 0:
+                continue
+            if np.nanstd(ndvi) == 0:
+                continue
+            ndvi[ndvi < 0] = np.nan
+            ndvi[ndvi>10000] = np.nan
+            if True in np.isnan(ndvi):
+                continue
+            # if T.is_all_nan(ndvi):
+            #     continue
+            # print(temp)
+            # print(ndvi)
+            # exit()
+            df = pd.DataFrame()
+            df['ndvi'] = ndvi
+            df['temp'] = temp
+            df = df[df['ndvi'] > 0.1]
+            df = df.dropna()
+            max_t = max(df['temp'])
+            min_t = int(min(df['temp']))
+            t_bins = np.arange(start=min_t,stop=max_t,step=step)
+            df_group, bins_list_str = T.df_bin(df,'temp',t_bins)
+            # ndvi_list = []
+            # box_list = []
+            color_list = T.gen_colors(len(df_group))
+            color_list = color_list[::-1]
+            flag = 0
+            quantial_90_list = []
+            x_list = []
+            for name,df_group_i in df_group:
+                vals = df_group_i['ndvi'].tolist()
+                quantile_90 = np.nanquantile(vals,0.9)
+                left = name[0].left
+                x_list.append(left)
+                # plt.scatter([left]*len(vals),vals,s=20,color=color_list[flag])
+                flag += 1
+                quantial_90_list.append(quantile_90)
+            x = np.array(x_list)
+            y = np.array(quantial_90_list)
+            a,b,c = self.nan_parabola_fit(x,y)
+            y_fit = a*x**2 + b*x + c
+            # plt.plot(x,y_fit,'k--',lw=2)
+            opt_T = x[np.argmax(y_fit)]
+            if opt_T < 20:
+                continue
+            if np.argmax(y_fit) >= 39:
+                continue
+
+            #######################
+            flag = 0
+            quantial_90_list = []
+            x_list = []
+            for name, df_group_i in df_group:
+                vals = df_group_i['ndvi'].tolist()
+                quantile_90 = np.nanquantile(vals, 0.9)
+                left = name[0].left
+                x_list.append(left)
+                plt.scatter([left] * len(vals), vals, s=20, color=color_list[flag])
+                flag += 1
+                quantial_90_list.append(quantile_90)
+            x = np.array(x_list)
+            # print(len(x))
+            # exit()
+            y = np.array(quantial_90_list)
+            a, b, c = self.nan_parabola_fit(x, y)
+            y_fit = a * x ** 2 + b * x + c
+            plt.plot(x, y_fit, 'k--', lw=2)
+            opt_T = x[np.argmax(y_fit)]
+            #######################
+            print('opt_T',opt_T)
+            print('argmax',np.argmax(y_fit))
+            plt.scatter([opt_T],[np.max(y_fit)],s=200,marker='*',color='r',zorder=99)
+            # print(len(y_fit))
+            # print(len(quantial_90_list))
+            a_,b_,r_,p_ = T.nan_line_fit(y_fit,quantial_90_list)
+            r2 = r_**2
+            # print(r2)
+            # exit()
+
+
+            plt.plot(x_list,quantial_90_list,c='k',lw=2)
+            plt.title(f'a={a:.3f},b={b:.3f},c={c:.3f}')
+            # print(t_bins)
+            # # plt.plot(t_bins[:-1],ndvi_list)
+            # plt.boxplot(box_list,positions=t_bins[:-1],showfliers=False)
+            plt.show()
+
+
+
+    def nan_parabola_fit(self, val1_list, val2_list):
+        if not len(val1_list) == len(val2_list):
+            raise UserWarning('val1_list and val2_list must have the same length')
+        val1_list_new = []
+        val2_list_new = []
+        for i in range(len(val1_list)):
+            val1 = val1_list[i]
+            val2 = val2_list[i]
+            if np.isnan(val1):
+                continue
+            if np.isnan(val2):
+                continue
+            val1_list_new.append(val1)
+            val2_list_new.append(val2)
+        a,b,c = np.polyfit(val1_list_new, val2_list_new, 2)
+
+        return a,b,c
+
+    def resample(self):
+        fpath = '/Volumes/NVME2T/Energy_water_hotdrought/results/analysis/Optimal_temperature/tif/optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius.tif'
+        outpath = '/Volumes/NVME2T/Energy_water_hotdrought/results/analysis/Optimal_temperature/tif/optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif'
+        ToRaster().resample_reproj(fpath, outpath, 0.5)
+        pass
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
@@ -1282,13 +1559,14 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
     # Phenology().run()
     # Long_term_correlation().run()
+    Optimal_temperature().run()
 
     # gen_world_grid_shp()
     pass
