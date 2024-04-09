@@ -1215,6 +1215,16 @@ class Long_term_correlation:
         return phenology_anomaly_list
 
 
+class Optimal_temperature:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Optimal_temperature', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        pass
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
