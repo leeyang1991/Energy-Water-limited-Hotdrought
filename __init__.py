@@ -87,8 +87,6 @@ def pause():
     # ANSI colors: https://gist.github.com/rene-d/9e584a7dd2935d0f461904b9f2950007
     input('\33[7m'+"PRESS ENTER TO CONTINUE."+'\33[0m')
 
-
 T = Tools()
 if __name__ == '__main__':
-
     pass

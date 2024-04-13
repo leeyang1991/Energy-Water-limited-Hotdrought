@@ -5,7 +5,8 @@ plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['font.size'] = 8
 centimeter_factor = 1 / 2.54
 
-this_root = '/Volumes/NVME2T/Energy_water_hotdrought/'
+# this_root = '/Volumes/NVME2T/Energy_water_hotdrought/'
+this_root = r'D:\Energy_water_hotdrought/'
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
