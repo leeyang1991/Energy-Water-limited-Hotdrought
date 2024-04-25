@@ -1,10 +1,15 @@
 # coding=utf-8
+import shutil
+
+import matplotlib.pyplot as plt
+import numpy as np
+import tqdm
 
 from __init__ import *
-import xarray as xr
-import climate_indices
-from climate_indices import compute
-from climate_indices import indices
+# import xarray as xr
+# import climate_indices
+# from climate_indices import compute
+# from climate_indices import indices
 from meta_info import *
 
 class GIMMS_NDVI:
@@ -17,7 +22,8 @@ class GIMMS_NDVI:
         # self.resample()
         # self.monthly_compose()
         # self.per_pix()
-        self.per_pix_biweekly()
+        # self.per_pix_biweekly()
+        self.check_per_pix_biweekly()
         # self.per_pix_anomaly()
         # self.per_pix_anomaly_detrend()
         # self.per_pix_anomaly_detrend_GS()
@@ -52,6 +58,25 @@ class GIMMS_NDVI:
         outdir = join(self.datadir,'per_pix_biweekly')
         T.mk_dir(outdir)
         Pre_Process().data_transform(fdir,outdir)
+
+    def check_per_pix_biweekly(self):
+        fdir = join(self.datadir,'per_pix_biweekly')
+        # T.open_path_and_file(fdir)
+        spatial_dict = T.load_npy_dir(fdir)
+        for pix in spatial_dict:
+            # print(pix)
+            vals = spatial_dict[pix]
+            vals = np.array(vals)
+            vals[vals>10000] = np.nan
+            # vals[vals<0] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            vals_reshape = np.reshape(vals,(-1,24))
+            print(len(vals_reshape))
+            plt.imshow(vals_reshape,cmap='RdBu',vmin=0,vmax=10000)
+            plt.colorbar()
+
+            plt.show()
 
     def per_pix_anomaly(self):
         fdir = join(self.datadir,'per_pix')
@@ -1739,6 +1764,203 @@ class ERA_Precip:
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
+
+class ERA_T2m_daily:
+
+    def __init__(self):
+        self.datadir = join(data_root,'ERA_daily/Tmax')
+        # self.datadir = join(data_root,'ERA_daily/Tmean')
+
+        pass
+
+    def run(self):
+        # self.unzip()
+        # self.move_tif()
+        # self.resample()
+        # self.split_year()
+        # self.per_pix_annual()
+        self.daily_to_biweekly()
+        # self.combine_annual_biweekly()
+        # self.per_pix()
+        # self.check_perpix()
+        pass
+
+    def unzip(self):
+        fdir = join(self.datadir,'zips')
+        outdir = join(self.datadir,'unzip')
+        T.mk_dir(outdir,force=True)
+        for folder in T.listdir(fdir):
+            print(folder)
+            folder_i = join(fdir,folder)
+            T.unzip(folder_i,outdir)
+        pass
+
+    def move_tif(self):
+        fdir = join(self.datadir,'unzip')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for folder in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,folder,f'download.temperature_2m.tif')
+            outpath = join(outdir,f'{folder}.tif')
+            shutil.move(fpath,outpath)
+
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mkdir(outdir)
+        params_list = []
+        for f in tqdm(T.listdir(fdir)):
+            params = [fdir,outdir,f]
+            params_list.append(params)
+            # self.kernel_resample(params)
+            # exit()
+        MULTIPROCESS(self.kernel_resample,params_list).run(process=30)
+
+
+    def kernel_resample(self,params):
+        fdir,outdir,f = params
+        fpath = join(fdir, f)
+        outf = join(outdir, f)
+        ToRaster().resample_reproj(fpath, outf, 0.5)
+        pass
+
+
+    def split_year(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_annual')
+        T.mk_dir(outdir,force=True)
+
+        for f in tqdm(T.listdir(fdir)):
+            year = f[0:4]
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i,force=True)
+            fpath = join(fdir,f)
+            outf = join(outdir_i,f)
+            shutil.move(fpath,outf)
+        pass
+
+    def per_pix_annual(self):
+        fdir = join(self.datadir,'tif_annual')
+        outdir = join(self.datadir,'perpix_annual')
+        T.mk_dir(outdir,force=True)
+        for year in T.listdir(fdir):
+            print(year,'\n')
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i,force=True)
+            Pre_Process().data_transform(fdir_i,outdir_i)
+        pass
+
+    def daily_to_biweekly(self):
+        daily_temp_dir = join(self.datadir,'perpix_annual')
+        outdir = join(self.datadir,'perpix_annual_biweekly')
+        T.mk_dir(outdir,force=True)
+        params_list = []
+        for year in T.listdir(daily_temp_dir):
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i,force=True)
+            year_date_list = []
+            base_date = datetime.datetime(int(year), 1, 1)
+            for d in range(370):
+                date_i = base_date + datetime.timedelta(days=d)
+                year_date_i = date_i.year
+                if not year_date_i == int(year):
+                    break
+                year_date_list.append(date_i)
+            biweekly_date_index = []
+            for mon in range(1,13):
+                select_date_list = []
+                for i,date_i in enumerate(year_date_list):
+                    mon_i = date_i.month
+                    if mon_i == mon:
+                        select_date_list.append((i,date_i))
+                part_a_index_list = []
+                part_b_index_list = []
+                for j,date_i in select_date_list:
+                    day_i = date_i.day
+                    if day_i <=15:
+                        part_a_index_list.append(j)
+                    else:
+                        part_b_index_list.append(j)
+                biweekly_date_index.append(part_a_index_list)
+                biweekly_date_index.append(part_b_index_list)
+            daily_temp_dir_i = join(daily_temp_dir,year)
+            # for f in tqdm(T.listdir(daily_temp_dir_i),desc=year):
+            for f in tqdm(T.listdir(daily_temp_dir_i),desc=year):
+                params = [daily_temp_dir_i,f,biweekly_date_index,outdir_i]
+                # self.kernel_daily_to_biweekly(params)
+                params_list.append(params)
+        MULTIPROCESS(self.kernel_daily_to_biweekly,params_list).run(process=30)
+
+    def kernel_daily_to_biweekly(self,params):
+        daily_temp_dir_i,f,biweekly_date_index,outdir_i = params
+        fpath_temp = join(daily_temp_dir_i, f)
+        temp_spatial_dict_i = T.load_npy(fpath_temp)
+        spatial_dict = {}
+        for pix in temp_spatial_dict_i:
+            vals = temp_spatial_dict_i[pix]
+            biweekly_vals = []
+            for i in range(len(biweekly_date_index)):
+                val_list = []
+                for j in biweekly_date_index[i]:
+                    val_list.append(vals[j])
+                val = np.nanmean(val_list)
+                biweekly_vals.append(val)
+            spatial_dict[pix] = biweekly_vals
+        outpath = join(outdir_i, f)
+        T.save_npy(spatial_dict, outpath)
+
+        pass
+
+    def combine_annual_biweekly(self):
+        fdir = join(self.datadir,'perpix_annual_biweekly')
+        outdir = join(self.datadir,'perpix_biweekly')
+        T.mk_dir(outdir,force=True)
+        flist = []
+        for year in T.listdir(fdir):
+            folder = join(fdir,year)
+            for f in T.listdir(folder):
+                flist.append(f)
+            break
+
+        params_list = []
+        for f in tqdm(flist):
+            params = [fdir,f,outdir]
+            params_list.append(params)
+
+        MULTIPROCESS(self.kernel_combine_annual_biweekly,params_list).run(process=10)
+
+        pass
+
+    def kernel_combine_annual_biweekly(self,params):
+        fdir,f,outdir = params
+        spatial_dict = {}
+        for year in T.listdir(fdir):
+            fpath = join(fdir, year, f)
+            spatial_dict_i = T.load_npy(fpath)
+            for pix in spatial_dict_i:
+                vals = spatial_dict_i[pix]
+                if not pix in spatial_dict:
+                    spatial_dict[pix] = []
+                spatial_dict[pix].extend(vals)
+        outf = join(outdir, f)
+        T.save_npy(spatial_dict, outf)
+        pass
+
+    def check_perpix(self):
+        fdir = join(self.datadir,'perpix_annual')
+        for year in T.listdir(fdir):
+            print(year)
+            fdir_i = join(fdir,year)
+            for f in T.listdir(fdir_i):
+                fpath = join(fdir_i,f)
+                arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+                print(f,arr.shape)
+
+        pass
+
 class GPCC:
 
     def __init__(self):
@@ -2583,6 +2805,7 @@ def main():
     # GLEAM_ET().run()
     # GLEAM().run()
     # ERA_2m_T().run()
+    ERA_T2m_daily().run()
     # ERA_Precip().run()
     # GPCC().run()
     # BEST().run()
@@ -2590,7 +2813,7 @@ def main():
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
-    Aridity_Index().run()
+    # Aridity_Index().run()
 
     pass
 
