@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from meta_info import *
 result_root_this_script = join(results_root, 'analysis')
 import xymap
-
+# import warnings
+# warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Water_energy_limited_area:
 
@@ -1226,7 +1227,9 @@ class Optimal_temperature:
         # self.cal_opt_temp(step)
         # self.tif_opt_temp()
         # self.plot_test_cal_opt_temp(step)
-        self.resample()
+        # self.resample()
+        # self.T_vs_optimal_temp_delta()
+        self.plot_optimal_temperature_map()
         pass
 
     def cal_opt_temp(self,step):
@@ -1492,6 +1495,267 @@ class Optimal_temperature:
         ToRaster().resample_reproj(fpath, outpath, 0.5)
         pass
 
+    def T_vs_optimal_temp_delta(self):
+        Topt_f = join(self.this_class_tif, r'optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        outdir = join(self.this_class_arr, 'T_vs_optimal_temp_delta')
+        T.mk_dir(outdir)
+        Temp_dict, _ = Load_Data().Temperature_origin()
+        Topt_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_f)
+
+        delta_spatial_dict = {}
+        for pix in tqdm(Temp_dict):
+            temp = Temp_dict[pix]
+            Topt = Topt_spatial_dict[pix]
+            if np.isnan(Topt):
+                continue
+            temp = np.array(temp, dtype=float)
+            temp[temp<=-9999] = np.nan
+            if T.is_all_nan(temp):
+                continue
+            delta_T = temp - Topt
+            delta_spatial_dict[pix] = delta_T
+        outf = join(outdir, 'T_vs_optimal_temp_delta')
+        T.save_npy(delta_spatial_dict, outf)
+
+        pass
+
+    def plot_optimal_temperature_map(self):
+        fpath = join(self.this_class_tif, r'optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius.tif')
+        Plot().plot_Robinson(fpath,vmin=10,vmax=30)
+        plt.show()
+        pass
+
+
+class Optimal_temperature_monthly:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Optimal_temperature_monthly', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.optimal_temperature()
+        # self.tif_optimal_temperature()
+        # self.check_optimal_temp()
+        # self.T_vs_optimal_temp_delta()
+        self.plot_optimal_temperature_map()
+        pass
+
+
+    def optimal_temperature(self,step=0.5):
+
+        biweekly_NDVI_dir = join(data_root,r'NDVI4g\per_pix_biweekly')
+        # biweekly_temp_dir = join(data_root,r'ERA_daily\Tmax\perpix_biweekly')
+        biweekly_temp_dir = join(data_root,r'ERA_daily\Tmean\perpix_biweekly')
+        outdir = join(self.this_class_arr,'optimal_temperature_mean')
+        T.mk_dir(outdir)
+        params_list = []
+        for f in T.listdir(biweekly_temp_dir):
+            params = (biweekly_NDVI_dir,biweekly_temp_dir,outdir,f,step)
+            params_list.append(params)
+            # self.kernel_optimal_temp(params)
+        MULTIPROCESS(self.kernel_optimal_temp, params_list).run(process=24)
+
+    def kernel_optimal_temp(self,params):
+        biweekly_NDVI_dir,biweekly_temp_dir,outdir,f,step = params
+        fpath_NDVI = join(biweekly_NDVI_dir, f)
+        fpath_temp = join(biweekly_temp_dir, f)
+        outf = join(outdir, f)
+        # if isfile(outf):
+        #     continue
+        NDVI_spatial_dict_i = T.load_npy(fpath_NDVI)
+        temp_spatial_dict_i = T.load_npy(fpath_temp)
+        optimal_temp_spatial_dict = {}
+        for pix in tqdm(NDVI_spatial_dict_i, desc=f):
+            NDVI = NDVI_spatial_dict_i[pix]
+            NDVI = np.array(NDVI)
+            NDVI[NDVI > 10000] = np.nan
+            NDVI[NDVI <= 0] = np.nan
+            if T.is_all_nan(NDVI):
+                continue
+            temp = temp_spatial_dict_i[pix]
+            NDVI_reshape = np.reshape(NDVI, (-1, 24))[:-1]
+            temp_reshape = np.reshape(temp, (-1, 24))
+            # print(len(NDVI_reshape),len(temp_reshape))
+            # exit()
+
+            NDVI_reshape_T = NDVI_reshape.T
+            temp_reshape_T = temp_reshape.T
+
+            optimal_temp_spatial_dict_i = {}
+
+            for i in range(12):
+                NDVI_mon_a = NDVI_reshape_T[i * 2]
+                NDVI_mon_b = NDVI_reshape_T[i * 2 + 1]
+                temp_mon_a = temp_reshape_T[i * 2]
+                temp_mon_b = temp_reshape_T[i * 2 + 1]
+
+                NDVI_mon_a = list(NDVI_mon_a)
+                NDVI_mon_b = list(NDVI_mon_b)
+                NDVI_mon = NDVI_mon_a + NDVI_mon_b
+
+                temp_mon_a = list(temp_mon_a)
+                temp_mon_b = list(temp_mon_b)
+                temp_mon = temp_mon_a + temp_mon_b
+
+                temp_mon = np.array(temp_mon)
+                temp_mon = temp_mon - 273.15
+                temp_mon = temp_mon[:len(NDVI_mon)]
+                # print(len(temp_mon), len(NDVI_mon))
+                # exit()
+                NDVI_mon = np.array(NDVI_mon)
+                if T.is_all_nan(NDVI_mon):
+                    continue
+
+                temp_mon_std = np.nanstd(temp_mon)
+                NDVI_mon_std = np.nanstd(NDVI_mon)
+
+                temp_mon_mean = np.nanmean(temp_mon)
+                NDVI_mon_mean = np.nanmean(NDVI_mon)
+
+                temp_threshold_1 = temp_mon_mean + temp_mon_std
+                temp_threshold_2 = temp_mon_mean - temp_mon_std
+
+                NDVI_threshold_1 = NDVI_mon_mean + NDVI_mon_std
+                NDVI_threshold_2 = NDVI_mon_mean - NDVI_mon_std
+
+                # temp_mon[temp_mon>temp_threshold_1] = np.nan
+                # temp_mon[temp_mon<temp_threshold_2] = np.nan
+
+                NDVI_mon[NDVI_mon > NDVI_threshold_1] = np.nan
+                NDVI_mon[NDVI_mon < NDVI_threshold_2] = np.nan
+
+                # df = pd.DataFrame({'ndvi':NDVI_mon,'temp':temp_mon})
+                df = pd.DataFrame()
+                df['ndvi'] = NDVI_mon
+                df['temp'] = temp_mon
+                df = df.dropna()
+
+                max_t = np.nanmax(temp_mon)
+                min_t = np.nanmin(temp_mon)
+                t_bins = np.arange(start=min_t, stop=max_t, step=step)
+                df_group, bins_list_str = T.df_bin(df, 'temp', t_bins)
+                quantial_90_list = []
+                x_list = []
+                for name, df_group_i in df_group:
+                    vals = df_group_i['ndvi'].tolist()
+                    if len(vals) == 0:
+                        continue
+                    quantile_90 = np.nanquantile(vals, 0.9)
+                    left = name[0].left
+                    x_list.append(left)
+                    quantial_90_list.append(quantile_90)
+                # multi regression to find the optimal temperature
+                # parabola fitting
+                x = np.array(x_list)
+                y = np.array(quantial_90_list)
+                if len(x) < 3:
+                    continue
+                if len(y) < 3:
+                    continue
+                # print(x,y)
+                # exit()
+                a, b, c = Optimal_temperature().nan_parabola_fit(x, y)
+                y_fit = a * x ** 2 + b * x + c
+                if a > 0:
+                    T_opt = np.nanmax(x)
+                else:
+                    T_opt = x[np.argmax(y_fit)]
+                optimal_temp_spatial_dict_i[i + 1] = T_opt
+                ##########plot#############
+                # print('opt_T', T_opt)
+                # print('argmax', np.argmax(y_fit))
+                # if a <0:
+                #     plt.scatter([T_opt], [np.max(y_fit)], s=200, marker='*', color='r', zorder=99)
+                # else:
+                #     plt.scatter([T_opt], [y_fit[-1]], s=200, marker='*', color='r', zorder=99)
+                # plt.plot(x, y_fit, c='k', lw=2)
+                # plt.scatter(temp_mon, NDVI_mon, s=10, color='k', zorder=99)
+                # plt.title(f'a={a:.3f},b={b:.3f},c={c:.3f}')
+                # plt.show()
+                ##########plot#############
+            optimal_temp_spatial_dict[pix] = optimal_temp_spatial_dict_i
+        T.save_npy(optimal_temp_spatial_dict, outf)
+
+        pass
+
+    def tif_optimal_temperature(self):
+        fdir = join(self.this_class_arr, r'optimal_temperature_mean')
+        outdir = join(self.this_class_tif, r'optimal_temperature_mean')
+        T.mkdir(outdir)
+        spatial_dict = T.load_npy_dir(fdir)
+        df = T.dic_to_df(spatial_dict, 'pix')
+        mon_list = range(1,13)
+        for mon in mon_list:
+            spatial_dict = T.df_to_spatial_dic(df,mon)
+            outf = join(outdir, f'optimal_temperature_{mon:02d}.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+        T.open_path_and_file(outdir)
+
+        pass
+
+    def check_optimal_temp(self):
+        fdir = join(self.this_class_arr,r'optimal_temperature')
+        spatial_dict = T.load_npy_dir(fdir)
+        df = T.dic_to_df(spatial_dict,'pix')
+        T.print_head_n(df,10)
+        pass
+
+    def T_vs_optimal_temp_delta(self):
+        outdir = join(self.this_class_arr, 'T_vs_optimal_temp_delta')
+        T.mk_dir(outdir)
+        Temp_dict, _ = Load_Data().Temperature_origin()
+        Topt_spatial_dir = join(self.this_class_arr,'optimal_temperature_mean')
+        Topt_spatial_dict = T.load_npy_dir(Topt_spatial_dir)
+
+        delta_spatial_dict = {}
+        for pix in tqdm(Topt_spatial_dict):
+            temp = Temp_dict[pix]
+            Topt_dict_i = Topt_spatial_dict[pix]
+            temp = np.array(temp, dtype=float)
+            temp[temp<=-9999] = np.nan
+            if T.is_all_nan(temp):
+                continue
+            temp_reshape = temp.reshape(-1,12)
+            temp_reshape_T = temp_reshape.T
+            delta_reshape_T = []
+            for mon,vals in enumerate(temp_reshape_T):
+                mon = mon + 1
+                if not mon in Topt_dict_i:
+                    delta_reshape_T.append([np.nan]*len(vals))
+                    continue
+                Topt = Topt_dict_i[mon]
+                vals = np.array(vals, dtype=float)
+                delta = vals - Topt
+                delta_reshape_T.append(delta)
+            delta_reshape_T = np.array(delta_reshape_T).T
+            delta_reshape_T_flat = delta_reshape_T.flatten()
+
+            delta_spatial_dict[pix] = delta_reshape_T_flat
+        outf = join(outdir, 'T_vs_optimal_temp_delta')
+        T.save_npy(delta_spatial_dict, outf)
+
+        pass
+
+    def plot_optimal_temperature_map(self):
+        fdir = join(self.this_class_tif, r'optimal_temperature_mean')
+        outdir = join(self.this_class_png, r'optimal_temperature_mean')
+        T.mkdir(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            print(f)
+            fpath = join(fdir, f)
+            outpng = join(outdir, f.replace('.tif', 'legend.png'))
+            plt.figure(figsize=(10*centimeter_factor, 6*centimeter_factor))
+            Plot().plot_Robinson(fpath,vmin=-10,vmax=35,res=50000,is_plot_colorbar=True)
+            plt.title(f.replace('.tif', ''))
+            plt.savefig(outpng, dpi=900)
+            plt.close()
+            T.open_path_and_file(outdir)
+            exit()
+        pass
+
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
@@ -1559,7 +1823,7 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
@@ -1567,6 +1831,7 @@ def main():
     # Phenology().run()
     # Long_term_correlation().run()
     Optimal_temperature().run()
+    # Optimal_temperature_monthly().run()
 
     # gen_world_grid_shp()
     pass
