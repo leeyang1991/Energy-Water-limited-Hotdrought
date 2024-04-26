@@ -606,11 +606,12 @@ class TMP:
     def run(self):
         # self.check_per_pix()
         # self.per_pix()
+        self.per_pix_2007_2020()
         # self.detrend()
         # self.anomaly()
         # self.anomaly_detrend()
         # self.anomaly_juping()
-        self.anomaly_juping_detrend()
+        # self.anomaly_juping_detrend()
         pass
 
     def per_pix(self):
@@ -618,6 +619,22 @@ class TMP:
         outdir = join(self.datadir,'per_pix',global_year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_2007_2020(self):
+        year_range = '2007-2020'
+        fdir = join(self.datadir,'tif',global_year_range)
+        outdir = join(self.datadir,'per_pix',year_range)
+        start = 2007
+        end = 2020
+        T.mk_dir(outdir,force=True)
+        picked_flist = []
+        for f in T.listdir(fdir):
+            year = f[:4]
+            year = int(year)
+            if year < start or year > end:
+                continue
+            picked_flist.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,picked_flist)
 
     def detrend(self):
         fdir = join(self.datadir,'per_pix',global_year_range)
@@ -2783,11 +2800,67 @@ class Aridity_Index:
         T.open_path_and_file(self.datadir)
         pass
 
+
+class TCSIF:
+
+    def __init__(self):
+        self.datadir = join(data_root, 'TCSIF')
+        pass
+
+    def run(self):
+        # self.tif_clean()
+        # self.rename()
+        self.per_pix()
+        pass
+
+    def tif_clean(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_clean')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+            arr[arr<0] = np.nan
+            outf = join(outdir,f)
+            DIC_and_TIF().arr_to_tif(arr,outf)
+
+    def rename(self):
+        fdir = join(self.datadir,'tif_clean')
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            date = f.split('.')[0].split('_')[-1]
+            outf = join(fdir,f'{date}.tif')
+            os.rename(fpath,outf)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_clean')
+        year_range = '2007-2020'
+        start_year = int(year_range.split('-')[0])
+        end_year = int(year_range.split('-')[1])
+        outdir = join(self.datadir,'per_pix',year_range)
+        T.mk_dir(outdir,force=True)
+        selected_tif_list = []
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            year = f.split('.')[0][:4]
+            year = int(year)
+            if year < start_year or year > end_year:
+                continue
+            selected_tif_list.append(f)
+        Pre_Process().data_transform_with_date_list(fdir, outdir, selected_tif_list)
+
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    # TMP().run()
+    TMP().run()
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
@@ -2800,12 +2873,11 @@ def main():
     # VOD_AMSRU().run()
     # CSIF().run()
     # Terraclimate().run()
-    # ERA().run()
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM().run()
     # ERA_2m_T().run()
-    ERA_T2m_daily().run()
+    # ERA_T2m_daily().run()
     # ERA_Precip().run()
     # GPCC().run()
     # BEST().run()
@@ -2814,6 +2886,7 @@ def main():
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
     # Aridity_Index().run()
+    # TCSIF().run()
 
     pass
 

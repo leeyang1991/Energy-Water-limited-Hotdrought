@@ -1,7 +1,7 @@
 # coding=utf-8
 from __init__ import *
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+# import warnings
+# warnings.simplefilter(action='ignore', category=FutureWarning)
 plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['font.size'] = 8
 centimeter_factor = 1 / 2.54
@@ -52,12 +52,13 @@ global_ELI_class_list = ('Energy-Limited', 'Water-Limited')
 global_AI_class_list = ('Humid', 'Arid')
 global_threshold = 0.05
 
-global_VIs_list = ['NDVI','VOD-anomaly','CSIF-anomaly']
-global_VIs_origin_list = ['NDVI-origin','VOD-origin','CSIF-origin']
+# global_VIs_list = ['NDVI','VOD-anomaly','CSIF-anomaly']
+# global_VIs_origin_list = ['NDVI-origin','VOD-origin','CSIF-origin']
 global_VIs_year_range_dict = {
     'NDVI3g': '1982-2015',
     'NDVI4g': '1982-2020',
     'CSIF': '2000-2020',
+    'TCSIF': '2007-2020',
 }
 global_color_list = [
     '#844000',
@@ -293,6 +294,14 @@ class Load_Data:
         path_type = 'dir'
         var_name = 'CSIF-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
+
+
+    def TCSIF_origin(self,year_range=global_VIs_year_range_dict['TCSIF']):
+        data_path = join(data_root, 'TCSIF/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'TCSIF-origin'
+        return self.__load_data(data_path, path_type), var_name
+
 
     def __load_data(self, data_path,path_type):
         if path_type == 'file':

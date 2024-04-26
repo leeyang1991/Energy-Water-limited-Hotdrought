@@ -1224,12 +1224,27 @@ class Optimal_temperature:
 
     def run(self):
         step = .5
-        # self.cal_opt_temp(step)
+        self.cal_opt_temp(step)
         # self.tif_opt_temp()
         # self.plot_test_cal_opt_temp(step)
         # self.resample()
         # self.T_vs_optimal_temp_delta()
-        self.plot_optimal_temperature_map()
+        # self.plot_optimal_temperature_map()
+        pass
+
+    def df_bin(self,df,col,bins):
+        df_copy = df.copy()
+        df_copy[col+'_bin'] = pd.cut(df_copy[col],bins)
+        df_copy[col+'_bin_left'] = df_copy[col+'_bin'].apply(lambda x: x.left)
+        df_copy[col+'_bin_right'] = df_copy[col+'_bin'].apply(lambda x: x.right)
+        df_copy[col+'_bin_mid'] = df_copy[col+'_bin'].apply(lambda x: (x.left+x.right)/2)
+        df_group = df_copy.groupby(col+'_bin_left',observed=True)
+        for name,df_group_i in df_group:
+            T.print_head_n(df_group_i, 10)
+        exit()
+
+        return df
+
         pass
 
     def cal_opt_temp(self,step):
@@ -1242,8 +1257,9 @@ class Optimal_temperature:
 
 
         # temp_dic,_ = Load_Data().ERA_Tair_origin()
-        temp_dic,_ = Load_Data().Temperature_origin()
-        ndvi_dic,vege_name = Load_Data().NDVI_origin()
+        TCSIF_year_range = global_VIs_year_range_dict['TCSIF']
+        temp_dic,_ = Load_Data().Temperature_origin(year_range=TCSIF_year_range)
+        ndvi_dic,vege_name = Load_Data().TCSIF_origin()
         # ndvi_dic,vege_name = Load_Data().LT_Baseline_NT_origin()
         # T_dir = join(data_root,'TerraClimate/tmax/per_pix/1982-2020')
         # NDVI_dir = join(data_root,'NDVI4g/per_pix/1982-2020')
@@ -1270,13 +1286,16 @@ class Optimal_temperature:
             df['ndvi'] = ndvi
             df['temp'] = temp
             df = df[df['ndvi'] > 0]
-            df = df.dropna()
+            df = df.dropna(how='any')
             if len(df) == 0:
                 continue
             max_t = max(df['temp'])
             min_t = int(min(df['temp']))
             t_bins = np.arange(start=min_t, stop=max_t, step=step)
-            df_group, bins_list_str = T.df_bin(df, 'temp', t_bins)
+            # df_group, bins_list_str = self.df_bin(df, 'temp', t_bins)
+            # try:
+            df_group, bins_list_str = self.df_bin(df, 'temp', t_bins)
+                # exit()
             quantial_90_list = []
             x_list = []
             for name, df_group_i in df_group:
@@ -1298,8 +1317,6 @@ class Optimal_temperature:
             a, b, c = self.nan_parabola_fit(x, y)
             y_fit = a * x ** 2 + b * x + c
             T_opt = x[np.argmax(y_fit)]
-            # print(T_opt)
-            # exit()
             optimal_temp_dic[pix] = T_opt
         T.save_npy(optimal_temp_dic, outf)
 
