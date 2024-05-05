@@ -1872,7 +1872,7 @@ class ERA_T2m_daily:
 
     def daily_to_biweekly(self):
         daily_temp_dir = join(self.datadir,'perpix_annual')
-        outdir = join(self.datadir,'perpix_annual_biweekly_1')
+        outdir = join(self.datadir,'perpix_annual_biweekly_centos')
         T.mk_dir(outdir,force=True)
         params_list = []
         for year in T.listdir(daily_temp_dir):
@@ -1909,7 +1909,7 @@ class ERA_T2m_daily:
                 params = [daily_temp_dir_i,f,biweekly_date_index,outdir_i]
                 # self.kernel_daily_to_biweekly(params)
                 params_list.append(params)
-        MULTIPROCESS(self.kernel_daily_to_biweekly,params_list).run(process=30)
+        MULTIPROCESS(self.kernel_daily_to_biweekly,params_list).run(process=22)
 
     def kernel_daily_to_biweekly(self,params):
         daily_temp_dir_i,f,biweekly_date_index,outdir_i = params
