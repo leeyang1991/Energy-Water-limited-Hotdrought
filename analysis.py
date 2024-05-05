@@ -1224,28 +1224,14 @@ class Optimal_temperature:
 
     def run(self):
         step = .5
-        self.cal_opt_temp(step)
+        # self.cal_opt_temp(step)
         # self.tif_opt_temp()
         # self.plot_test_cal_opt_temp(step)
         # self.resample()
-        # self.T_vs_optimal_temp_delta()
+        self.T_vs_optimal_temp_delta()
         # self.plot_optimal_temperature_map()
         pass
 
-    def df_bin(self,df,col,bins):
-        df_copy = df.copy()
-        df_copy[col+'_bin'] = pd.cut(df_copy[col],bins)
-        df_copy[col+'_bin_left'] = df_copy[col+'_bin'].apply(lambda x: x.left)
-        df_copy[col+'_bin_right'] = df_copy[col+'_bin'].apply(lambda x: x.right)
-        df_copy[col+'_bin_mid'] = df_copy[col+'_bin'].apply(lambda x: (x.left+x.right)/2)
-        df_group = df_copy.groupby(col+'_bin_left',observed=True)
-        for name,df_group_i in df_group:
-            T.print_head_n(df_group_i, 10)
-        exit()
-
-        return df
-
-        pass
 
     def cal_opt_temp(self,step):
         # dff = join(Dataframe_SM().this_class_arr,'dataframe/-0.5.df')
@@ -1323,14 +1309,15 @@ class Optimal_temperature:
     def tif_opt_temp(self):
         outdir = join(self.this_class_tif,f'optimal_temperature')
         T.mk_dir(outdir,force=True)
-        fpath = join(self.this_class_arr,'optimal_temperature/NDVI-origin_step_0.5_celsius/NDVI-origin_step_0.5_celsius.npy')
+        # fpath = join(self.this_class_arr,'optimal_temperature/NDVI-origin_step_0.5_celsius/NDVI-origin_step_0.5_celsius.npy')
+        fpath = join(self.this_class_arr,'optimal_temperature/TCSIF-origin_step_0.5_celsius/TCSIF-origin_step_0.5_celsius.npy')
         spatial_dict = T.load_npy(fpath)
         spatial_dict_new = {}
         for pix in spatial_dict:
             val = spatial_dict[pix]
             # val = val + 273.15
             spatial_dict_new[pix] = val
-        outf = join(outdir,f'optimal_temperature.tif')
+        outf = join(outdir,f'TCSIF-optimal_temperature.tif')
         DIC_and_TIF().pix_dic_to_tif(spatial_dict_new,outf)
 
     def kernel_cal_opt_temp(self,params):
@@ -1513,7 +1500,8 @@ class Optimal_temperature:
         pass
 
     def T_vs_optimal_temp_delta(self):
-        Topt_f = join(self.this_class_tif, r'optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        # Topt_f = join(self.this_class_tif, r'optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        Topt_f = join(self.this_class_tif, r'optimal_temperature\TCSIF-optimal_temperature.tif')
         outdir = join(self.this_class_arr, 'T_vs_optimal_temp_delta')
         T.mk_dir(outdir)
         Temp_dict, _ = Load_Data().Temperature_origin()
@@ -1531,7 +1519,7 @@ class Optimal_temperature:
                 continue
             delta_T = temp - Topt
             delta_spatial_dict[pix] = delta_T
-        outf = join(outdir, 'T_vs_optimal_temp_delta')
+        outf = join(outdir, 'TSIF')
         T.save_npy(delta_spatial_dict, outf)
 
         pass
