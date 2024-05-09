@@ -209,12 +209,12 @@ class Pick_Drought_Events:
         self.threshold = -2
 
     def run(self):
-        # self.pick_normal_drought_events()
+        self.pick_normal_drought_events()
         # self.pick_normal_hot_events()
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
         # self.drought_timing()
-        self.gen_dataframe()
+        # self.gen_dataframe()
         pass
 
     def pick_normal_hot_events(self):
@@ -570,6 +570,127 @@ class Pick_Drought_Events:
         df = df.reset_index(drop=True)
 
         outf = join(outdir,'drought_dataframe.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+class Pick_Heatwave_Events:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Pick_Heatwave_Events', result_root_this_script, mode=2)
+
+    def run(self):
+        # self.pick_heat_events() # only heatwave events
+        # self.check_picked_events()
+        self.gen_dataframe()
+        pass
+
+
+    def pick_heat_events(self):
+        outdir = join(self.this_class_arr, 'heat_events')
+        T.mk_dir(outdir)
+        threshold_quantile = 90
+        spi_scale = '03'
+        # gs_dict = Growing_season().longterm_growing_season()
+        t_origin_dic, _ = Load_Data().Temperature_origin_detrend()
+        drought_events_dir = join(Pick_Drought_Events().this_class_arr, 'picked_events')
+        drought_events_fpath = join(drought_events_dir, f'spi{spi_scale}.npy')
+        drought_events_dict = T.load_npy(drought_events_fpath)
+        hot_events_dict = {}
+        for pix in tqdm(t_origin_dic):
+            temp = t_origin_dic[pix]
+            temp = np.array(temp)
+            temp[temp<-999] = np.nan
+            if T.is_all_nan(temp):
+                continue
+            if not pix in drought_events_dict:
+                continue
+            drought_events = drought_events_dict[pix]
+
+            gs_mon = global_gs
+            T_annual_val = T.monthly_vals_to_annual_val(temp, gs_mon, method='mean')
+
+            T_quantile = np.percentile(T_annual_val, threshold_quantile)
+            hot_index_True_False = T_annual_val > T_quantile
+            hot_years = []
+            for i, val in enumerate(hot_index_True_False):
+                if val == True:
+                    hot_years.append(i + global_start_year)
+            hot_years = set(hot_years)
+            only_hot_events = []
+            for i in hot_years:
+                if not i in drought_events:
+                    only_hot_events.append(i)
+            only_hot_events = set(only_hot_events)
+            hot_events_dict[pix] = only_hot_events
+        outf = join(outdir, f'heatwave_exclude_drought_{spi_scale}.npy')
+        T.save_npy(hot_events_dict, outf)
+
+
+    def check_picked_events(self):
+        fdir = join(self.this_class_arr, 'heat_events')
+        for f in T.listdir(fdir):
+            fpath = join(fdir, f)
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_num = {}
+            for pix in spatial_dict:
+                events = spatial_dict[pix]
+                spatial_dict_num[pix] = len(events)
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_num)
+            plt.imshow(arr,interpolation='nearest',cmap='rainbow')
+            plt.colorbar()
+            plt.show()
+            exit()
+
+
+    def __get_drought_events(self):
+        outdir = join(self.this_class_arr, 'drought_events_df')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'drought_events.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        drought_events_dir = join(self.this_class_arr, 'normal_hot_events')
+        spatial_dict_all = {}
+        for f in T.listdir(drought_events_dir):
+            fpath = join(drought_events_dir, f)
+            var_i = f.split('.')[0]
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_all[var_i] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+        return df
+        pass
+
+
+    def gen_dataframe(self):
+        outdir = join(self.this_class_arr,'heatwave_dataframe')
+        T.mk_dir(outdir)
+        heat_events_dir = join(self.this_class_arr, 'heat_events')
+        heat_events_f = join(heat_events_dir, 'heatwave_exclude_drought_03.npy')
+        heat_events_dict = T.load_npy(heat_events_f)
+
+        pix_list = []
+        heat_year_list = []
+        drought_year_dict_all = {}
+        drought_mon_dict_all = {}
+
+        for pix in heat_events_dict:
+            events = heat_events_dict[pix]
+            for e in events:
+                pix_list.append(pix)
+                heat_year_list.append(e)
+        # exit()
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['hot_year'] = heat_year_list
+
+        df = df.sort_values(by=['pix','hot_year'])
+        # re index dataframe
+        df = df.reset_index(drop=True)
+
+        outf = join(outdir,'heatwave_dataframe.df')
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
 
@@ -1501,7 +1622,7 @@ class Optimal_temperature:
 
     def T_vs_optimal_temp_delta(self):
         # Topt_f = join(self.this_class_tif, r'optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
-        Topt_f = join(self.this_class_tif, r'optimal_temperature\TCSIF-optimal_temperature.tif')
+        Topt_f = join(self.this_class_tif, r'optimal_temperature/TCSIF-optimal_temperature.tif')
         outdir = join(self.this_class_arr, 'T_vs_optimal_temp_delta')
         T.mk_dir(outdir)
         Temp_dict, _ = Load_Data().Temperature_origin()
@@ -1519,7 +1640,7 @@ class Optimal_temperature:
                 continue
             delta_T = temp - Topt
             delta_spatial_dict[pix] = delta_T
-        outf = join(outdir, 'TSIF')
+        outf = join(outdir, 'TCSIF')
         T.save_npy(delta_spatial_dict, outf)
 
         pass
@@ -1829,13 +1950,14 @@ def main():
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Pick_Drought_Events().run()
+    Pick_Heatwave_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
     # Phenology().run()
     # Long_term_correlation().run()
-    Optimal_temperature().run()
+    # Optimal_temperature().run()
     # Optimal_temperature_monthly().run()
     # gen_world_grid_shp()
     pass

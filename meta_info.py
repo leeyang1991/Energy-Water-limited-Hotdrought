@@ -2,7 +2,7 @@
 from __init__ import *
 # import warnings
 # warnings.simplefilter(action='ignore', category=FutureWarning)
-plt.rcParams['font.sans-serif'] = ['Arial']
+# plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['font.size'] = 8
 centimeter_factor = 1 / 2.54
 
