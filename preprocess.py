@@ -22,11 +22,12 @@ class GIMMS_NDVI:
         # self.resample()
         # self.monthly_compose()
         # self.per_pix()
+        # self.per_pix_clean()
         # self.per_pix_biweekly()
-        self.check_per_pix_biweekly()
+        # self.check_per_pix_biweekly()
         # self.per_pix_anomaly()
-        # self.per_pix_anomaly_detrend()
-        # self.per_pix_anomaly_detrend_GS()
+        self.per_pix_anomaly_detrend()
+        self.per_pix_anomaly_detrend_GS()
         pass
 
     def resample(self):
@@ -52,6 +53,25 @@ class GIMMS_NDVI:
         outdir = join(self.datadir,'per_pix')
         T.mk_dir(outdir)
         Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_clean(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'per_pix_clean',global_year_range)
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_clean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals = np.array(vals)
+            vals[vals>10000] = np.nan
+            vals[vals<0] = np.nan
+            vals = vals * 0.0001
+            if T.is_all_nan(vals):
+                continue
+            spatial_dict_clean[pix] = vals
+        outf = join(outdir,'per_pix_clean')
+        T.save_npy(spatial_dict_clean,outf)
+
 
     def per_pix_biweekly(self):
         fdir = join(self.datadir,'bi_weekly_05')
@@ -79,22 +99,22 @@ class GIMMS_NDVI:
             plt.show()
 
     def per_pix_anomaly(self):
-        fdir = join(self.datadir,'per_pix')
-        outdir = join(self.datadir,'per_pix_anomaly')
-        T.mk_dir(outdir)
+        fdir = join(self.datadir,'per_pix_clean',global_year_range)
+        outdir = join(self.datadir,'per_pix_anomaly',global_year_range)
+        T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
     def per_pix_anomaly_detrend(self):
-        fdir = join(self.datadir,'per_pix_anomaly')
-        outdir = join(self.datadir,'per_pix_anomaly_detrend')
-        T.mk_dir(outdir)
+        fdir = join(self.datadir,'per_pix_anomaly',global_year_range)
+        outdir = join(self.datadir,'per_pix_anomaly_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
         Pre_Process().detrend(fdir,outdir)
         pass
 
     def per_pix_anomaly_detrend_GS(self):
-        fdir = join(self.datadir,'per_pix_anomaly_detrend')
-        outdir = join(self.datadir,'per_pix_anomaly_detrend_GS')
-        T.mk_dir(outdir)
+        fdir = join(self.datadir,'per_pix_anomaly_detrend',global_year_range)
+        outdir = join(self.datadir,'per_pix_anomaly_detrend_GS',global_year_range)
+        T.mk_dir(outdir,force=True)
         spatial_dict = T.load_npy_dir(fdir)
         spatial_dict_gs = {}
         for pix in tqdm(spatial_dict):
@@ -719,13 +739,42 @@ class VPD:
         pass
 
     def run(self):
+        # self.tif_to_perpix_1982_2020()
+        # self.per_pix_clean()
         # self.anomaly()
-        self.detrend()
-        # self.check_per_pix()
+        # self.detrend()
+        self.check_per_pix()
+        pass
+
+    def tif_to_perpix_1982_2020(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'perpix/1982-2020')
+        T.mk_dir(outdir,force=True)
+        selected_tif_list = []
+        for y in range(1982,2021):
+            for m in range(1,13):
+                f = '{}{:02d}.tif'.format(y,m)
+                selected_tif_list.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,selected_tif_list)
+
+    def per_pix_clean(self):
+        fdir = join(self.datadir,'perpix/1982-2020')
+        outdir = join(self.datadir,'perpix_clean/1982-2020')
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_clean = {}
+        for pix in spatial_dict:
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            spatial_dict_clean[pix] = vals
+        outf = join(outdir,'VPD.npy')
+        T.save_npy(spatial_dict_clean,outf)
         pass
 
     def anomaly(self):
-        fdir = join(self.datadir,'per_pix',global_year_range)
+        fdir = join(self.datadir,'perpix_clean',global_year_range)
         outdir = join(self.datadir,'anomaly',global_year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
@@ -2862,7 +2911,7 @@ def main():
     # SPI().run()
     # TMP().run()
     # Precipitation().run()
-    # VPD().run()
+    VPD().run()
     # CCI_SM().run()
     # ERA_SM().run()
     # Terraclimate().run()
@@ -2877,7 +2926,7 @@ def main():
     # GLEAM_ET().run()
     # GLEAM().run()
     # ERA_2m_T().run()
-    ERA_T2m_daily().run()
+    # ERA_T2m_daily().run()
     # ERA_Precip().run()
     # GPCC().run()
     # BEST().run()

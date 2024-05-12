@@ -121,7 +121,8 @@ class Load_Data:
         data_path = join(data_root, 'SPI/per_pix', year_range,f'SPI{scale:02d}.npy')
         path_type = 'file'
         var_name = f'SPI{scale:02d}'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-5,5)
+        return self.__load_data(data_path, path_type), var_name, valid_range
     
     def CCI_SM_origin(self,year_range=global_year_range):
         data_path = join(data_root, f'CCI_SM_v7/per_pix/{year_range}')
@@ -169,13 +170,15 @@ class Load_Data:
         data_path = join(data_root, 'NDVI4g/per_pix', year_range)
         path_type = 'dir'
         var_name = 'NDVI-origin'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (0,10000)
+        return self.__load_data(data_path, path_type), var_name,valid_range
 
     def NDVI_anomaly_detrend(self,year_range=global_year_range):
         data_path = join(data_root, 'NDVI4g/per_pix_anomaly_detrend', year_range)
         path_type = 'dir'
         var_name = 'NDVI-anomaly_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name,valid_range
 
     def NDVI_3g_origin(self,year_range=global_VIs_year_range_dict['NDVI3g']):
         data_path = join(data_root, 'NDVI3g/per_pix', year_range)
