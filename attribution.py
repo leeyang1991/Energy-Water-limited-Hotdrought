@@ -14,6 +14,7 @@ class SEM:
         pass
 
     def run(self):
+        import statistic
         # self.copy_df()
         df = self.__gen_df_init()
         df = self.filter_df(df)
@@ -29,6 +30,10 @@ class SEM:
         # T_data_obj = Load_Data().Temperature_anomaly
         # df = self.add_variables(df,T_data_obj)
 
+        # add T origin
+        # T_data_obj = Load_Data().Temperature_origin
+        # df = self.add_variables(df,T_data_obj)
+
         # add srad
         # srad_data_obj = Load_Data().Srad_anomaly
         # df = self.add_variables(df,srad_data_obj)
@@ -42,6 +47,10 @@ class SEM:
 
         # add optimal temperature
         # df = self.add_optimal_temperature(df)
+        # df = self.add_delta_optimal_temperature(df)
+
+        # df = statistic.Dataframe_func(df).df
+
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
 
@@ -168,6 +177,11 @@ class SEM:
         # T.print_head_n(df)
         return df
 
+    def add_delta_optimal_temperature(self,df):
+        df['delta_optimal_temp'] = df['Temperature-origin'] - df['Topt']
+        return df
+
+
     def check_variables(self,df):
         # col_name = 'NDVI-anomaly_detrend'
         col_name = 'SOS_anomaly'
@@ -199,8 +213,8 @@ class SEM:
     def model_description(self):
         desc = '''
         # regression
-        NDVI_anomaly_detrend ~ SOS_anomaly + Topt + VPD_anomaly + GLEAM_Et_anomaly + Radiation_anomaly + Temperature_anomaly
-        SOS_anomaly ~ Topt + Temperature_anomaly
+        NDVI_anomaly_detrend ~ SOS_anomaly + delta_optimal_temp + VPD_anomaly + GLEAM_Et_anomaly + Radiation_anomaly + Temperature_anomaly
+        SOS_anomaly ~ Radiation_anomaly + Temperature_anomaly
         GLEAM_Et_anomaly ~ VPD_anomaly + SOS_anomaly + Radiation_anomaly + Temperature_anomaly
         # residual correlations
         '''
@@ -211,21 +225,31 @@ class SEM:
         return desc
 
     def build_model(self, df):
+        # exit()
+        drought_type_list = global_drought_type_list
+        AI_class_list = global_AI_class_list
+        season_list = global_drought_season_list
         cols = df.columns
         for col in cols:
-            col_new = col.replace('-','_')
+            col_new = col.replace('-', '_')
             df[col_new] = df[col]
-        # print(df.columns)
-        # exit()
+        for season in season_list:
+            for drt in drought_type_list:
+                for AI_class in AI_class_list:
+                    # df_season = df[df['drought_season'] == season]
+                    df_season = df
+                    df_drt = df_season[df_season['drought_type'] == drt]
+                    df_AI = df_drt[df_drt['AI_class'] == AI_class]
 
-        outdir = join(self.this_class_png,'model')
-        T.mk_dir(outdir)
-        outf = join(outdir, 'SEM_report')
-        T.mk_dir(outf)
-        desc = self.model_description()
-        mod = semopy.Model(desc)
-        res = mod.fit(df)
-        semopy.report(mod, outf)
+                    outdir = join(self.this_class_png,'model')
+                    T.mk_dir(outdir)
+                    # outf = join(outdir, f'{drt}_{AI_class}_{season}')
+                    outf = join(outdir, f'{drt}_{AI_class}')
+                    T.mk_dir(outf)
+                    desc = self.model_description()
+                    mod = semopy.Model(desc)
+                    res = mod.fit(df_AI)
+                    semopy.report(mod, outf)
 
 def main():
     SEM().run()
