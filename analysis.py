@@ -209,12 +209,12 @@ class Pick_Drought_Events:
         self.threshold = -2
 
     def run(self):
-        self.pick_normal_drought_events()
+        # self.pick_normal_drought_events()
         # self.pick_normal_hot_events()
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
         # self.drought_timing()
-        # self.gen_dataframe()
+        self.gen_dataframe()
         pass
 
     def pick_normal_hot_events(self):
@@ -1949,8 +1949,8 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    # Pick_Drought_Events().run()
-    Pick_Heatwave_Events().run()
+    Pick_Drought_Events().run()
+    # Pick_Heatwave_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
     # Net_effect_annual().run()

@@ -2516,7 +2516,7 @@ class Random_Forests:
         df = self.__gen_df_init()
         # df = self.gen_Y(df)
         # df = self.add_drought_season(df)
-        # df = self.add_SOS(df)
+        df = self.add_SOS(df)
         # df = self.add_EOS(df)
         # df = self.add_seasonal_Temperature(df)
         # df = self.add_seasonal_Precipitation(df)
@@ -4259,7 +4259,7 @@ class Optimal_temperature_statistic:
 
     def run(self):
         # self.copy_df()
-        # self.add_optimal_temperature()
+        self.add_optimal_temperature()
         # self.add_optimal_temperature_monthly()
         # self.add_NDVI_origin_process()
         # self.foo()
@@ -5016,7 +5016,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5024,6 +5024,7 @@ def main():
     # Single_Variable_Analysis().run()
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
+    SEM().run()
 
 
     pass

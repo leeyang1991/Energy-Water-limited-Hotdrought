@@ -149,22 +149,36 @@ class Load_Data:
         return self.__load_data(data_path, path_type), var_name
 
     def GLEAM_SMRoot_origin(self,year_range=global_year_range):
-        data_path = join(data_root, f'GLEAM_SMRoot/per_pix/{year_range}')
+        data_path = join(data_root, f'GLEAM/SMRoot/per_pix/{year_range}')
         path_type = 'dir'
         var_name = 'GLEAM-SMRoot-origin'
         return self.__load_data(data_path, path_type), var_name
 
     def GLEAM_SMRoot_anomaly(self,year_range=global_year_range):
-        data_path = join(data_root, f'GLEAM/anomaly/{year_range}')
+        data_path = join(data_root, f'GLEAM/SMRoot/anomaly/{year_range}')
         path_type = 'dir'
         var_name = 'GLEAM-SMRoot-anomaly'
         return self.__load_data(data_path, path_type), var_name
 
     def GLEAM_SMRoot_anomaly_detrend(self,year_range=global_year_range):
-        data_path = join(data_root, f'GLEAM/anomaly_detrend/{year_range}')
+        data_path = join(data_root, f'GLEAM/SMRoot/anomaly_detrend/{year_range}')
         path_type = 'dir'
         var_name = 'GLEAM-SMRoot-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
+
+    def GLEAM_Et_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'GLEAM/Et/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'GLEAM-Et-origin'
+        valid_range = (0,10000)
+        return self.__load_data(data_path, path_type), var_name,valid_range
+
+    def GLEAM_Et_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, f'GLEAM/Et/anomaly/{year_range}')
+        path_type = 'dir'
+        var_name = 'GLEAM-Et-anomaly'
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def NDVI_origin(self,year_range=global_year_range):
         data_path = join(data_root, 'NDVI4g/per_pix', year_range)
@@ -208,7 +222,8 @@ class Load_Data:
         data_path = join(data_root, f'CRU_tmp/anomaly/{year_range}')
         path_type = 'dir'
         var_name = 'Temperature-anomaly'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def Temperature_anomaly_detrend(self,year_range=global_year_range):
         data_path = join(data_root, f'CRU_tmp/anomaly_detrend/{year_range}')
@@ -256,13 +271,15 @@ class Load_Data:
         data_path = join(data_root, f'Terraclimate/srad/anomaly/{year_range}')
         path_type = 'dir'
         var_name = 'Radiation-anomaly'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def Srad_anomaly_detrend(self,year_range=global_year_range):
         data_path = join(data_root, f'Terraclimate/srad/anomaly_detrend/{year_range}/srad.npy')
         path_type = 'file'
         var_name = 'Radiation-anomaly_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def FAPAR_origin(self,year_range=global_year_range):
         data_path = join(data_root, f'FAPAR/per_pix/{year_range}')
@@ -281,6 +298,20 @@ class Load_Data:
         path_type = 'dir'
         var_name = 'FAPAR-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
+
+    def VPD_origin(self,year_range=global_year_range):
+        data_path = join(data_root, 'VPD/perpix', year_range)
+        path_type = 'dir'
+        var_name = 'VPD-origin'
+        valid_range = (0,100)
+        return self.__load_data(data_path, path_type), var_name
+
+    def VPD_anomaly(self,year_range=global_year_range):
+        data_path = join(data_root, 'VPD/anomaly', year_range)
+        path_type = 'dir'
+        var_name = 'VPD-anomaly'
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def CSIF_origin(self,year_range=global_VIs_year_range_dict['CSIF']):
         data_path = join(data_root, 'CSIF/per_pix', year_range)
