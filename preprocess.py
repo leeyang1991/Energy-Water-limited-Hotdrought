@@ -541,7 +541,8 @@ class Precipitation:
     def run(self):
         # self.pick_year_range()
         # self.anomaly()
-        self.detrend()
+        # self.detrend()
+        self.mean_annual_precipitation()
         # self.check_per_pix()
         pass
 
@@ -596,6 +597,45 @@ class Precipitation:
         spatial_dict_detrend = T.detrend_dic(spatial_dict)
         T.save_npy(spatial_dict_detrend,outf)
 
+    def mean_annual_precipitation1(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        ourdir = join(self.datadir,'map')
+        T.mk_dir(ourdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in spatial_dict:
+            vals = spatial_dict[pix]
+            vals_mean = np.nanmean(vals) * 12
+            spatial_dict_mean[pix] = vals_mean
+            # plt.plot(vals)
+            # plt.show()
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        plt.imshow(arr,cmap='jet_r',vmin=0,vmax=2000,interpolation='nearest')
+        plt.colorbar()
+        plt.show()
+
+        pass
+    def mean_annual_precipitation(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        ourdir = join(self.datadir,'map')
+        outf = join(ourdir,'map.tif')
+        T.mk_dir(ourdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals_reshape = np.array(vals).reshape(-1,12)
+            vals_sum_all = []
+            for vals_one_year in vals_reshape:
+                vals_sum = np.nansum(vals_one_year)
+                vals_sum_all.append(vals_sum)
+            vals_mean = np.nanmean(vals_sum_all)
+            spatial_dict_mean[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        DIC_and_TIF().arr_to_tif(arr,outf)
+
+        pass
+
     def check_per_pix(self):
         # fdir = join(self.datadir, 'per_pix', year_range)
         fdir = join(self.datadir, 'anomaly', global_year_range)
@@ -626,12 +666,13 @@ class TMP:
     def run(self):
         # self.check_per_pix()
         # self.per_pix()
-        self.per_pix_2007_2020()
+        # self.per_pix_2007_2020()
         # self.detrend()
         # self.anomaly()
         # self.anomaly_detrend()
         # self.anomaly_juping()
         # self.anomaly_juping_detrend()
+        self.mean_annual_temperature()
         pass
 
     def per_pix(self):
@@ -729,6 +770,25 @@ class TMP:
         plt.show()
         pass
 
+
+    def mean_annual_temperature(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'mat')
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'mat_gs.tif')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs)
+            vals_mean = np.nanmean(vals_gs)
+            spatial_dict_mean[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        pass
 
 class VPD:
     '''
@@ -2796,7 +2856,7 @@ def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    # TMP().run()
+    TMP().run()
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
@@ -2810,7 +2870,7 @@ def main():
     # CSIF().run()
     # Terraclimate().run()
     # SPI().run()
-    GLEAM().run()
+    # GLEAM().run()
     # ERA_2m_T().run()
     # ERA_T2m_daily().run()
     # ERA_Precip().run()

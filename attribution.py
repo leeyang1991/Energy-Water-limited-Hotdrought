@@ -1,4 +1,6 @@
 # coding=utf-8
+import shutil
+
 import matplotlib.pyplot as plt
 import semopy
 from meta_info import *
@@ -251,8 +253,41 @@ class SEM:
                     res = mod.fit(df_AI)
                     semopy.report(mod, outf)
 
+class MAT_Topt:
+
+    def __init__(self):
+
+        pass
+
+    def run(self):
+        self.mat_Topt_delta()
+        pass
+
+    def mat_Topt_delta(self):
+        import analysis
+        Topt_fpath = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        MAT_fpath = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+
+        Topt_arr = DIC_and_TIF().spatial_tif_to_arr(Topt_fpath)
+        MAT_arr = DIC_and_TIF().spatial_tif_to_arr(MAT_fpath)
+        delta_Topt = Topt_arr - MAT_arr
+        plt.imshow(delta_Topt,cmap='RdBu_r',interpolation='nearest')
+        plt.colorbar()
+        plt.show()
+
+        pass
+
+def copy_files():
+    f = join(this_root,"conf\land_reproj.tif")
+    print(isfile(f))
+    dest_f = join(this_root,"conf\land_reproj_copy.tif")
+    shutil.copyfile(f,dest_f)
+    pass
+
 def main():
-    SEM().run()
+    # SEM().run()
+    MAT_Topt().run()
+    # copy_files()
     pass
 
 if __name__ == '__main__':

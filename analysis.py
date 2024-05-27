@@ -1349,8 +1349,9 @@ class Optimal_temperature:
         # self.tif_opt_temp()
         # self.plot_test_cal_opt_temp(step)
         # self.resample()
-        self.T_vs_optimal_temp_delta()
+        # self.T_vs_optimal_temp_delta()
         # self.plot_optimal_temperature_map()
+        self.opt_temperature_comparison()
         pass
 
 
@@ -1651,6 +1652,41 @@ class Optimal_temperature:
         plt.show()
         pass
 
+    def opt_temperature_comparison(self):
+        fdir = join(self.this_class_tif,'optimal_temperature')
+        fpath_gpp = join(fdir,'LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        fpath_sif = join(fdir,'TCSIF-optimal_temperature.tif')
+        arr_gpp = DIC_and_TIF().spatial_tif_to_arr(fpath_gpp)
+        arr_sif = DIC_and_TIF().spatial_tif_to_arr(fpath_sif)
+
+        arr_gpp_flatten = arr_gpp.flatten()
+        arr_sif_flatten = arr_sif.flatten()
+        # print(len(arr_gpp_flatten))
+        # print(len(arr_sif_flatten))
+        # exit()
+
+        # plt.scatter(arr_gpp_flatten,arr_sif_flatten)
+        # plt.show()
+        KDE_plot().plot_scatter(arr_gpp_flatten,arr_sif_flatten,max_n=100000,s=40,alpha=0.5,marker='H',cmap='jet')
+        a,b,r,p = T.nan_line_fit(arr_gpp_flatten,arr_sif_flatten)
+        print(f'a={a:.3f},b={b:.3f},r={r:.3f},p={p:.3f}')
+        plt.plot([0, 40], [0, 40], 'w--')
+        plt.xlabel('Berkeley_GPP')
+        plt.ylabel('GOME-2_TCSIF')
+        plt.axis('equal')
+
+        plt.figure()
+        plt.imshow(arr_gpp,cmap='RdBu_r',vmin=10,vmax=30,interpolation='nearest')
+        plt.colorbar()
+        plt.title('Berkeley_GPP')
+        plt.figure()
+
+        plt.imshow(arr_sif,cmap='RdBu_r',vmin=10,vmax=30,interpolation='nearest')
+        plt.colorbar()
+        plt.title('GOME-2_TCSIF')
+
+        plt.show()
+        pass
 
 class Optimal_temperature_monthly:
     def __init__(self):
@@ -1949,7 +1985,7 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
     # Pick_Heatwave_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
@@ -1957,7 +1993,7 @@ def main():
     # Net_effect_monthly().run()
     # Phenology().run()
     # Long_term_correlation().run()
-    # Optimal_temperature().run()
+    Optimal_temperature().run()
     # Optimal_temperature_monthly().run()
     # gen_world_grid_shp()
     pass
