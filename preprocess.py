@@ -672,7 +672,8 @@ class TMP:
         # self.anomaly_detrend()
         # self.anomaly_juping()
         # self.anomaly_juping_detrend()
-        self.mean_annual_temperature()
+        # self.mean_annual_temperature()
+        self.max_annual_temperature()
         pass
 
     def per_pix(self):
@@ -789,6 +790,29 @@ class TMP:
         arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
         DIC_and_TIF().arr_to_tif(arr,outf)
         pass
+
+
+    def max_annual_temperature(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'max_annual_temperature')
+        T.mk_dir(outdir,force=True)
+        # outf = join(outdir,'max_annual_temperature_gs.tif')
+        outf = join(outdir,'max_annual_temperature.tif')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            # vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs,method='max')
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=None,method='max')
+            vals_mean = np.nanmean(vals_gs)
+            spatial_dict_mean[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        pass
+
 
 class VPD:
     '''

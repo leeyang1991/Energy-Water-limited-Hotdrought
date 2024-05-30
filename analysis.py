@@ -1985,7 +1985,7 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    # Pick_Drought_Events().run()
+    Pick_Drought_Events().run()
     # Pick_Heatwave_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
@@ -1993,7 +1993,7 @@ def main():
     # Net_effect_monthly().run()
     # Phenology().run()
     # Long_term_correlation().run()
-    Optimal_temperature().run()
+    # Optimal_temperature().run()
     # Optimal_temperature_monthly().run()
     # gen_world_grid_shp()
     pass

@@ -5014,7 +5014,7 @@ def Load_dataframe():
 
 def main():
     # Dataframe().run()
-    # Compensation_Excerbation().run()
+    Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
     # Drought_timing().run()
     # Random_Forests().run()
@@ -5024,7 +5024,7 @@ def main():
     # Single_Variable_Analysis().run()
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
-    SEM().run()
+    # SEM().run()
 
 
     pass

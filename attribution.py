@@ -53,11 +53,11 @@ class SEM:
 
         # df = statistic.Dataframe_func(df).df
 
-        # T.save_df(df, self.dff)
-        # T.df_to_excel(df, self.dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
 
         # self.pair_plot(df)
-        self.build_model(df)
+        # self.build_model(df)
 
 
         # self.check_variables(df)
@@ -256,26 +256,225 @@ class SEM:
 class MAT_Topt:
 
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('MAT_Topt', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe/Dataframe.df')
         pass
 
     def run(self):
-        self.mat_Topt_delta()
+        self.temperature_during_drought()
+        # self.build_df()
+        # self.foo()
+        # self.foo2()
         pass
 
-    def mat_Topt_delta(self):
+
+    def build_df(self):
         import analysis
-        Topt_fpath = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
-        MAT_fpath = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+        import statistic
+        # Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/TCSIF-optimal_temperature.tif')
+        # MAT_f = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+        MAT_f = join(data_root,r"CRU_tmp\max_annual_temperature\max_annual_temperature_gs.tif")
+        Temp_during_drought = join(self.this_class_tif,'Temperature_during_drought/max_Temperature_during_drought.tif')
 
-        Topt_arr = DIC_and_TIF().spatial_tif_to_arr(Topt_fpath)
-        MAT_arr = DIC_and_TIF().spatial_tif_to_arr(MAT_fpath)
-        delta_Topt = Topt_arr - MAT_arr
-        plt.imshow(delta_Topt,cmap='RdBu_r',interpolation='nearest')
-        plt.colorbar()
-        plt.show()
+        compensation_excerbation_f = join(statistic.Compensation_Excerbation().this_class_tif,r"delta_hot_normal\drought_year_1.tif")
+
+        Topt_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_f)
+        MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
+        Temp_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(Temp_during_drought)
+        compensation_excerbation_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(compensation_excerbation_f)
+
+        all_dict = {}
+        all_dict['Topt'] = Topt_spatial_dict
+        all_dict['MAT'] = MAT_spatial_dict
+        all_dict['Temp_during_drought'] = Temp_spatial_dict
+        all_dict['compensation_excerbation'] = compensation_excerbation_spatial_dict
+
+        df = T.spatial_dics_to_df(all_dict)
+        df = df.dropna(how='any')
+
+        outf = join(self.this_class_arr, 'dataframe/Dataframe.df')
+        T.save_df(df, outf)
+
+        T.df_to_excel(df, outf)
+
+        # for col in all_dict:
+        #     spatial_dict = T.df_to_spatial_dic(df, col)
+        #     arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        #     plt.figure()
+        #     plt.imshow(arr,cmap='jet',interpolation='nearest',vmin=0,vmax=35)
+        #     plt.colorbar()
+        #     plt.title(col)
+        # plt.show()
+
 
         pass
+
+
+    def compensation_excerbation_delta(self):
+        import statistic
+        compensation_excerbation_tif = join(statistic.Compensation_Excerbation().this_class_tif,'delta_hot_normal/drought_year_1.tif')
+        compensation_excerbation_arr = DIC_and_TIF().spatial_tif_to_arr(compensation_excerbation_tif)
+        Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
+        Topt_MAT_delta_arr = DIC_and_TIF().spatial_tif_to_arr(Topt_MAT_delta_tif)
+
+        compensation_excerbation_arr_flatten = compensation_excerbation_arr.flatten()
+        Topt_MAT_delta_arr_flatten = Topt_MAT_delta_arr.flatten()
+        df = pd.DataFrame()
+        df['compensation_excerbation_arr_flatten'] = compensation_excerbation_arr_flatten
+        df['Topt_MAT_delta_arr_flatten'] = Topt_MAT_delta_arr_flatten
+        df = df.dropna(how='any')
+        T.print_head_n(df)
+        bins = np.linspace(-8,8,51)
+        df_group, bins_list_str = T.df_bin(df,'Topt_MAT_delta_arr_flatten',bins)
+
+        x_list = []
+        y_list = []
+        err_list = []
+        for name, df_group_i in df_group:
+            vals = df_group_i['compensation_excerbation_arr_flatten'].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            x = name[0].left
+            x_list.append(x)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
+        # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
+        plt.xlabel('MAT - Topt')
+        plt.ylabel('Compensation Excerbation')
+        plt.twinx()
+        plt.plot(x_list, y_list, c='r')
+        plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+                         alpha=0.3)
+
+        plt.show()
+        exit()
+        pass
+
+    def temperature_during_drought(self):
+        outdir = join(self.this_class_tif,'temperature_during_drought')
+        T.mk_dir(outdir)
+        dff = SEM().dff
+        df = T.load_df(dff)
+        # df = df[df['drought_type'] == 'hot-drought']
+        df = self.add_variables(df,Load_Data().Temperature_origin)
+        T.print_head_n(df)
+        exit()
+        df_pix_dict = T.df_groupby(df, 'pix')
+        Temperature_origin_mean_dict = {}
+        for pix in df_pix_dict:
+            df_pix = df_pix_dict[pix]
+            df_pix = T.df_drop_duplicates(df_pix, 'drought_year')
+            Temperature_origin = df_pix['max_Temperature-origin'].tolist()
+            Temperature_origin_mean = np.nanmean(Temperature_origin)
+            Temperature_origin_mean_dict[pix] = Temperature_origin_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(Temperature_origin_mean_dict)
+        outf = join(outdir,'max_Temperature_during_hot-drought.tif')
+        DIC_and_TIF().arr_to_tif(arr,outf)
+
+    def add_variables(self,df,data_obj):
+        # data_dict,var_name,valid_range = Load_Data().NDVI_anomaly_detrend()
+        data_dict,var_name,valid_range = data_obj()
+
+        vals_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            year = row['drought_year']
+            if not pix in data_dict:
+                vals_list.append(np.nan)
+                continue
+            vals = data_dict[pix]
+            vals = np.array(vals)
+            if np.nanstd(vals) == 0:
+                vals_list.append(np.nan)
+                continue
+
+            vals[vals<valid_range[0]] = np.nan
+            vals[vals>valid_range[1]] = np.nan
+            # vals_reshape = np.reshape(vals,(-1,12))
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs,method='max')
+            # vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs,method='mean')
+            val_drought_year = vals_gs[year-global_start_year]
+            vals_list.append(val_drought_year)
+
+        df['max_'+var_name] = vals_list
+        return df
+
+    def foo(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        # exit()
+        # print('len(df):',len(df))
+        delta_Tempdr_vs_Topt = df['Temp_during_drought'] - df['Topt']
+        df['delta_Tempdr_vs_Topt'] = delta_Tempdr_vs_Topt
+        bins = np.linspace(5,30,51)
+        df_group, bins_list_str = T.df_bin(df,'MAT',bins)
+        x_list = []
+        y_list = []
+        y1_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i['delta_Tempdr_vs_Topt'].tolist()
+            vals1 = df_group_i['compensation_excerbation'].tolist()
+            mean = np.nanmean(vals)
+            mean1 = np.nanmean(vals1)
+            # err,_,_ = T.uncertainty_err(vals)
+            err = np.nanstd(vals)
+            x = name[0].left
+            x_list.append(x)
+            y_list.append(mean)
+            y1_list.append(mean1)
+            err_list.append(err)
+        plt.plot(x_list,y_list)
+        plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+                         alpha=0.3)
+        plt.ylabel('delta_Tempdr_vs_Topt')
+        plt.xlabel('MAT')
+        plt.twinx()
+        plt.plot(x_list,y1_list,c='r')
+
+        # plt.ylim(-3,3)
+        plt.show()
+        pass
+
+    def foo2(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        # exit()
+        # print('len(df):',len(df))
+        bin_cols_list = ['Temp_during_drought','Topt','MAT']
+        bins = np.linspace(5,28,24)
+        for col in bin_cols_list:
+            df_group, bins_list_str = T.df_bin(df,col,bins)
+            x_list = []
+            y_list = []
+            err_list = []
+            for name,df_group_i in df_group:
+                vals = df_group_i['compensation_excerbation'].tolist()
+                mean = np.nanmean(vals)
+                err,_,_ = T.uncertainty_err(vals)
+                # err = np.nanstd(vals)
+                x = name[0].left
+                x_list.append(x)
+                y_list.append(mean)
+                err_list.append(err)
+            # plt.figure()
+            plt.plot(x_list,y_list,label=col)
+            plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+                             alpha=0.3)
+            plt.ylabel('compensation_excerbation')
+            # plt.xlabel(col)
+
+        # plt.ylim(-3,3)
+        plt.hlines(0,5,28,'k',linestyles='dashed')
+        plt.legend()
+        plt.show()
+        pass
+
 
 def copy_files():
     f = join(this_root,"conf\land_reproj.tif")
