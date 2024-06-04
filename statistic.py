@@ -1864,7 +1864,7 @@ class Drought_timing:
         # self.delta_season_box_all(df)
         # self.delta_season_bar_ANOVA(df)
         # self.delta_season_bar_error_bar(df)
-        self.check_compensation_excerbation_season()
+        # self.check_compensation_excerbation_season()
 
         pass
 
@@ -5014,9 +5014,9 @@ def Load_dataframe():
 
 def main():
     # Dataframe().run()
-    Compensation_Excerbation().run()
+    # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    # Drought_timing().run()
+    Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()

@@ -217,7 +217,8 @@ class Load_Data:
         data_path = join(data_root, f'CRU_tmp/per_pix_detrend/{year_range}')
         path_type = 'dir'
         var_name = 'Temperature-origin_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-50,50)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def Temperature_anomaly(self,year_range=global_year_range):
         data_path = join(data_root, f'CRU_tmp/anomaly/{year_range}')

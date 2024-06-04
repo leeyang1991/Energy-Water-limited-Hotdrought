@@ -210,11 +210,11 @@ class Pick_Drought_Events:
 
     def run(self):
         # self.pick_normal_drought_events()
-        # self.pick_normal_hot_events()
+        self.pick_normal_hot_events()
         # self.pick_single_events(year_range_str)
         # self.check_drought_events()
         # self.drought_timing()
-        self.gen_dataframe()
+        # self.gen_dataframe()
         pass
 
     def pick_normal_hot_events(self):
