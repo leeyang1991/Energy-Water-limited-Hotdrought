@@ -266,9 +266,10 @@ class MAT_Topt:
         # self.temperature_during_drought_delta()
         # self.build_df()
         # self.delta_temp_vs_compensation()
+        self.compensation_excerbation_delta()
         # self.pairplot()
         # self.hist_plot()
-        self.opt_mat_drought_temp_matrix()
+        # self.opt_mat_drought_temp_matrix()
         # self.delta_tif()
         pass
 
@@ -302,9 +303,8 @@ class MAT_Topt:
         df = T.spatial_dics_to_df(all_dict)
         df = df.dropna(how='any')
 
-        outf = join(self.this_class_arr, 'dataframe/Dataframe.df')
+        outf = join(self.this_class_arr, 'dataframe/Dataframe_constant.df')
         T.save_df(df, outf)
-
         T.df_to_excel(df, outf)
 
         # for col in all_dict:
@@ -321,44 +321,59 @@ class MAT_Topt:
 
 
     def compensation_excerbation_delta(self):
+        outdir = join(self.this_class_png,'compensation_excerbation_delta')
+        T.mk_dir(outdir)
         import statistic
         compensation_excerbation_tif = join(statistic.Compensation_Excerbation().this_class_tif,'delta_hot_normal/drought_year_1.tif')
-        compensation_excerbation_arr = DIC_and_TIF().spatial_tif_to_arr(compensation_excerbation_tif)
+        compensation_excerbation_dict = DIC_and_TIF().spatial_tif_to_dic(compensation_excerbation_tif)
         Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
-        Topt_MAT_delta_arr = DIC_and_TIF().spatial_tif_to_arr(Topt_MAT_delta_tif)
+        Topt_MAT_delta_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_MAT_delta_tif)
 
-        compensation_excerbation_arr_flatten = compensation_excerbation_arr.flatten()
-        Topt_MAT_delta_arr_flatten = Topt_MAT_delta_arr.flatten()
-        df = pd.DataFrame()
-        df['compensation_excerbation_arr_flatten'] = compensation_excerbation_arr_flatten
-        df['Topt_MAT_delta_arr_flatten'] = Topt_MAT_delta_arr_flatten
-        df = df.dropna(how='any')
+        spatial_dict_all = {
+            'compensation_excerbation':compensation_excerbation_dict,
+            'Topt_MAT_delta':Topt_MAT_delta_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = statistic.Dataframe_func(df).df
+        # df = pd.DataFrame()
+        # df['compensation_excerbation_arr_flatten'] = compensation_excerbation_arr_flatten
+        # df['Topt_MAT_delta_arr_flatten'] = Topt_MAT_delta_arr_flatten
         T.print_head_n(df)
-        bins = np.linspace(-8,8,51)
-        df_group, bins_list_str = T.df_bin(df,'Topt_MAT_delta_arr_flatten',bins)
+        # exit()
+        # df = df.dropna(how='any')
+        bins_Topt_MAT_delta = np.linspace(-8,8,51)
+        bins_AI = np.linspace(0,3,31)
+        col_name = 'compensation_excerbation'
+        df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df,'Topt_MAT_delta',bins_Topt_MAT_delta)
+        plt.figure(figsize=(9*centimeter_factor,14*centimeter_factor))
+        for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
+            y_pos = name_Topt_MAT_delta[0].left
+            df_group_AI, bins_list_str_AI = T.df_bin(df_group_i_Topt_MAT_delta,'aridity_index',bins_AI)
+            for name_AI, df_group_i_AI in df_group_AI:
+                x_pos = name_AI[0].left
+                vals = df_group_i_AI[col_name].tolist()
+                if len(vals) == 0:
+                    continue
+                if T.is_all_nan(vals):
+                    continue
+                mean = np.nanmean(vals)
+                plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
+        plt.colorbar()
+        outf = join(outdir,'compensation_excerbation_delta.pdf')
+        plt.savefig(outf)
+        # plt.show()
 
-        x_list = []
-        y_list = []
-        err_list = []
-        for name, df_group_i in df_group:
-            vals = df_group_i['compensation_excerbation_arr_flatten'].tolist()
-            mean = np.nanmean(vals)
-            err,_,_ = T.uncertainty_err(vals)
-            x = name[0].left
-            x_list.append(x)
-            y_list.append(mean)
-            err_list.append(err)
-        plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
-        # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
-        plt.xlabel('MAT - Topt')
-        plt.ylabel('Compensation Excerbation')
-        plt.twinx()
-        plt.plot(x_list, y_list, c='r')
-        plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
-                         alpha=0.3)
-
-        plt.show()
-        exit()
+        # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
+        # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
+        # plt.xlabel('MAT - Topt')
+        # plt.ylabel('Compensation Excerbation')
+        # plt.twinx()
+        # plt.plot(x_list, y_list, c='r')
+        # plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+        #                  alpha=0.3)
+        #
+        # plt.show()
+        # exit()
         pass
 
     def temperature_during_drought(self):
@@ -508,7 +523,7 @@ class MAT_Topt:
         pass
 
     def delta_temp_vs_compensation(self):
-        dff = self.dff
+        dff = join(self.this_class_arr, 'dataframe/Dataframe_constant.df')
         df = T.load_df(dff)
         T.print_head_n(df)
         delta_hot_normal_temp = df['Temp_hot_drought'] - df['Temp_normal_drought']
