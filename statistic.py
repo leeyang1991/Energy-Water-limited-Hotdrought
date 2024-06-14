@@ -1835,7 +1835,7 @@ class Drought_timing:
 
     def run(self):
         # df = Over_shoot_phenology().add_NDVI_process()
-        # df = self.__gen_df_init()
+        df = self.__gen_df_init()
         # T.print_head_n(df)
         # exit()
         # df = Compensation_Excerbation().add_SM_anomaly_process(df)
@@ -1859,6 +1859,8 @@ class Drought_timing:
         # self.timing_trajectory_Tair(df)
         # self.delta_season_tif(df)
         # self.delta_season_bar(df)
+        # self.delta_season_boxplot(df)
+        self.season_excerbation_alleviation_ratio(df)
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
@@ -2116,6 +2118,125 @@ class Drought_timing:
         # plt.close()
         # T.open_path_and_file(outdir)
         plt.show()
+
+    def delta_season_boxplot(self,df):
+        # T.print_head_n(df)
+        outdir = join(self.this_class_png, 'delta_season_boxplot')
+        T.mk_dir(outdir)
+        drought_season_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list[::-1]
+
+        boxes = []
+        labels = []
+        box_dict = {}
+        for ELI_class in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI_class]
+            for season in drought_season_list:
+                df_season = df_ELI[df_ELI['drought_season'] == season]
+                # T.print_head_n(df_season)
+                df_pix_dict = T.df_groupby(df_season, 'pix')
+                delta_spatial_dict = {}
+                vals_list = []
+                for pix in tqdm(df_pix_dict):
+                    df_pix = df_pix_dict[pix]
+                    df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                    df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                    rt_hot = df_hot['rt'].tolist()
+                    rt_normal = df_normal['rt'].tolist()
+                    rt_hot_mean = np.nanmean(rt_hot)
+                    rt_normal_mean = np.nanmean(rt_normal)
+                    delta = rt_hot_mean - rt_normal_mean
+                    delta_spatial_dict[pix] = delta
+                    if not np.isnan(delta):
+                        vals_list.append(delta)
+                vals = np.array(vals_list)
+                label = f'{ELI_class}_{season}'
+                boxes.append(vals)
+                labels.append(label)
+                box_dict[label] = vals
+        print(labels) # ['Water-Limited_spring', 'Water-Limited_summer', 'Water-Limited_autumn', 'Energy-Limited_spring', 'Energy-Limited_summer', 'Energy-Limited_autumn']
+
+        season_color_dict = {
+            'spring': 'g',
+            'summer': 'r',
+            'autumn': 'b',
+        }
+        pos = 0
+        for season in drought_season_list:
+            for ELI_class in ELI_class_list:
+                label = f'{ELI_class}_{season}'
+                vals = box_dict[label]
+                x,y = Plot().plot_hist_smooth(vals,bins=30,alpha=0,range=(-0.3,0.3))
+                if ELI_class == 'Water-Limited':
+                    lw = 1
+                else:
+                    lw = 2
+                # plt.boxplot(vals, labels=[label],positions=[pos], showfliers=False)
+                # plt.plot(x,y,label=label,lw=lw,color=season_color_dict[season])
+                plt.boxplot(vals, labels=[label],positions=[pos], showfliers=False,vert=False)
+                pos += 1
+
+        # plt.legend()
+        plt.tight_layout()
+        outf = join(outdir, f'delta_season_boxplot.pdf')
+        plt.savefig(outf)
+        # plt.show()
+        exit()
+        plt.boxplot(boxes, labels=labels, showfliers=False)
+        plt.xticks(rotation=90)
+        plt.ylim(-0.5, 0.5)
+        plt.tight_layout()
+        plt.show()
+            #     arr = DIC_and_TIF().pix_dic_to_spatial_arr(delta_spatial_dict)
+            #     plt.figure()
+            #     plt.imshow(arr, cmap='RdBu', vmin=-0.2, vmax=0.2, interpolation='nearest')
+            #     plt.title(season)
+            #     plt.colorbar()
+            # plt.show()
+
+        pass
+    def season_excerbation_alleviation_ratio(self,df):
+        # T.print_head_n(df)
+        outdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio')
+        T.mk_dir(outdir)
+        drought_season_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list[::-1]
+        alleviation_list = []
+        excerbation_list = []
+
+        mode_list = []
+        for season in drought_season_list:
+            df_season = df[df['drought_season'] == season]
+            df_pix_dict = T.df_groupby(df_season, 'pix')
+            spatial_dict = {}
+            for pix in tqdm(df_pix_dict):
+                df_pix = df_pix_dict[pix]
+                df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                rt_hot = df_hot['rt'].tolist()
+                rt_normal = df_normal['rt'].tolist()
+                rt_hot_mean = np.nanmean(rt_hot)
+                rt_normal_mean = np.nanmean(rt_normal)
+                delta = rt_hot_mean - rt_normal_mean
+                if np.isnan(delta):
+                    continue
+                if delta >=0.0:
+                    mode = 'alleviation'
+                elif delta < 0.0:
+                    mode = 'excerbation'
+                else:
+                    # mode = 'normal'
+                    print(delta)
+                    raise ValueError
+                    # continue
+                    pass
+                spatial_dict[pix] = delta
+                mode_list.append(mode)
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+            outf = join(outdir, f'{season}.tif')
+            DIC_and_TIF().arr_to_tif(arr, outf)
+
+        pass
 
     def delta_season_bar_ratio(self,df):
         outdir = join(self.this_class_png, 'delta_season_bar_ratio')
