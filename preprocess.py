@@ -2876,11 +2876,50 @@ class TCSIF:
         Pre_Process().data_transform_with_date_list(fdir, outdir, selected_tif_list)
 
 
+class Global_Ecological_Zone:
+
+    def __init__(self):
+        self.datadir = join(data_root, 'Global_Ecological_Zone')
+        pass
+
+    def run(self):
+        self.rasterize()
+        pass
+
+    def rasterize(self):
+        fpath = join(self.datadir,'gez2010/gez_2010_wgs84.shp')
+        outdir = join(self.datadir,'tif')
+        in_raster_template = join(this_root,'conf/land.tif')
+        T.mk_dir(outdir)
+        outf = join(outdir,'gez_2010.tif')
+        self.shp_to_raster(fpath,outf,0.5,in_raster_template)
+
+        pass
+
+    def shp_to_raster(self, in_shp, output_raster, pixel_size, in_raster_template=None, ndv=-999999):
+        input_shp = ogr.Open(in_shp)
+        shp_layer = input_shp.GetLayer()
+        if in_raster_template:
+            raster = gdal.Open(in_raster_template)
+            ulx, xres, xskew, uly, yskew, yres = raster.GetGeoTransform()
+            lrx = ulx + (raster.RasterXSize * xres)
+            lry = uly + (raster.RasterYSize * yres)
+            xmin, xmax, ymin, ymax = ulx, lrx, lry, uly
+        else:
+            xmin, xmax, ymin, ymax = shp_layer.GetExtent()
+        ds = gdal.Rasterize(output_raster, in_shp, xRes=pixel_size, yRes=pixel_size,
+                            noData=ndv, outputBounds=[xmin, ymin, xmax, ymax],
+                            outputType=gdal.GDT_Float32,attribute='gez_code')
+        ds = None
+        return output_raster
+
+
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    TMP().run()
+    # TMP().run()
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
@@ -2906,6 +2945,7 @@ def main():
     # FAPAR().run()
     # Aridity_Index().run()
     # TCSIF().run()
+    Global_Ecological_Zone().run()
 
     pass
 
