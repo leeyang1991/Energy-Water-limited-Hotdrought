@@ -2883,7 +2883,8 @@ class Global_Ecological_Zone:
         pass
 
     def run(self):
-        self.rasterize()
+        # self.rasterize()
+        self.legend()
         pass
 
     def rasterize(self):
@@ -2913,6 +2914,18 @@ class Global_Ecological_Zone:
         ds = None
         return output_raster
 
+    def legend(self):
+        fpath = join(self.datadir,'legend.xlsx')
+        df = pd.read_excel(fpath)
+        T.print_head_n(df)
+        legend_dict = {}
+        gez_name = df['gez_name'].tolist()
+        gez_code = df['gez_code'].tolist()
+        for i in range(len(gez_name)):
+            legend_dict[gez_code[i]] = gez_name[i]
+        outf = join(self.datadir,'legend')
+        T.save_npy(legend_dict,outf)
+        pass
 
 
 def main():

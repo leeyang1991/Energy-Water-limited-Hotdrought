@@ -267,7 +267,8 @@ class MAT_Topt:
         # self.build_df()
         # self.delta_temp_vs_compensation()
         # self.compensation_excerbation_delta()
-        self.compensation_excerbation_MAT_AI()
+        # self.compensation_excerbation_MAT_AI()
+        self.compensation_excerbation_MAT_MAP()
         # self.pairplot()
         # self.hist_plot()
         # self.opt_mat_drought_temp_matrix()
@@ -419,6 +420,73 @@ class MAT_Topt:
         plt.xlabel('Aridity Index')
         plt.ylabel('MAT')
         outf = join(outdir,'compensation_excerbation_MAT_AI.pdf')
+        # plt.savefig(outf)
+        plt.show()
+
+        # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
+        # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
+        # plt.xlabel('MAT - Topt')
+        # plt.ylabel('Compensation Excerbation')
+        # plt.twinx()
+        # plt.plot(x_list, y_list, c='r')
+        # plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+        #                  alpha=0.3)
+        #
+        # plt.show()
+        # exit()
+        pass
+
+    def compensation_excerbation_MAT_MAP(self):
+        outdir = join(self.this_class_png,'compensation_excerbation_MAT_MAP')
+        T.mk_dir(outdir)
+        import statistic
+        compensation_excerbation_tif = join(statistic.Compensation_Excerbation().this_class_tif,'delta_hot_normal/drought_year_1.tif')
+        compensation_excerbation_dict = DIC_and_TIF().spatial_tif_to_dic(compensation_excerbation_tif)
+        # Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
+        # Topt_MAT_delta_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_MAT_delta_tif)
+
+        MAT_tif = join(data_root,r'CRU_tmp\mat','mat_gs.tif')
+        MAT_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_tif)
+
+        MAP_tif = join(data_root,r'CRU_precip\map','map.tif')
+        MAP_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_tif)
+        spatial_dict_all = {
+            'compensation_excerbation':compensation_excerbation_dict,
+            'MAT':MAT_dict,
+            'MAP':MAP_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = df.dropna(how='any')
+        map = df['MAP'].tolist()
+        # plt.hist(map, bins=100, range=(0, 1500), zorder=-99, color='gray', alpha=0.5)
+        # plt.show()
+        T.print_head_n(df)
+        # exit()
+        # df = df.dropna(how='any')
+        bins_Topt_MAT_delta = np.arange(-5,36,1)
+        bins_MAP = np.arange(0,1501,50)
+        col_name = 'compensation_excerbation'
+        df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df,'MAT',bins_Topt_MAT_delta)
+        # plt.figure(figsize=(10*centimeter_factor,11*centimeter_factor))
+        # plt.figure(figsize=(10*centimeter_factor,11*centimeter_factor))
+        plt.figure(figsize=(16*centimeter_factor,18*centimeter_factor))
+        for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
+            y_pos = name_Topt_MAT_delta[0].left
+            df_group_MAP, bins_list_str_MAP = T.df_bin(df_group_i_Topt_MAT_delta,'MAP',bins_MAP)
+            for name_MAP, df_group_i_MAP in df_group_MAP:
+                x_pos = name_MAP[0].left
+                vals = df_group_i_MAP[col_name].tolist()
+                # if len(vals) < 10:
+                #     continue
+                if T.is_all_nan(vals):
+                    continue
+                mean = np.nanmean(vals)
+                plt.scatter(x_pos,y_pos,s=40,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
+                # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
+        plt.colorbar()
+        plt.xlabel('MAP')
+        plt.ylabel('MAT')
+        outf = join(outdir,'compensation_excerbation_MAT_MAP.pdf')
         plt.savefig(outf)
         # plt.show()
 

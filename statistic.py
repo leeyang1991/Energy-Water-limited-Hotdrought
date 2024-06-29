@@ -12,7 +12,7 @@ class Dataframe_func:
     def __init__(self,df,is_clean_df=True):
         print('add lon lat')
         df = self.add_lon_lat(df)
-
+        df = self.add_gez(df)
         print('add NDVI mask')
         df = self.add_NDVI_mask(df)
         if is_clean_df == True:
@@ -147,6 +147,21 @@ class Dataframe_func:
     #
     #     return df
 
+    def add_gez(self,df):
+        f = join(data_root, 'Global_Ecological_Zone/tif/gez_2010.tif')
+        legend_f = join(data_root, 'Global_Ecological_Zone/legend.npy')
+        legend_dict = T.load_npy(legend_f)
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
+        spatial_dict_legend = {}
+        for pix in tqdm(spatial_dict):
+            val = spatial_dict[pix]
+            if np.isnan(val):
+                continue
+            legend = legend_dict[val]
+            spatial_dict_legend[pix] = legend
+        df = T.add_spatial_dic_to_df(df, spatial_dict_legend, 'GEZ')
+        return df
+
 class Dataframe:
 
     def __init__(self):
@@ -202,9 +217,8 @@ class Compensation_Excerbation:
         pass
 
     def run(self):
-        # df = self.__gen_df_init()
-        # T.print_head_n(df)
-        # exit()
+        df = self.__gen_df_init()
+        # df = Dataframe_func(df).df
         # calculate
         # df = self.identification_two_modes(df)
         # df = self.magnitude(df)
@@ -247,7 +261,7 @@ class Compensation_Excerbation:
         # self.delta_area_statistic()
         # self.delta_value_statistic()
         # self.print_delta_value_statistic()
-        self.check_compensation_excerbation_season()
+        # self.check_compensation_excerbation_season()
         pass
 
     def __gen_df_init(self):
@@ -1836,6 +1850,7 @@ class Drought_timing:
     def run(self):
         # df = Over_shoot_phenology().add_NDVI_process()
         df = self.__gen_df_init()
+        # df = Dataframe_func(df).df
         # T.print_head_n(df)
         # exit()
         # df = Compensation_Excerbation().add_SM_anomaly_process(df)
@@ -1862,13 +1877,15 @@ class Drought_timing:
         # self.delta_season_boxplot(df)
         # self.season_excerbation_alleviation_ratio_tif(df)
         # self.season_excerbation_alleviation_ratio_statistic()
-        self.plot_season_excerbation_alleviation_ratio()
+        # self.plot_season_excerbation_alleviation_ratio()
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
         # self.delta_season_bar_ANOVA(df)
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
+        # self.delta_tif(df)
+        self.GEZ_statistic()
 
         pass
 
@@ -2031,6 +2048,44 @@ class Drought_timing:
         T.open_path_and_file(outdir)
 
         pass
+
+    def delta_tif(self,df):
+        outdir = join(self.this_class_tif, 'delta')
+        T.mk_dir(outdir)
+        drought_season_list = global_drought_season_list
+        # print(df_season)
+        pix_list = T.get_df_unique_val_list(df, 'pix')
+        # print(len(pix_list))
+        drought_type_list = global_drought_type_list
+
+        # drought_year_list = range(1, 5)
+        drought_year_list = [1]
+        for drought_year_i in drought_year_list:
+            df_group_dict = T.df_groupby(df, 'pix')
+            spatial_dict = {}
+            for pix in tqdm(pix_list):
+                df_pix = df_group_dict[pix]
+                df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                if len(df_hot) == 0 or len(df_normal) == 0:
+                    continue
+                NDVI_progress_hot = df_hot['NDVI_progress'].tolist()
+                NDVI_progress_normal = df_normal['NDVI_progress'].tolist()
+                mean_hot = np.nanmean(NDVI_progress_hot, axis=0)
+                mean_normal = np.nanmean(NDVI_progress_normal, axis=0)
+
+                mean_hot_reshape = np.array(mean_hot).reshape(-1, 6)
+                mean_normal_reshape = np.array(mean_normal).reshape(-1, 6)
+
+                mean_hot_drought_year = mean_hot_reshape[1:drought_year_i + 1]
+                mean_normal_drought_year = mean_normal_reshape[1:drought_year_i + 1]
+
+                mean_normal_drought_NDVI = np.nanmean(mean_normal_drought_year)
+                mean_hot_drought_NDVI = np.nanmean(mean_hot_drought_year)
+                delta = mean_hot_drought_NDVI - mean_normal_drought_NDVI
+                spatial_dict[pix] = delta
+            outf = join(outdir, f'delta.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
 
     def delta_season_tif(self,df):
         outdir = join(self.this_class_tif, 'delta_season')
@@ -2738,6 +2793,62 @@ class Drought_timing:
                 plt.bar(x, count)
             plt.title(drt)
         plt.show()
+
+        pass
+
+    def GEZ_statistic(self):
+        outdir = join(self.this_class_png, 'GEZ_statistic')
+        T.mk_dir(outdir)
+        fpath = join(self.this_class_tif,'delta/delta.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        df = T.spatial_dics_to_df({'delta':spatial_dict})
+        df = Dataframe_func(df).df
+        T.print_head_n(df)
+        gez_list = T.get_df_unique_val_list(df, 'GEZ')
+        gez_list = list(gez_list)
+        gez_list.remove('Water')
+        print(gez_list)
+        count_list = []
+        delta_list = []
+        # delta_max_list = []
+        delta_25_list = []
+        bar_delta_list = []
+        for gez in gez_list:
+            df_gez = df[df['GEZ'] == gez]
+            delta = df_gez['delta'].tolist()
+            count_list.append(len(df_gez))
+            delta_mean = np.nanmean(delta)
+            delta_25_percentile = np.percentile(delta,25)
+            delta_75_percentile = np.percentile(delta,75)
+            # delta_max = np.nanmax(delta)
+            # delta_min = np.nanmin(delta)
+            # count = len(df_gez)
+            # count_list.append(count)
+            delta_list.append(delta_mean)
+            bar_delta = delta_75_percentile - delta_25_percentile
+            bar_delta_list.append(bar_delta)
+            delta_25_list.append(delta_25_percentile)
+        # plt.scatter(gez_list,delta_max_list,label='max')
+        # plt.scatter(gez_list,delta_min_list,label='min')
+        plt.bar(gez_list,bar_delta_list,bottom=delta_25_list)
+        plt.scatter(gez_list,delta_list,label='mean')
+        # plt.legend()
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+
+        outf = join(outdir, 'delta_bar.pdf')
+        plt.savefig(outf)
+        plt.close()
+
+        plt.figure()
+        plt.bar(gez_list,count_list)
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        outf = join(outdir,'count.pdf')
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
+
 
         pass
 
