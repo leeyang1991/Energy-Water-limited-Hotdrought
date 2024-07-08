@@ -268,11 +268,11 @@ class MAT_Topt:
         # self.delta_temp_vs_compensation()
         # self.compensation_excerbation_delta()
         # self.compensation_excerbation_MAT_AI()
-        self.compensation_excerbation_MAT_MAP()
+        # self.compensation_excerbation_MAT_MAP()
         # self.pairplot()
         # self.hist_plot()
-        # self.opt_mat_drought_temp_matrix()
-        # self.delta_tif()
+        self.opt_mat_drought_temp_matrix()
+        self.delta_tif()
         pass
 
 
@@ -281,8 +281,8 @@ class MAT_Topt:
         import statistic
         # Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
         Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/TCSIF-optimal_temperature.tif')
-        # MAT_f = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
-        MAT_f = join(data_root,r"CRU_tmp\max_annual_temperature\max_annual_temperature_gs.tif")
+        MAT_f = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+        # MAT_f = join(data_root,r"CRU_tmp\max_annual_temperature\max_annual_temperature_gs.tif")
         method = 'max'
         Temp_hot_drought_f = join(self.this_class_tif,f'Temperature_during_drought/hot-drought_{method}_Temperature-origin_detrend.tif')
         Temp_normal_drought_f = join(self.this_class_tif,f'Temperature_during_drought/normal-drought_{method}_Temperature-origin_detrend.tif')
@@ -487,8 +487,8 @@ class MAT_Topt:
         plt.xlabel('MAP')
         plt.ylabel('MAT')
         outf = join(outdir,'compensation_excerbation_MAT_MAP.pdf')
-        plt.savefig(outf)
-        # plt.show()
+        # plt.savefig(outf)
+        plt.show()
 
         # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
         # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
@@ -798,6 +798,84 @@ class MAT_Topt:
         pass
 
 
+class MAT_Topt1:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('MAT_Topt1', result_root_this_script, mode=2)
+
+    def run(self):
+        self.delta_tif()
+        pass
+
+    def delta_tif(self):
+        import analysis
+        import statistic
+        Topt_f = join(analysis.Optimal_temperature().this_class_tif,r"optimal_temperature\LT_Baseline_NT_origin_step_0.5_celsius_resample.tif")
+        # Topt_f = join(analysis.Optimal_temperature().this_class_tif,r"optimal_temperature\TCSIF-origin_step_0.5_celsius_Max-Temperature-origin.tif")
+        # compensation_excerbation_f = join(statistic.Compensation_Excerbation().this_class_tif,r"delta_hot_normal\drought_year_1.tif")
+        delta_tif = join(statistic.Drought_timing().this_class_tif,r"delta\delta.tif")
+        # mat_tif = join(data_root,r"CRU_tmp\max_annual_temperature\max_annual_temperature_gs.tif")
+        # mat_tif = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+        mat_tif = join(data_root,r"CRU_tmx\mat\mat_gs.tif")
+        # mat_tif = join(data_root,r"CRU_tmx\max_annual_temperature\max_annual_temperature.tif")
+
+        tif_dict = {
+            'Topt':Topt_f,
+            # 'compensation_excerbation':compensation_excerbation_f,
+            'delta':delta_tif,
+            'mat':mat_tif
+        }
+        df = self.tifs_to_df(tif_dict)
+        df = statistic.Dataframe_func(df).df
+        T.print_head_n(df)
+        # exit()
+        df['T_delta'] = df['mat'] - df['Topt']
+        T_delta = df['T_delta'].tolist()
+        # plt.hist(T_delta,bins=100)
+        # plt.show()
+        AI_bin = np.linspace(0,3,31)
+        T_delta_bins = np.linspace(-30,30,51)
+        delta = df['delta'].tolist()
+        # Topt = df['Topt'].tolist()
+        T_delta = df['T_delta'].tolist()
+
+        df_group_AI, bins_list_str = T.df_bin(df,'aridity_index',AI_bin)
+        for name_AI,df_group_AI_i in df_group_AI:
+            x = name_AI[0].left
+            df_group_Tdelta, bins_list_str = T.df_bin(df_group_AI_i,'T_delta',T_delta_bins)
+            for name_Tdelta,df_group_Tdelta_i in df_group_Tdelta:
+                y = name_Tdelta[0].left
+                vals = df_group_Tdelta_i['delta'].tolist()
+                if T.is_all_nan(vals):
+                    continue
+                # if len(vals) < 10:
+                #     continue
+                vals_mean = np.nanmean(vals)
+                # vals_mean = len(vals)
+                plt.scatter(x,y,c=vals_mean,vmin=-.5,vmax=.5,cmap='RdBu',marker='s')
+                # plt.scatter(x,y,c=vals_mean,vmin=0,vmax=1000,cmap='RdBu',marker='s')
+        plt.colorbar()
+        plt.xlabel('aridity_index')
+        plt.ylabel('MAT - Topt')
+        plt.show()
+
+
+        pass
+
+    def tifs_to_df(self,tif_dict):
+        tif_template = ''
+        for key in tif_dict:
+            tif_template = tif_dict[key]
+            break
+        D_template = DIC_and_TIF(tif_template=tif_template)
+        spatial_dicts = {}
+        for key in tif_dict:
+            spatial_dict = D_template.spatial_tif_to_dic(tif_dict[key])
+            spatial_dicts[key] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dicts)
+        return df
+        pass
+
 def copy_files():
     f = join(this_root,"conf\land_reproj.tif")
     print(isfile(f))
@@ -807,7 +885,8 @@ def copy_files():
 
 def main():
     # SEM().run()
-    MAT_Topt().run()
+    # MAT_Topt().run()
+    MAT_Topt1().run()
     # copy_files()
     pass
 
