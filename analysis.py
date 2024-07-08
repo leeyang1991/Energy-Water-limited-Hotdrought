@@ -1346,12 +1346,12 @@ class Optimal_temperature:
     def run(self):
         step = .5
         # self.cal_opt_temp(step)
-        # self.tif_opt_temp()
+        self.tif_opt_temp()
         # self.plot_test_cal_opt_temp(step)
         # self.resample()
         # self.T_vs_optimal_temp_delta()
         # self.plot_optimal_temperature_map()
-        self.opt_temperature_comparison()
+        # self.opt_temperature_comparison()
         pass
 
 
@@ -1366,15 +1366,16 @@ class Optimal_temperature:
 
         # temp_dic,_ = Load_Data().ERA_Tair_origin()
         TCSIF_year_range = global_VIs_year_range_dict['TCSIF']
-        temp_dic,_ = Load_Data().Temperature_origin(year_range=TCSIF_year_range)
+        # temp_dic,_ = Load_Data().Temperature_origin(year_range=TCSIF_year_range)
+        temp_dic,tmp_name,_ = Load_Data().Max_Temperature_origin(year_range=TCSIF_year_range)
         ndvi_dic,vege_name = Load_Data().TCSIF_origin()
         # ndvi_dic,vege_name = Load_Data().LT_Baseline_NT_origin()
         # T_dir = join(data_root,'TerraClimate/tmax/per_pix/1982-2020')
         # NDVI_dir = join(data_root,'NDVI4g/per_pix/1982-2020')
         # vege_name = 'NDVI4g'
         # vege_name = 'LT_Baseline_NT'
-        outdir = join(self.this_class_arr, f'optimal_temperature',f'{vege_name}_step_{step}_celsius')
-        outf = join(outdir,f'{vege_name}_step_{step}_celsius')
+        outdir = join(self.this_class_arr, f'optimal_temperature',f'{vege_name}_step_{step}_celsius_{tmp_name}')
+        outf = join(outdir,f'{vege_name}_step_{step}_celsius_{tmp_name}')
         T.mk_dir(outdir,force=True)
         # outdir_i = join(outdir,f'{vege_name}_step_{step}_celsius.tif')
         optimal_temp_dic = {}
@@ -1402,7 +1403,7 @@ class Optimal_temperature:
             t_bins = np.arange(start=min_t, stop=max_t, step=step)
             # df_group, bins_list_str = self.df_bin(df, 'temp', t_bins)
             # try:
-            df_group, bins_list_str = self.df_bin(df, 'temp', t_bins)
+            df_group, bins_list_str = T.df_bin(df, 'temp', t_bins)
                 # exit()
             quantial_90_list = []
             x_list = []
@@ -1432,14 +1433,14 @@ class Optimal_temperature:
         outdir = join(self.this_class_tif,f'optimal_temperature')
         T.mk_dir(outdir,force=True)
         # fpath = join(self.this_class_arr,'optimal_temperature/NDVI-origin_step_0.5_celsius/NDVI-origin_step_0.5_celsius.npy')
-        fpath = join(self.this_class_arr,'optimal_temperature/TCSIF-origin_step_0.5_celsius/TCSIF-origin_step_0.5_celsius.npy')
+        fpath = join(self.this_class_arr,r"optimal_temperature\TCSIF-origin_step_0.5_celsius_Max-Temperature-origin\TCSIF-origin_step_0.5_celsius_Max-Temperature-origin.npy")
         spatial_dict = T.load_npy(fpath)
         spatial_dict_new = {}
         for pix in spatial_dict:
             val = spatial_dict[pix]
             # val = val + 273.15
             spatial_dict_new[pix] = val
-        outf = join(outdir,f'TCSIF-optimal_temperature.tif')
+        outf = join(outdir,f'TCSIF-origin_step_0.5_celsius_Max-Temperature-origin.tif')
         DIC_and_TIF().pix_dic_to_tif(spatial_dict_new,outf)
 
     def kernel_cal_opt_temp(self,params):
@@ -1985,7 +1986,7 @@ def main():
     # Water_energy_limited_area().run()
     # Water_energy_limited_area_daily().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
     # Pick_Heatwave_Events().run()
     # Pick_Drought_Events_SM().run()
     # Resistance_Resilience().run()
@@ -1993,7 +1994,7 @@ def main():
     # Net_effect_monthly().run()
     # Phenology().run()
     # Long_term_correlation().run()
-    # Optimal_temperature().run()
+    Optimal_temperature().run()
     # Optimal_temperature_monthly().run()
     # gen_world_grid_shp()
     pass

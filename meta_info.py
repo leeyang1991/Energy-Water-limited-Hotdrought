@@ -206,6 +206,13 @@ class Load_Data:
         var_name = 'NDVI3g-anomaly_detrend'
         return self.__load_data(data_path, path_type), var_name
 
+    def Max_Temperature_origin(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmx/per_pix/{year_range}')
+        path_type = 'dir'
+        var_name = 'Max-Temperature-origin'
+        valid_range = (-50,50)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
     def Temperature_origin(self,year_range=global_year_range):
         data_path = join(data_root, f'CRU_tmp/per_pix/{year_range}')
         path_type = 'dir'
@@ -306,7 +313,7 @@ class Load_Data:
         path_type = 'dir'
         var_name = 'VPD-origin'
         valid_range = (0,100)
-        return self.__load_data(data_path, path_type), var_name
+        return self.__load_data(data_path, path_type), var_name,valid_range
 
     def VPD_anomaly(self,year_range=global_year_range):
         data_path = join(data_root, 'VPD/anomaly', year_range)
