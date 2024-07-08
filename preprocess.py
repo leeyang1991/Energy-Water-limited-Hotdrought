@@ -813,6 +813,234 @@ class TMP:
         DIC_and_TIF().arr_to_tif(arr,outf)
         pass
 
+class TMX:
+    def __init__(self):
+        self.datadir = join(data_root,'CRU_tmx')
+        pass
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.check_per_pix()
+        # self.per_pix_1982_2020()
+        # self.per_pix_2007_2020()
+        # self.detrend()
+        # self.anomaly()
+        # self.anomaly_detrend()
+        # self.anomaly_juping()
+        # self.anomaly_juping_detrend()
+        # self.mean_annual_temperature()
+        self.max_annual_temperature()
+        pass
+
+    def nc_to_tif(self):
+        outdir = self.datadir + '/tif/'
+        T.mk_dir(outdir,force=True)
+        fdir = self.datadir + '/nc/'
+        fpath = join(fdir,'cru_ts4.08.1901.2023.tmx.dat.nc')
+        # print(year)
+        # exit()
+        ncin = Dataset(fpath, 'r')
+        ncin_xarr = xr.open_dataset(fpath)
+        # print(ncin.variables)
+        # exit()
+        lat = ncin['lat']
+        lon = ncin['lon']
+        pixelWidth = lon[1] - lon[0]
+        pixelHeight = lat[1] - lat[0]
+        pixelHeight = -pixelHeight
+        longitude_start = -180
+        latitude_start = 90
+        time = ncin.variables['time']
+
+        start = datetime.datetime(1900, 1, 1)
+        # print(time)
+        # for t in time:
+        #     print(t)
+        # exit()
+        flag = 0
+        for i in tqdm(range(len(time))):
+            # print(i)
+            flag += 1
+            # print(time[i])
+            date = start + datetime.timedelta(days=int(time[i]))
+            if date.year < 1982:
+                continue
+            year = str(date.year)
+            # exit()
+            month = '%02d' % date.month
+            day = '%02d'%date.day
+            date_str = year + month
+            newRasterfn = outdir + date_str + '.tif'
+            if os.path.isfile(newRasterfn):
+                continue
+            # print(date_str)
+            # exit()
+            # if not date_str[:4] in valid_year:
+            #     continue
+            # print(date_str)
+            # exit()
+            # arr = ncin.variables['tmax'][i]
+            arr = ncin_xarr['tmx'][i]
+            arr = np.array(arr)[::-1]
+            # print(arr)
+            # grid = arr < 99999
+            # arr[np.logical_not(grid)] = -999999
+            newRasterfn = outdir + date_str + '.tif'
+            ToRaster().array2raster(newRasterfn, longitude_start, latitude_start, pixelWidth, pixelHeight, arr)
+            # grid = np.ma.masked_where(grid>1000,grid)
+            # DIC_and_TIF().arr_to_tif(arr,newRasterfn)
+            # plt.imshow(arr,'RdBu')
+            # plt.colorbar()
+            # plt.show()
+            # nc_dic[date_str] = arr
+            # exit()
+
+    def per_pix_1982_2020(self):
+        year_range = '1982-2020'
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'per_pix',year_range)
+        start = 1982
+        end = 2020
+        T.mk_dir(outdir,force=True)
+        picked_flist = []
+        for f in T.listdir(fdir):
+            year = f[:4]
+            year = int(year)
+            if year < start or year > end:
+                continue
+            picked_flist.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,picked_flist)
+
+    def per_pix_2007_2020(self):
+        year_range = '2007-2020'
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'per_pix',year_range)
+        start = 2007
+        end = 2020
+        T.mk_dir(outdir,force=True)
+        picked_flist = []
+        for f in T.listdir(fdir):
+            year = f[:4]
+            year = int(year)
+            if year < start or year > end:
+                continue
+            picked_flist.append(f)
+        Pre_Process().data_transform_with_date_list(fdir,outdir,picked_flist)
+
+    def detrend(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'per_pix_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'detrend.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'anomaly',global_year_range)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+        pass
+
+    def anomaly_juping(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'anomaly_juping',global_year_range)
+        T.mk_dir(outdir,force=True)
+
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            spatial_dict_i = T.load_npy(fpath)
+            result_dict_i = {}
+            for pix in spatial_dict_i:
+                vals = spatial_dict_i[pix]
+                vals[vals<-999] = np.nan
+                if T.is_all_nan(vals):
+                    continue
+                pix_anomaly = Pre_Process().climatology_anomaly(vals)
+                result_dict_i[pix] = pix_anomaly
+            outf = join(outdir,f)
+            T.save_npy(result_dict_i,outf)
+        pass
+
+    def anomaly_juping_detrend(self):
+        fdir = join(self.datadir,'anomaly_juping',global_year_range)
+        outdir = join(self.datadir,'anomaly_juping_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'detrend.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def anomaly_detrend(self):
+        fdir = join(self.datadir,'anomaly',global_year_range)
+        outdir = join(self.datadir,'anomaly_detrend',global_year_range)
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'detrend.npy')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_detrend = T.detrend_dic(spatial_dict)
+        T.save_npy(spatial_dict_detrend,outf)
+
+    def check_per_pix(self):
+        # fdir = join(self.datadir, 'per_pix', year_range)
+        fdir = join(self.datadir, 'anomaly', global_year_range)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict1 = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            a,b,r,p = T.nan_line_fit(list(range(len(vals))),vals)
+            # vals = np.array(vals)
+            # vals[vals<-999] = np.nan
+            # if T.is_all_nan(vals):
+            #     continue
+            # spatial_dict1[pix] = np.mean(vals)
+            spatial_dict1[pix] = a
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict1)
+        plt.imshow(arr)
+        plt.show()
+        pass
+
+
+    def mean_annual_temperature(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'mat')
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'mat_gs.tif')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs)
+            vals_mean = np.nanmean(vals_gs)
+            spatial_dict_mean[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        pass
+
+
+    def max_annual_temperature(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'max_annual_temperature')
+        T.mk_dir(outdir,force=True)
+        # outf = join(outdir,'max_annual_temperature_gs.tif')
+        outf = join(outdir,'max_annual_temperature.tif')
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_mean = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            # vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs,method='max')
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=None,method='max')
+            vals_mean = np.nanmean(vals_gs)
+            spatial_dict_mean[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        pass
 
 class VPD:
     '''
@@ -2933,6 +3161,7 @@ def main():
     # SPEI().run()
     # SPI().run()
     # TMP().run()
+    TMX().run()
     # Precipitation().run()
     # VPD().run()
     # CCI_SM().run()
@@ -2958,7 +3187,7 @@ def main():
     # FAPAR().run()
     # Aridity_Index().run()
     # TCSIF().run()
-    Global_Ecological_Zone().run()
+    # Global_Ecological_Zone().run()
 
     pass
 
