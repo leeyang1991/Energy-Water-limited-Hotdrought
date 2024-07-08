@@ -1863,6 +1863,8 @@ class Drought_timing:
         # exit()
         # Dataframe
         # df = self.add_drought_season(df)
+        # df = self.add_VPD_anomaly_process(df)
+        # df = self.add_VPD_origin_process(df)
 
 
         # T.save_df(df, self.dff)
@@ -1885,7 +1887,10 @@ class Drought_timing:
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
-        self.GEZ_statistic()
+        # self.GEZ_statistic()
+        # self.VPD_delta_tif(df)
+        self.VPD_alleviation_excerbation()
+        # self.VPD_NDVI(df)
 
         pass
 
@@ -2848,8 +2853,248 @@ class Drought_timing:
         plt.savefig(outf)
         plt.close()
         # plt.show()
+        pass
+
+    def add_VPD_anomaly_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().VPD_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>10000] = np.nan
+            # NDVI[NDVI<0] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def add_radiation_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().VPD_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>10000] = np.nan
+            # NDVI[NDVI<0] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def add_VPD_origin_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().VPD_origin()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>10000] = np.nan
+            # NDVI[NDVI<0] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def VPD_delta_tif(self,df):
+        outdir = join(self.this_class_tif, 'VPD_delta')
+        T.mk_dir(outdir)
+        drought_season_list = global_drought_season_list
+        # print(df_season)
+        pix_list = T.get_df_unique_val_list(df, 'pix')
+        # print(len(pix_list))
+        drought_type_list = global_drought_type_list
+        col_name = 'VPD-origin_progress'
+        # col_name = 'VPD-anomaly_progress'
+        # drought_year_list = range(1, 5)
+        drought_year_list = [1]
+        for drought_year_i in drought_year_list:
+            df_group_dict = T.df_groupby(df, 'pix')
+            spatial_dict = {}
+            for pix in tqdm(pix_list):
+                df_pix = df_group_dict[pix]
+                df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                if len(df_hot) == 0 or len(df_normal) == 0:
+                    continue
+                NDVI_progress_hot = df_hot[col_name].tolist()
+                NDVI_progress_normal = df_normal[col_name].tolist()
+                mean_hot = np.nanmean(NDVI_progress_hot, axis=0)
+                mean_normal = np.nanmean(NDVI_progress_normal, axis=0)
+
+                mean_hot_reshape = np.array(mean_hot).reshape(-1, 6)
+                mean_normal_reshape = np.array(mean_normal).reshape(-1, 6)
+
+                mean_hot_drought_year = mean_hot_reshape[1:drought_year_i + 1]
+                mean_normal_drought_year = mean_normal_reshape[1:drought_year_i + 1]
+
+                mean_normal_drought_NDVI = np.nanmean(mean_normal_drought_year)
+                mean_hot_drought_NDVI = np.nanmean(mean_hot_drought_year)
+                delta = mean_hot_drought_NDVI - mean_normal_drought_NDVI
+                spatial_dict[pix] = delta
+            outf = join(outdir, f'{col_name}.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+
+    def VPD_alleviation_excerbation(self):
+        VPD_fpath = join(self.this_class_tif, 'VPD_delta', 'VPD_delta.tif')
+        # VPD_fpath = join(self.this_class_tif, 'VPD_delta', 'VPD-origin_progress.tif')
+        delta_fpath = join(self.this_class_tif, 'delta', 'delta.tif')
+
+        delta_dict = DIC_and_TIF().spatial_tif_to_dic(delta_fpath)
+        VPD_dict = DIC_and_TIF().spatial_tif_to_dic(VPD_fpath)
+
+        spatial_dicts = {
+            'VPD': VPD_dict,
+            'delta': delta_dict
+        }
+
+        df = T.spatial_dics_to_df(spatial_dicts)
+        df = Dataframe_func(df).df
+        T.print_head_n(df, 10)
+
+        # vpd_range = (-0.1, 0.5)
+        vpd_range = (-2, 2)
+        ELI_class_list = global_ELI_class_list
+        VPD_bins = np.linspace(vpd_range[0],vpd_range[1],50)
+        delta_bins = np.linspace(-2,2,40)
+        for ELI in ELI_class_list:
+            plt.figure()
+
+            df_ELI = df[df['ELI_class'] == ELI]
+            # df_ELI = df
+            # VPD_vals = df_ELI['VPD'].tolist()
+            # delta_vals = df_ELI['delta'].tolist()
+            VPD_vals = df_ELI['VPD'].tolist()
+            # plt.hist(VPD_vals, bins=VPD_bins, alpha=0.5, label=ELI)
+            # plt.twinx()
+            x_,y_ = Plot().plot_hist_smooth(VPD_vals, alpha=0,bins=100,range=vpd_range)
+            df_group, bins_list_str = T.df_bin(df_ELI,'VPD',VPD_bins)
+            x_list = []
+            y_list = []
+            err_list = []
+            for name,df_group_i in df_group:
+                x = name[0].left
+                vals = df_group_i['delta'].tolist()
+                mean = np.nanmean(vals)
+                std = np.nanstd(vals)
+                x_list.append(x)
+                y_list.append(mean)
+                err_list.append(std)
+            y_list = np.array(y_list)
+            err_list = np.array(err_list)
+            plt.title(ELI)
+            plt.plot(x_,y_)
+
+            plt.twinx()
+            plt.hlines(0,vpd_range[0],vpd_range[1],linestyles='dashed',colors='k')
+            plt.plot(x_list,y_list, label=ELI)
+            plt.fill_between(x_list,y_list-err_list,y_list+err_list,alpha=0.5)
+            plt.legend()
+        plt.show()
+
+        pass
 
 
+    def VPD_NDVI(self,df):
+
+        # VPD_name = 'VPD-origin_progress'
+        VPD_name = 'VPD-anomaly_progress'
+        NDVI_vals_list = []
+        VPD_vals_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            VPD_vals = row[VPD_name].tolist()
+            VPD_reshape = np.array(VPD_vals).reshape(-1, 6)
+            VPD_drought_year = VPD_reshape[1]
+
+            NDVI_vals = row['NDVI_progress'].tolist()
+            NDVI_reshape = np.array(NDVI_vals).reshape(-1, 6)
+            NDVI_drought_year = NDVI_reshape[1]
+
+            for VPD in VPD_drought_year:
+                VPD_vals_list.append(VPD)
+            for NDVI in NDVI_drought_year:
+                NDVI_vals_list.append(NDVI)
+        df_new = pd.DataFrame({'VPD':VPD_vals_list,'NDVI':NDVI_vals_list})
+        # plt.hist(VPD_vals_list,bins=40)
+        # plt.twinx()
+        # T.print_head_n(df_new,10)
+        # VPD_bins = np.linspace(0, 4, 40)
+        VPD_bins = np.linspace(-3, 3, 40)
+        # VPD_vals = df_new['VPD'].tolist()
+        df_group, bins_list_str = T.df_bin(df_new,'VPD',VPD_bins)
+
+        x_list = []
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            x = name[0].left
+            vals = df_group_i['NDVI'].tolist()
+            mean = np.nanmean(vals)
+            std = np.nanstd(vals)
+            x_list.append(x)
+            y_list.append(mean)
+            err_list.append(std)
+        y_list = np.array(y_list)
+        err_list = np.array(err_list)
+        plt.plot(x_list,y_list)
+        plt.fill_between(x_list,y_list-err_list,y_list+err_list,alpha=0.5)
+        # plt.legend()
+        plt.show()
         pass
 
 class Random_Forests:
