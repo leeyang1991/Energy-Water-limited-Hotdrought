@@ -1871,7 +1871,7 @@ class Drought_timing:
         # T.df_to_excel(df, self.dff)
 
         # statistic
-        # self.timing_trajectory(df)
+        self.timing_trajectory(df)
         # self.timing_trajectory_sm(df)
         # self.timing_trajectory_Tair(df)
         # self.delta_season_tif(df)
@@ -1889,7 +1889,7 @@ class Drought_timing:
         # self.delta_tif(df)
         # self.GEZ_statistic()
         # self.VPD_delta_tif(df)
-        self.VPD_alleviation_excerbation()
+        # self.VPD_alleviation_excerbation()
         # self.VPD_NDVI(df)
 
         pass
@@ -1933,6 +1933,10 @@ class Drought_timing:
             season = global_season_mon_dict[mon]
             season_list.append(season)
         df['drought_season'] = season_list
+        color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
 
         for timing in timing_list:
             for ELI_class in ELI_class_list:
@@ -1948,19 +1952,29 @@ class Drought_timing:
                     # NDVI_process_std = T.uncertainty_err_2d(NDVI_process,axis=0)
                     NDVI_process_mean = NDVI_process_mean[:3*6]
                     NDVI_process_std = NDVI_process_std[:3*6]
-                    plt.plot(NDVI_process_mean,label=f'{drt}')
-                    plt.fill_between(range(len(NDVI_process_mean)),NDVI_process_mean-NDVI_process_std,NDVI_process_mean+NDVI_process_std,alpha=0.3)
-                plt.legend()
+                    x_list = list(range(len(NDVI_process_mean)))
+                    x_list = np.array(x_list)
+                    x_list = np.insert(x_list,6,6.5)
+                    x_list = np.insert(x_list,13,12.5)
+
+                    NDVI_process_mean = np.insert(NDVI_process_mean,6,np.nan)
+                    NDVI_process_std = np.insert(NDVI_process_std,6,np.nan)
+                    NDVI_process_mean = np.insert(NDVI_process_mean,13,np.nan)
+                    NDVI_process_std = np.insert(NDVI_process_std,13,np.nan)
+                    plt.plot(x_list,NDVI_process_mean)
+                    plt.scatter(x_list,NDVI_process_mean,marker='o',s=10,c=color_dict[drt],zorder=10,alpha=0.5)
+                    plt.fill_between(x_list,NDVI_process_mean-NDVI_process_std,NDVI_process_mean+NDVI_process_std,alpha=0.3)
+                # plt.legend()
                 plt.title(f'{timing}\n{ELI_class}')
                 plt.ylim(-1.1,0.5)
-                plt.grid()
-                plt.xticks(list(range(len(NDVI_process_mean)))[::6],[-1,0,1])
+                # plt.grid()
+                # plt.xticks(list(range(len(NDVI_process_mean)))[::6],[-1,0,1])
                 fname = f'{timing}_{ELI_class}.pdf'
                 outf = join(outdir,fname)
                 plt.savefig(outf)
                 plt.close()
                 # plt.show()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
         pass
 
@@ -4628,7 +4642,7 @@ class Phenology_Statistic:
         pass
 
     def run(self):
-        # df = self.__gen_df_init()
+        df = self.__gen_df_init()
         # self.tif_SOS_EOS(df)
 
         # self.plot_tif_SOS_EOS()

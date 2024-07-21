@@ -7,252 +7,6 @@ from meta_info import *
 result_root_this_script = join(results_root, 'attribution')
 
 
-class SEM:
-
-    def __init__(self):
-        self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('SEM', result_root_this_script, mode=2)
-        self.dff = join(self.this_class_arr, 'dataframe/Dataframe.df')
-        pass
-
-    def run(self):
-        import statistic
-        # self.copy_df()
-        df = self.__gen_df_init()
-        df = self.filter_df(df)
-        # add NDVI anomaly
-        # NDVI_data_obj = Load_Data().NDVI_anomaly_detrend
-        # df = self.add_variables(df,NDVI_data_obj)
-
-        # add VPD anomaly
-        # VPD_data_obj = Load_Data().VPD_anomaly
-        # df = self.add_variables(df,VPD_data_obj)
-
-        # add T anomaly
-        # T_data_obj = Load_Data().Temperature_anomaly
-        # df = self.add_variables(df,T_data_obj)
-
-        # add T origin
-        # T_data_obj = Load_Data().Temperature_origin
-        # df = self.add_variables(df,T_data_obj)
-
-        # add srad
-        # srad_data_obj = Load_Data().Srad_anomaly
-        # df = self.add_variables(df,srad_data_obj)
-
-        # add ET
-        # ET_data_obj = Load_Data().GLEAM_Et_anomaly
-        # df = self.add_variables(df,ET_data_obj)
-
-        # add spring phenology
-        # df = self.add_SOS(df)
-
-        # add optimal temperature
-        # df = self.add_optimal_temperature(df)
-        # df = self.add_delta_optimal_temperature(df)
-
-        # df = statistic.Dataframe_func(df).df
-
-        T.save_df(df, self.dff)
-        T.df_to_excel(df, self.dff)
-
-        # self.pair_plot(df)
-        # self.build_model(df)
-
-
-        # self.check_variables(df)
-        # exit()
-
-        pass
-
-    def __gen_df_init(self):
-        if not os.path.isfile(self.dff):
-            df = pd.DataFrame()
-            T.save_df(df,self.dff)
-            return df
-        else:
-            df,dff = self.__load_df()
-            return df
-
-    def __load_df(self):
-        dff = self.dff
-        df = T.load_df(dff)
-        T.print_head_n(df)
-        print('len(df):',len(df))
-        return df,dff
-
-    def filter_df(self,df):
-        df = df[df['drought_scale']=='spi03']
-        return df
-
-    def copy_df(self):
-        import analysis
-        if isfile(self.dff):
-            print('already exists: ', self.dff)
-            print('press enter to overwrite')
-            pause()
-            pause()
-            pause()
-        T.mkdir(join(self.this_class_arr, 'dataframe'))
-        dff = join(analysis.Pick_Drought_Events().this_class_arr, 'drought_dataframe/drought_dataframe.df')
-        df = T.load_df(dff)
-        T.save_df(df,self.dff)
-        T.df_to_excel(df, self.dff)
-
-    def add_variables(self,df,data_obj):
-        # data_dict,var_name,valid_range = Load_Data().NDVI_anomaly_detrend()
-        data_dict,var_name,valid_range = data_obj()
-
-        vals_list = []
-        for i,row in tqdm(df.iterrows(),total=len(df)):
-            pix = row['pix']
-            year = row['drought_year']
-            if not pix in data_dict:
-                vals_list.append(np.nan)
-                continue
-            vals = data_dict[pix]
-            vals = np.array(vals)
-            if np.nanstd(vals) == 0:
-                vals_list.append(np.nan)
-                continue
-
-            vals[vals<valid_range[0]] = np.nan
-            vals[vals>valid_range[1]] = np.nan
-            # vals_reshape = np.reshape(vals,(-1,12))
-            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs)
-            val_drought_year = vals_gs[year-global_start_year]
-            vals_list.append(val_drought_year)
-
-        df[var_name] = vals_list
-        return df
-
-    def add_SOS(self,df):
-        import analysis
-        pheno_str = 'early_start'
-        fpath = join(analysis.Phenology().this_class_arr, 'phenology_df/phenology_df.df')
-        phenology_df = T.load_df(fpath)
-        cols = list(phenology_df.columns)
-        print(cols)
-        pheno_spatial_dict = {}
-        for i, row in phenology_df.iterrows():
-            pix = row['pix']
-            early_start = row[pheno_str]
-            early_start_dict = dict(early_start)
-            phenology_anomaly_dict = self.phenology_anomaly_dict(early_start_dict)
-            pheno_spatial_dict[pix] = phenology_anomaly_dict
-        pheno_val_list = []
-        for i,row in df.iterrows():
-            pix = row['pix']
-            year = row['drought_year']
-            if not pix in pheno_spatial_dict:
-                pheno_val_list.append(np.nan)
-                continue
-            if not year in pheno_spatial_dict[pix]:
-                pheno_val_list.append(np.nan)
-                continue
-            pheno_val = pheno_spatial_dict[pix][year]
-            if pheno_val > 20:
-                pheno_val_list.append(np.nan)
-                continue
-            if pheno_val < -20:
-                pheno_val_list.append(np.nan)
-                continue
-            pheno_val_list.append(pheno_val)
-        df['SOS_anomaly'] = pheno_val_list
-        return df
-
-    def phenology_anomaly_dict(self,phenology_dict):
-        vals = list(phenology_dict.values())
-        mean = np.nanmean(vals)
-        phenology_anomaly_dict = {}
-        for year in phenology_dict:
-            val = phenology_dict[year]
-            anomaly = val - mean
-            phenology_anomaly_dict[year] = anomaly
-        return phenology_anomaly_dict
-
-    def add_optimal_temperature(self,df):
-        import analysis
-        Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
-        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_f)
-        df = T.add_spatial_dic_to_df(df, spatial_dict, 'Topt')
-        # T.print_head_n(df)
-        return df
-
-    def add_delta_optimal_temperature(self,df):
-        df['delta_optimal_temp'] = df['Temperature-origin'] - df['Topt']
-        return df
-
-
-    def check_variables(self,df):
-        # col_name = 'NDVI-anomaly_detrend'
-        col_name = 'SOS_anomaly'
-        df = df.dropna(subset=[col_name])
-        DIC_and_TIF().plot_df_spatial_pix(df,global_land_tif)
-        plt.show()
-        print(len(df))
-        exit()
-        pass
-
-    def pair_plot(self,df):
-        outdir = join(self.this_class_png,'pair_plot')
-        T.mk_dir(outdir)
-        cols = [
-            'NDVI-anomaly_detrend',
-            'SOS_anomaly',
-            'Topt',
-            'VPD-anomaly',
-            'GLEAM-Et-anomaly',
-            'Radiation-anomaly',
-        ]
-        df = df.dropna(subset=cols)
-        sns.pairplot(df,vars=cols,kind='hist')
-        outf = join(outdir,'pair_plot.png')
-        plt.savefig(outf,dpi=300)
-        plt.close()
-        pass
-
-    def model_description(self):
-        desc = '''
-        # regression
-        NDVI_anomaly_detrend ~ SOS_anomaly + delta_optimal_temp + VPD_anomaly + GLEAM_Et_anomaly + Radiation_anomaly + Temperature_anomaly
-        SOS_anomaly ~ Radiation_anomaly + Temperature_anomaly
-        GLEAM_Et_anomaly ~ VPD_anomaly + SOS_anomaly + Radiation_anomaly + Temperature_anomaly
-        # residual correlations
-        '''
-        a='''
-        SOS_anomaly ~ Topt + Temperature-anomaly
-        GLEAM-Et-anomaly ~ VPD-anomaly + SOS_anomaly + Radiation-anomaly + Temperature-anomaly
-        '''
-        return desc
-
-    def build_model(self, df):
-        # exit()
-        drought_type_list = global_drought_type_list
-        AI_class_list = global_AI_class_list
-        season_list = global_drought_season_list
-        cols = df.columns
-        for col in cols:
-            col_new = col.replace('-', '_')
-            df[col_new] = df[col]
-        for season in season_list:
-            for drt in drought_type_list:
-                for AI_class in AI_class_list:
-                    # df_season = df[df['drought_season'] == season]
-                    df_season = df
-                    df_drt = df_season[df_season['drought_type'] == drt]
-                    df_AI = df_drt[df_drt['AI_class'] == AI_class]
-
-                    outdir = join(self.this_class_png,'model')
-                    T.mk_dir(outdir)
-                    # outf = join(outdir, f'{drt}_{AI_class}_{season}')
-                    outf = join(outdir, f'{drt}_{AI_class}')
-                    T.mk_dir(outf)
-                    desc = self.model_description()
-                    mod = semopy.Model(desc)
-                    res = mod.fit(df_AI)
-                    semopy.report(mod, outf)
-
 class MAT_Topt:
 
     def __init__(self):
@@ -876,6 +630,831 @@ class MAT_Topt1:
         return df
         pass
 
+class Attribution_Dataframe:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Attribution_Dataframe', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe', 'dataframe.df')
+        pass
+
+    def run(self):
+        self.copy_df()
+        df = self.__gen_df_init()
+
+        df = self.add_NDVI(df)
+        df = self.add_SOS(df)
+        df = self.add_VPD(df)
+        df = self.add_max_T(df)
+        df = self.add_Topt(df)
+        df = self.add_PAR(df)
+        df = self.add_srad(df)
+        df = self.add_T_anomaly(df)
+        df = self.add_delta_Topt_T(df)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+    def copy_df(self):
+        import statistic
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        if isfile(self.dff):
+            print('already exists: ', self.dff)
+            print('press enter to overwrite')
+            pause()
+            pause()
+            pause()
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        dff = join(statistic.Drought_timing().this_class_arr, r"Drought_timing.df")
+        df = T.load_df(dff)
+        T.save_df(df,self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def add_SOS(self,df):
+        import analysis
+        pheno_str = 'early_start'
+        fpath = join(analysis.Phenology().this_class_arr, 'phenology_df/phenology_df.df')
+        phenology_df = T.load_df(fpath)
+        cols = list(phenology_df.columns)
+        print(cols)
+        pheno_spatial_dict = {}
+        for i, row in phenology_df.iterrows():
+            pix = row['pix']
+            early_start = row[pheno_str]
+            early_start_dict = dict(early_start)
+            phenology_anomaly_dict = self.phenology_anomaly_dict(early_start_dict)
+            pheno_spatial_dict[pix] = phenology_anomaly_dict
+        pheno_val_list = []
+        for i,row in df.iterrows():
+            pix = row['pix']
+            year = row['drought_year']
+            if not pix in pheno_spatial_dict:
+                pheno_val_list.append(np.nan)
+                continue
+            if not year in pheno_spatial_dict[pix]:
+                pheno_val_list.append(np.nan)
+                continue
+            pheno_val = pheno_spatial_dict[pix][year]
+            pheno_val_list.append(pheno_val)
+        df['SOS'] = pheno_val_list
+        return df
+
+    def add_Topt(self,df):
+        import analysis
+        fpath = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/TCSIF-origin_step_0.5_celsius_Max-Temperature-origin.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'optimal_temp')
+        return df
+
+    def phenology_anomaly_dict(self,phenology_dict):
+        vals = list(phenology_dict.values())
+        mean = np.nanmean(vals)
+        phenology_anomaly_dict = {}
+        for year in phenology_dict:
+            val = phenology_dict[year]
+            anomaly = val - mean
+            phenology_anomaly_dict[year] = anomaly
+        return phenology_anomaly_dict
+
+    def add_VPD(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().VPD_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_max_T(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Temperature_origin()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmax(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'max_{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_PAR(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().FAPAR_anomaly_detrend()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_srad(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Srad_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_T_anomaly(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Temperature_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_delta_Topt_T(self,df):
+        delta = df['max_Temperature-origin'] - df['optimal_temp']
+        df['delta_Topt_T'] = delta
+        return df
+        pass
+
+    def add_NDVI(self, df):
+        # df = Load_dataframe()
+        vals_spatial_dict, data_name, valid_range = Load_Data().NDVI_anomaly_detrend()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals, dtype=float)
+            vals[vals > valid_range[1]] = np.nan
+            vals[vals < valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
+            vals_gs_dict = T.dict_zip(year_list, vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+
+
+class Random_forests:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Random_forests', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe', 'dataframe.df')
+        pass
+
+    def run(self):
+        self.copy_df()
+        df = self.__gen_df_init()
+
+        T.print_head_n(df)
+
+
+        # self.run_importance(df)
+        # self.plot_importance()
+
+        # self.run_partial_dependence_plots(df)
+        self.plot_PDP()
+
+        pass
+
+    def copy_df(self):
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        if isfile(self.dff):
+            print('already exists: ', self.dff)
+            print('press enter to overwrite')
+            pause()
+            pause()
+            pause()
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        dff = join(Attribution_Dataframe().this_class_arr,  'dataframe', 'dataframe.df')
+        df = T.load_df(dff)
+        T.save_df(df,self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+    def __variables_info(self):
+        # global_drought_type_list
+        # ['normal-drought', 'hot-drought']
+        # x_variables_dict = {
+        #     'normal-drought':[
+        #     ],
+        #     'hot-drought':[
+        #     ]
+        # }
+        x_list = [
+            'SOS',
+            'VPD-anomaly',
+            # 'Temperature-anomaly_detrend',
+            'Temperature-anomaly',
+            # 'FAPAR-anomaly_detrend',
+            'Radiation-anomaly',
+            'delta_Topt_T',
+            'drought_mon',
+        ]
+        y = 'NDVI-anomaly_detrend'
+        return x_list,y
+
+    def __variables_threshold(self):
+        variables_threshold_dict = {
+            'SOS':(-20,20),
+            'VPD-anomaly':(-3,3),
+            'Temperature-anomaly_detrend':(-3,3),
+            'Temperature-anomaly':(-3,3),
+            'FAPAR-anomaly_detrend':(-3,3),
+            'Radiation-anomaly':(-3,3),
+            'delta_Topt_T':(-10,10),
+            'drought_mon':(5,10),
+
+        }
+        return variables_threshold_dict
+
+
+    def run_importance(self,df):
+        outdir = join(self.this_class_arr,'importance')
+        T.mk_dir(outdir)
+        x_variables,y_variable = self.__variables_info()
+        df = df.dropna(subset=[y_variable])
+        df = df.dropna(subset=x_variables)
+        drought_type_list = global_drought_type_list
+        ELI_list = global_ELI_class_list
+        for ELI in ELI_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            # for drt in drought_type_list:
+            # df_drt = df_ELI[df_ELI['drought_type'] == drt]
+
+            X = df_ELI[x_variables]
+            Y = df_ELI[y_variable]
+            clf, importances_dic, mse, r_model, score, Y_test, y_pred = (
+                self._random_forest_train(X, Y, x_variables))
+            result_dic = {
+                'importances_dic':importances_dic,
+                'r_model':r_model,
+                'score':score,
+            }
+            # outf = join(outdir, f'{drt}_{ELI}.npy')
+            outf = join(outdir, f'{ELI}.npy')
+            T.save_npy(result_dic, outf)
+
+
+    def _random_forest_train(self, X, Y, variable_list):
+        '''
+        :param X: a dataframe of x variables
+        :param Y: a dataframe of y variable
+        :param variable_list: a list of x variables
+        :return: details of the random forest model and the importance of each variable
+        '''
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=1) # split the data into training and testing
+        clf = RandomForestRegressor(n_estimators=100, n_jobs=24) # build a random forest model
+        clf.fit(X_train, Y_train) # train the model
+        result = permutation_importance(clf, X_train, Y_train, scoring=None,
+                                        n_repeats=50, random_state=1,
+                                        n_jobs=1) # calculate the importance of each variable using permutation importance
+        importances = result.importances_mean # get the importance of each variable
+        importances_dic = dict(zip(variable_list, importances)) # put the importance of each variable into a dictionary
+        labels = []
+        importance = []
+        for key in variable_list:
+            labels.append(key)
+            importance.append(importances_dic[key])
+        y_pred = clf.predict(X_test) # predict the y variable using the testing data
+        r_model = stats.pearsonr(Y_test, y_pred)[0] # calculate the correlation between the predicted y variable and the actual y variable
+        mse = sklearn.metrics.mean_squared_error(Y_test, y_pred) # calculate the mean squared error
+        score = clf.score(X_test, Y_test) # calculate the R^2
+        return clf, importances_dic, mse, r_model, score, Y_test, y_pred
+
+    def plot_importance(self):
+        fdir = join(self.this_class_arr, 'importance')
+        # outdir = join(self.this_class_png, 'importance')
+        # T.mk_dir(outdir, force=True)
+        ELI_class_list = global_ELI_class_list
+        # season_list = global_drought_season_list
+        x_list = []
+        y_list = []
+        title_list = []
+        for ELI in ELI_class_list:
+            f = f'{ELI}.npy'
+            fpath = join(fdir, f)
+            result_dict = T.load_npy(fpath)
+            importances_dic = result_dict['importances_dic']
+            r_model = result_dict['r_model']
+            score = result_dict['score']
+            title = f'{f}\nR^2={score:.2f}, r={r_model:.2f}'
+            x = importances_dic.keys()
+            x = list(x)
+            y = [importances_dic[key] for key in x]
+            y_sort_index = np.argsort(y)
+            y_sort = [y[i] for i in y_sort_index]
+            x_sort = [x[i] for i in y_sort_index]
+            # print(x_sort)
+            # exit()
+            x_list.append(x_sort)
+            y_list.append(y_sort)
+            title_list.append(title)
+        y_list = np.array(y_list)
+        # print(y_list)
+        # print(x_list)
+        # exit()
+        # y_list_mean = np.nanmean(y_list,axis=0)
+        # sort
+        # y_list_mean_sort = np.argsort(y_list_mean)
+        # x_list_sort = [x_list[0][i] for i in y_list_mean_sort]
+        # flag = 0
+        for i in range(len(x_list)):
+            # plt.figure(figsize=(5 * centimeter_factor, 10 * centimeter_factor))
+            plt.figure()
+            print(x_list[i])
+            print(y_list[i])
+            plt.scatter(y_list[i],x_list[i],s=100,marker='o',c='k',linewidths=2,)
+            plt.title(title_list[i])
+            # flag += 1
+            # plt.xlim(0, 1)
+
+
+            # plt.title(f'{drt}')
+            # plt.legend()
+            # outf = join(outdir, f'{season}_{ELI_class_list[i]}.pdf')
+            plt.tight_layout()
+
+            # plt.savefig(outf, dpi=300)
+            # plt.close()
+        plt.show()
+
+    def run_partial_dependence_plots(self,df):
+        # fdir = join(Random_Forests_delta().this_class_arr, 'seasonal_delta')
+        outdir = join(self.this_class_arr, 'partial_dependence_plots')
+        T.mk_dir(outdir, force=True)
+        x_variable_list,y_variable = self.__variables_info()
+        ELI_class_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+        df = self.clean_df(df)
+
+        # for drt in drought_type_list:
+        #     df_drt = df[df['drought_type'] == drt]
+        for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class']==ELI]
+
+            result_dic = self.partial_dependence_plots(df_ELI, x_variable_list, y_variable)
+            # outf = join(outdir, f'{drt}_{ELI}.npy')
+            outf = join(outdir, f'{ELI}.npy')
+            T.save_npy(result_dic, outf)
+
+    def plot_PDP(self):
+        fdir = join(self.this_class_arr,'partial_dependence_plots')
+        outdir = join(self.this_class_png,'partial_dependence_plots')
+        T.mk_dir(outdir,force=True)
+        ELI_class_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+        for ELI in ELI_class_list:
+            # plt.figure(figsize=(7, 7))
+            # for drt in drought_type_list:
+            fpath = join(fdir,f'{ELI}.npy')
+
+            result_dict = T.load_npy(fpath)
+            flag = 1
+            for key in result_dict:
+                result_dict_i = result_dict[key]
+                x = result_dict_i['x']
+                y = result_dict_i['y']
+                y_std = result_dict_i['y_std']
+                plt.subplot(3,3,flag)
+                flag += 1
+                y = SMOOTH().smooth_convolve(y,window_len=5)
+                plt.plot(x,y,label=ELI)
+                # y_std = y_std / 4
+                # plt.fill_between(x,y-y_std,y+y_std,alpha=0.5)
+                # plt.legend()
+                # plt.ylim(-.5,.5)
+                plt.xlabel(key.replace('_vs_NDVI-anomaly_detrend_','\nsensitivity\n'))
+            plt.legend()
+            # plt.suptitle(ELI)
+
+            plt.tight_layout()
+            # outf = join(outdir,f'{season}.pdf')
+            # plt.savefig(outf,dpi=300)
+        plt.show()
+        # T.open_path_and_file(outdir)
+
+    def partial_dependence_plots(self,df,x_vars,y_var):
+        '''
+        :param df: a dataframe
+        :param x_vars: a list of x variables
+        :param y_var: a y variable
+        :return:
+        '''
+        all_vars = copy.copy(x_vars) # copy the x variables
+        all_vars.append(y_var) # add the y variable to the list
+        all_vars_df = df[all_vars] # get the dataframe with the x variables and the y variable
+        all_vars_df = all_vars_df.dropna() # drop rows with missing values
+        X = all_vars_df[x_vars]
+        Y = all_vars_df[y_var]
+        model, r2 = self.__train_model(X, Y) # train a Random Forests model
+        flag = 0
+        result_dic = {}
+        for var in x_vars:
+            flag += 1
+            df_PDP = self.__get_PDPvalues(var, X, model) # get the partial dependence plot values
+            ppx = df_PDP[var]
+            ppy = df_PDP['PDs']
+            ppy_std = df_PDP['PDs_std']
+            result_dic[var] = {'x':ppx,
+                               'y':ppy,
+                               'y_std':ppy_std,
+                               'r2':r2}
+        return result_dic
+
+    def __train_model(self,X,y):
+        '''
+        :param X: a dataframe of x variables
+        :param y: a dataframe of y variable
+        :return: a random forest model and the R^2
+        '''
+        # X_train, X_test, y_train, y_test = train_test_split(
+        #     X, y, random_state=1, test_size=0.0) # split the data into training and testing
+        rf = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=20) # build a random forest model
+        rf.fit(X, y) # train the model
+        # r2 = rf.score(X_test,y_test)
+        return rf,0.999
+
+    def __get_PDPvalues(self, col_name, data, model, grid_resolution=50):
+        '''
+        :param col_name: a variable
+        :param data: a dataframe of x variables
+        :param model: a random forest model
+        :param grid_resolution: the number of points in the partial dependence plot
+        :return: a dataframe of the partial dependence plot values
+        '''
+        Xnew = data.copy()
+        sequence = np.linspace(np.min(data[col_name]), np.max(data[col_name]), grid_resolution) # create a sequence of values
+        Y_pdp = []
+        Y_pdp_std = []
+        for each in sequence:
+            Xnew[col_name] = each
+            Y_temp = model.predict(Xnew)
+            Y_pdp.append(np.mean(Y_temp))
+            Y_pdp_std.append(np.std(Y_temp))
+        return pd.DataFrame({col_name: sequence, 'PDs': Y_pdp, 'PDs_std': Y_pdp_std})
+
+class SEM:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('SEM', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe/Dataframe.df')
+        pass
+
+    def run(self):
+        import statistic
+        # self.copy_df()
+        df = self.__gen_df_init()
+        df = self.filter_df(df)
+        # add NDVI anomaly
+        # NDVI_data_obj = Load_Data().NDVI_anomaly_detrend
+        # df = self.add_variables(df,NDVI_data_obj)
+
+        # add VPD anomaly
+        # VPD_data_obj = Load_Data().VPD_anomaly
+        # df = self.add_variables(df,VPD_data_obj)
+
+        # add T anomaly
+        # T_data_obj = Load_Data().Temperature_anomaly
+        # df = self.add_variables(df,T_data_obj)
+
+        # add T origin
+        # T_data_obj = Load_Data().Temperature_origin
+        # df = self.add_variables(df,T_data_obj)
+
+        # add srad
+        # srad_data_obj = Load_Data().Srad_anomaly
+        # df = self.add_variables(df,srad_data_obj)
+
+        # add ET
+        # ET_data_obj = Load_Data().GLEAM_Et_anomaly
+        # df = self.add_variables(df,ET_data_obj)
+
+        # add spring phenology
+        # df = self.add_SOS(df)
+
+        # add optimal temperature
+        # df = self.add_optimal_temperature(df)
+        # df = self.add_delta_optimal_temperature(df)
+
+        # df = statistic.Dataframe_func(df).df
+
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+        # self.pair_plot(df)
+        # self.build_model(df)
+
+
+        # self.check_variables(df)
+        # exit()
+
+        pass
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+    def filter_df(self,df):
+        df = df[df['drought_scale']=='spi03']
+        return df
+
+    def copy_df(self):
+        import analysis
+        if isfile(self.dff):
+            print('already exists: ', self.dff)
+            print('press enter to overwrite')
+            pause()
+            pause()
+            pause()
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        dff = join(analysis.Pick_Drought_Events().this_class_arr, 'drought_dataframe/drought_dataframe.df')
+        df = T.load_df(dff)
+        T.save_df(df,self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def add_variables(self,df,data_obj):
+        # data_dict,var_name,valid_range = Load_Data().NDVI_anomaly_detrend()
+        data_dict,var_name,valid_range = data_obj()
+
+        vals_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            year = row['drought_year']
+            if not pix in data_dict:
+                vals_list.append(np.nan)
+                continue
+            vals = data_dict[pix]
+            vals = np.array(vals)
+            if np.nanstd(vals) == 0:
+                vals_list.append(np.nan)
+                continue
+
+            vals[vals<valid_range[0]] = np.nan
+            vals[vals>valid_range[1]] = np.nan
+            # vals_reshape = np.reshape(vals,(-1,12))
+            vals_gs = T.monthly_vals_to_annual_val(vals,grow_season=global_gs)
+            val_drought_year = vals_gs[year-global_start_year]
+            vals_list.append(val_drought_year)
+
+        df[var_name] = vals_list
+        return df
+
+    def add_SOS(self,df):
+        import analysis
+        pheno_str = 'early_start'
+        fpath = join(analysis.Phenology().this_class_arr, 'phenology_df/phenology_df.df')
+        phenology_df = T.load_df(fpath)
+        cols = list(phenology_df.columns)
+        print(cols)
+        pheno_spatial_dict = {}
+        for i, row in phenology_df.iterrows():
+            pix = row['pix']
+            early_start = row[pheno_str]
+            early_start_dict = dict(early_start)
+            phenology_anomaly_dict = self.phenology_anomaly_dict(early_start_dict)
+            pheno_spatial_dict[pix] = phenology_anomaly_dict
+        pheno_val_list = []
+        for i,row in df.iterrows():
+            pix = row['pix']
+            year = row['drought_year']
+            if not pix in pheno_spatial_dict:
+                pheno_val_list.append(np.nan)
+                continue
+            if not year in pheno_spatial_dict[pix]:
+                pheno_val_list.append(np.nan)
+                continue
+            pheno_val = pheno_spatial_dict[pix][year]
+            if pheno_val > 20:
+                pheno_val_list.append(np.nan)
+                continue
+            if pheno_val < -20:
+                pheno_val_list.append(np.nan)
+                continue
+            pheno_val_list.append(pheno_val)
+        df['SOS_anomaly'] = pheno_val_list
+        return df
+
+    def phenology_anomaly_dict(self,phenology_dict):
+        vals = list(phenology_dict.values())
+        mean = np.nanmean(vals)
+        phenology_anomaly_dict = {}
+        for year in phenology_dict:
+            val = phenology_dict[year]
+            anomaly = val - mean
+            phenology_anomaly_dict[year] = anomaly
+        return phenology_anomaly_dict
+
+    def add_optimal_temperature(self,df):
+        import analysis
+        Topt_f = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/LT_Baseline_NT_origin_step_0.5_celsius_resample.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_f)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'Topt')
+        # T.print_head_n(df)
+        return df
+
+    def add_delta_optimal_temperature(self,df):
+        df['delta_optimal_temp'] = df['Temperature-origin'] - df['Topt']
+        return df
+
+
+    def check_variables(self,df):
+        # col_name = 'NDVI-anomaly_detrend'
+        col_name = 'SOS_anomaly'
+        df = df.dropna(subset=[col_name])
+        DIC_and_TIF().plot_df_spatial_pix(df,global_land_tif)
+        plt.show()
+        print(len(df))
+        exit()
+        pass
+
+    def pair_plot(self,df):
+        outdir = join(self.this_class_png,'pair_plot')
+        T.mk_dir(outdir)
+        cols = [
+            'NDVI-anomaly_detrend',
+            'SOS_anomaly',
+            'Topt',
+            'VPD-anomaly',
+            'GLEAM-Et-anomaly',
+            'Radiation-anomaly',
+        ]
+        df = df.dropna(subset=cols)
+        sns.pairplot(df,vars=cols,kind='hist')
+        outf = join(outdir,'pair_plot.png')
+        plt.savefig(outf,dpi=300)
+        plt.close()
+        pass
+
+    def model_description(self):
+        desc = '''
+        # regression
+        NDVI_anomaly_detrend ~ SOS_anomaly + delta_optimal_temp + VPD_anomaly + GLEAM_Et_anomaly + Radiation_anomaly + Temperature_anomaly
+        SOS_anomaly ~ Radiation_anomaly + Temperature_anomaly
+        GLEAM_Et_anomaly ~ VPD_anomaly + SOS_anomaly + Radiation_anomaly + Temperature_anomaly
+        # residual correlations
+        '''
+        a='''
+        SOS_anomaly ~ Topt + Temperature-anomaly
+        GLEAM-Et-anomaly ~ VPD-anomaly + SOS_anomaly + Radiation-anomaly + Temperature-anomaly
+        '''
+        return desc
+
+    def build_model(self, df):
+        # exit()
+        drought_type_list = global_drought_type_list
+        AI_class_list = global_AI_class_list
+        season_list = global_drought_season_list
+        cols = df.columns
+        for col in cols:
+            col_new = col.replace('-', '_')
+            df[col_new] = df[col]
+        for season in season_list:
+            for drt in drought_type_list:
+                for AI_class in AI_class_list:
+                    # df_season = df[df['drought_season'] == season]
+                    df_season = df
+                    df_drt = df_season[df_season['drought_type'] == drt]
+                    df_AI = df_drt[df_drt['AI_class'] == AI_class]
+
+                    outdir = join(self.this_class_png,'model')
+                    T.mk_dir(outdir)
+                    # outf = join(outdir, f'{drt}_{AI_class}_{season}')
+                    outf = join(outdir, f'{drt}_{AI_class}')
+                    T.mk_dir(outf)
+                    desc = self.model_description()
+                    mod = semopy.Model(desc)
+                    res = mod.fit(df_AI)
+                    semopy.report(mod, outf)
+
 def copy_files():
     f = join(this_root,"conf\land_reproj.tif")
     print(isfile(f))
@@ -883,10 +1462,14 @@ def copy_files():
     shutil.copyfile(f,dest_f)
     pass
 
+
+
 def main():
     # SEM().run()
     # MAT_Topt().run()
-    MAT_Topt1().run()
+    # MAT_Topt1().run()
+    Attribution_Dataframe().run()
+    # Random_forests().run()
     # copy_files()
     pass
 

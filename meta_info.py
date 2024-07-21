@@ -238,7 +238,8 @@ class Load_Data:
         data_path = join(data_root, f'CRU_tmp/anomaly_detrend/{year_range}')
         path_type = 'dir'
         var_name = 'Temperature-anomaly_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def Temperature_anomaly_juping_detrend(self,year_range=global_year_range):
         data_path = join(data_root, f'CRU_tmp/anomaly_juping_detrend/{year_range}')
@@ -306,7 +307,8 @@ class Load_Data:
         data_path = join(data_root, f'FAPAR/anomaly_detrend/{year_range}')
         path_type = 'dir'
         var_name = 'FAPAR-anomaly_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def VPD_origin(self,year_range=global_year_range):
         data_path = join(data_root, 'VPD/perpix', year_range)
