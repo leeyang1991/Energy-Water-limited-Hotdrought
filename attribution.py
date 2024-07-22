@@ -3,6 +3,8 @@ import shutil
 
 import matplotlib.pyplot as plt
 import semopy
+import shap
+import xgboost as xgb
 from meta_info import *
 result_root_this_script = join(results_root, 'attribution')
 
@@ -638,18 +640,19 @@ class Attribution_Dataframe:
         pass
 
     def run(self):
-        self.copy_df()
+        # self.copy_df()
         df = self.__gen_df_init()
 
-        df = self.add_NDVI(df)
-        df = self.add_SOS(df)
-        df = self.add_VPD(df)
-        df = self.add_max_T(df)
-        df = self.add_Topt(df)
-        df = self.add_PAR(df)
-        df = self.add_srad(df)
-        df = self.add_T_anomaly(df)
-        df = self.add_delta_Topt_T(df)
+        # df = self.add_NDVI(df)
+        # df = self.add_SOS(df)
+        # df = self.add_VPD(df)
+        # df = self.add_max_T(df)
+        # df = self.add_Topt(df)
+        # df = self.add_PAR(df)
+        # df = self.add_srad(df)
+        # df = self.add_T_anomaly(df)
+        df = self.add_detrend_T_anomaly(df)
+        # df = self.add_delta_Topt_T(df)
         T.save_df(df, self.dff)
         T.df_to_excel(df, self.dff)
 
@@ -668,6 +671,49 @@ class Attribution_Dataframe:
         T.print_head_n(df)
         print('len(df):',len(df))
         return df,dff
+
+    def variables_info(self):
+        x_list = [
+            'SOS',
+            'VPD-anomaly',
+            'Temperature-anomaly_detrend',
+            # 'Temperature-anomaly',
+            # 'FAPAR-anomaly_detrend',
+            'Radiation-anomaly',
+            'delta_Topt_T',
+            'drought_mon',
+        ]
+        y = 'NDVI-anomaly_detrend'
+        return x_list,y
+
+    def variables_threshold(self):
+        variables_threshold_dict = {
+            'SOS':(-20,20),
+            'VPD-anomaly':(-3,3),
+            'Temperature-anomaly_detrend':(-3,3),
+            'Temperature-anomaly':(-3,3),
+            'FAPAR-anomaly_detrend':(-3,3),
+            'Radiation-anomaly':(-3,3),
+            'delta_Topt_T':(-10,10),
+            'drought_mon':(5,10),
+            'NDVI-anomaly_detrend':(-3,3),
+
+        }
+        return variables_threshold_dict
+
+    def clean_df(self,df):
+        delta_threshold_dict = self.variables_threshold()
+        x_variables,y_variable = self.variables_info()
+        for key in x_variables:
+            left,right = delta_threshold_dict[key]
+            print(key,(left,right))
+            df = df[df[key]>=left]
+            df = df[df[key]<=right]
+        y_left,y_right = delta_threshold_dict[y_variable]
+        df = df[df[y_variable]>=y_left]
+        df = df[df[y_variable]<=y_right]
+
+        return df
 
     def copy_df(self):
         import statistic
@@ -860,6 +906,32 @@ class Attribution_Dataframe:
         df[f'{data_name}'] = vals_drought_year_mean_list
         return df
 
+    def add_detrend_T_anomaly(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Temperature_anomaly_detrend()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
     def add_delta_Topt_T(self,df):
         delta = df['max_Temperature-origin'] - df['optimal_temp']
         df['delta_Topt_T'] = delta
@@ -909,7 +981,7 @@ class Random_forests:
         T.print_head_n(df)
 
 
-        # self.run_importance(df)
+        self.run_importance(df)
         # self.plot_importance()
 
         # self.run_partial_dependence_plots(df)
@@ -947,47 +1019,12 @@ class Random_forests:
         print('len(df):',len(df))
         return df,dff
 
-    def __variables_info(self):
-        # global_drought_type_list
-        # ['normal-drought', 'hot-drought']
-        # x_variables_dict = {
-        #     'normal-drought':[
-        #     ],
-        #     'hot-drought':[
-        #     ]
-        # }
-        x_list = [
-            'SOS',
-            'VPD-anomaly',
-            # 'Temperature-anomaly_detrend',
-            'Temperature-anomaly',
-            # 'FAPAR-anomaly_detrend',
-            'Radiation-anomaly',
-            'delta_Topt_T',
-            'drought_mon',
-        ]
-        y = 'NDVI-anomaly_detrend'
-        return x_list,y
-
-    def __variables_threshold(self):
-        variables_threshold_dict = {
-            'SOS':(-20,20),
-            'VPD-anomaly':(-3,3),
-            'Temperature-anomaly_detrend':(-3,3),
-            'Temperature-anomaly':(-3,3),
-            'FAPAR-anomaly_detrend':(-3,3),
-            'Radiation-anomaly':(-3,3),
-            'delta_Topt_T':(-10,10),
-            'drought_mon':(5,10),
-
-        }
-        return variables_threshold_dict
-
 
     def run_importance(self,df):
         outdir = join(self.this_class_arr,'importance')
         T.mk_dir(outdir)
-        x_variables,y_variable = self.__variables_info()
+        x_variables,y_variable = Attribution_Dataframe().variables_info()
+        df = Attribution_Dataframe().clean_df(df)
         df = df.dropna(subset=[y_variable])
         df = df.dropna(subset=x_variables)
         drought_type_list = global_drought_type_list
@@ -1098,17 +1135,17 @@ class Random_forests:
         # fdir = join(Random_Forests_delta().this_class_arr, 'seasonal_delta')
         outdir = join(self.this_class_arr, 'partial_dependence_plots')
         T.mk_dir(outdir, force=True)
-        x_variable_list,y_variable = self.__variables_info()
+        x_variables, y_variable = Attribution_Dataframe().variables_info()
+        df = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
         drought_type_list = global_drought_type_list
-        df = self.clean_df(df)
 
         # for drt in drought_type_list:
         #     df_drt = df[df['drought_type'] == drt]
         for ELI in ELI_class_list:
             df_ELI = df[df['ELI_class']==ELI]
 
-            result_dic = self.partial_dependence_plots(df_ELI, x_variable_list, y_variable)
+            result_dic = self.partial_dependence_plots(df_ELI, x_variables, y_variable)
             # outf = join(outdir, f'{drt}_{ELI}.npy')
             outf = join(outdir, f'{ELI}.npy')
             T.save_npy(result_dic, outf)
@@ -1208,6 +1245,327 @@ class Random_forests:
             Y_pdp.append(np.mean(Y_temp))
             Y_pdp_std.append(np.std(Y_temp))
         return pd.DataFrame({col_name: sequence, 'PDs': Y_pdp, 'PDs_std': Y_pdp_std})
+
+class SHAP:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('SHAP', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe', 'dataframe.df')
+        pass
+
+    def run(self):
+        # self.copy_df()
+        # df = self.__gen_df_init()
+        # self.pdp_shap(df)
+        # self.plot_pdp_shap_result_line()
+        self.plot_pdp_shap_result_scatter()
+        pass
+
+    def copy_df(self):
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        if isfile(self.dff):
+            print('already exists: ', self.dff)
+            print('press enter to overwrite')
+            pause()
+            pause()
+            pause()
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
+        dff = join(Attribution_Dataframe().this_class_arr,  'dataframe', 'dataframe.df')
+        df = T.load_df(dff)
+        T.save_df(df,self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+    def pdp_shap(self,df):
+
+        x_variables,y_variable = Attribution_Dataframe().variables_info()
+        df = Attribution_Dataframe().clean_df(df)
+        ELI_class_list = global_ELI_class_list
+        for ELI in ELI_class_list:
+            outdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            # outf = join(outdir,self.y_variable)
+            T.mk_dir(outdir, force=True)
+            df_ELI = df[df['ELI_class']==ELI]
+
+            X = df_ELI[x_variables]
+            Y = df_ELI[y_variable]
+            model,y,y_pred = self.__train_model(X, Y)  # train a Random Forests model
+            imp_dict_xgboost = {}
+            for i in range(len(x_variables)):
+                imp_dict_xgboost[x_variables[i]] = model.feature_importances_[i]
+            sorted_imp = sorted(imp_dict_xgboost.items(), key=lambda x: x[1], reverse=True)
+            imp_dict_outf = join(outdir, 'shaply_imp_xgboost')
+            T.save_npy(imp_dict_xgboost, imp_dict_outf)
+            x_ = []
+            y_ = []
+            for key, value in sorted_imp:
+                x_.append(key)
+                y_.append(value)
+            explainer = shap.TreeExplainer(model)
+            y_base = explainer.expected_value
+            print('y_base', y_base)
+            print('y_mean', np.mean(y))
+            shap_values = explainer(X)
+            imp_dict = self.__feature_importances_shap_values(shap_values, x_variables)
+            outf_impdict_shap = join(outdir, 'shaply_imp_dict')
+            T.save_npy(imp_dict, outf_impdict_shap)
+
+            outf_shap_values = join(outdir, 'shaply_shap_values')
+            T.save_dict_to_binary(shap_values, outf_shap_values)
+            # T.save_npy(shap_values, outf_shap_values)
+
+    def plot_pdp_shap_result_line(self):
+        ELI_class_list = global_ELI_class_list
+        for ELI in ELI_class_list:
+
+            fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
+            T.mk_dir(outdir, force=True)
+            imp_dict_fpath = join(fdir, 'shaply_imp_dict.npy')
+            shap_values_fpath = join(fdir, 'shaply_shap_values.pkl')
+            shap_values = T.load_dict_from_binary(shap_values_fpath)
+            # exit()
+            imp_dict = T.load_npy(imp_dict_fpath)
+            x_list = []
+            y_list = []
+            for key in imp_dict.keys():
+                x_list.append(key)
+                y_list.append(imp_dict[key])
+
+
+            flag = 1
+            plt.figure(figsize=(18 * centimeter_factor, 9 * centimeter_factor))
+            for x_var in x_list:
+                print(x_var)
+                shap_values_mat = shap_values[:, x_var]
+                outf_i = join(outdir, f'shaply_{x_var}')
+                # T.save_npy(shap_values_mat, outf_i)
+                data_i = shap_values_mat.data
+                value_i = shap_values_mat.values
+                df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i})
+                # df_i_random = df_i.sample(n=len(df_i) // 2)
+                # df_i = df_i_random
+
+                # x_variable_range_dict = self.x_variable_range_dict
+                # start,end = x_variable_range_dict[x_var]
+                if not x_var == 'drought_mon':
+                    start, end = Attribution_Dataframe().variables_threshold()[x_var]
+                    bins = np.linspace(start, end, 50)
+                    df_group, bins_list_str = T.df_bin(df_i, x_var, bins)
+                    y_mean_list = []
+                    x_mean_list = []
+                    y_err_list = []
+                    scatter_x_list = df_i[x_var].tolist()
+                    scatter_y_list = df_i['shap_v'].tolist()
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                else:
+                    x_unique = df_i[x_var].unique()
+                    x_unique = list(x_unique)
+                    x_unique.sort()
+                    y_vals_list = []
+                    for x_i in x_unique:
+                        y_i = df_i[df_i[x_var] == x_i]['shap_v'].tolist()
+                        y_vals_list.append(y_i)
+                plt.subplot(2, 3, flag)
+                # print(data_i[0])
+                # exit()
+                # interp_model = interpolate.interp1d(x_mean_list, y_mean_list, kind='cubic')
+                # y_interp = interp_model(x_mean_list)
+                if x_var == 'drought_mon':
+                    plt.boxplot(y_vals_list, positions=x_unique, showfliers=False, showmeans=False)
+                    pass
+                else:
+                    y_mean_list = SMOOTH().smooth_convolve(y_mean_list, window_len=7)
+                    plt.plot(x_mean_list, y_mean_list, c='red', alpha=1)
+                    # plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
+
+                plt.xlabel(x_var)
+                flag += 1
+                plt.ylim(-0.6, 0.6)
+                # plt.show()
+
+
+            # plt.suptitle(y_variable)
+            plt.tight_layout()
+            # plt.show()
+            outf = join(outdir, 'shaply.pdf')
+            # outf = join(outdir, 'shaply.png')
+            plt.savefig(outf, dpi=300)
+            plt.close()
+            pass
+
+
+    def plot_pdp_shap_result_scatter(self):
+        ELI_class_list = global_ELI_class_list
+        for ELI in ELI_class_list:
+
+            fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
+            T.mk_dir(outdir, force=True)
+            imp_dict_fpath = join(fdir, 'shaply_imp_dict.npy')
+            shap_values_fpath = join(fdir, 'shaply_shap_values.pkl')
+            shap_values = T.load_dict_from_binary(shap_values_fpath)
+            # exit()
+            imp_dict = T.load_npy(imp_dict_fpath)
+            x_list = []
+            y_list = []
+            for key in imp_dict.keys():
+                x_list.append(key)
+                y_list.append(imp_dict[key])
+
+            flag = 1
+            for x_var in x_list:
+                print(x_var)
+                plt.figure(figsize=(12 * centimeter_factor, 6 * centimeter_factor))
+
+                shap_values_mat = shap_values[:, x_var]
+                outf_i = join(outdir, f'shaply_{x_var}')
+                # T.save_npy(shap_values_mat, outf_i)
+                data_i = shap_values_mat.data
+                value_i = shap_values_mat.values
+                df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i})
+                # df_i_random = df_i.sample(n=len(df_i) // 2)
+                # df_i = df_i_random
+
+                # x_variable_range_dict = self.x_variable_range_dict
+                # start,end = x_variable_range_dict[x_var]
+                if not x_var == 'drought_mon':
+                    start, end = Attribution_Dataframe().variables_threshold()[x_var]
+                    bins = np.linspace(start, end, 50)
+                    df_group, bins_list_str = T.df_bin(df_i, x_var, bins)
+                    y_mean_list = []
+                    x_mean_list = []
+                    y_err_list = []
+                    scatter_x_list = df_i[x_var].tolist()
+                    scatter_y_list = df_i['shap_v'].tolist()
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                else:
+                    x_unique = df_i[x_var].unique()
+                    x_unique = list(x_unique)
+                    x_unique.sort()
+                    y_vals_list = []
+                    for x_i in x_unique:
+                        y_i = df_i[df_i[x_var] == x_i]['shap_v'].tolist()
+                        y_vals_list.append(y_i)
+                # plt.subplot(2, 3, flag)
+                # print(data_i[0])
+                # exit()
+                # interp_model = interpolate.interp1d(x_mean_list, y_mean_list, kind='cubic')
+                # y_interp = interp_model(x_mean_list)
+                if x_var == 'drought_mon':
+                    # plt.boxplot(y_vals_list, positions=x_unique, showfliers=False, showmeans=False)
+                    pass
+                else:
+                    y_mean_list = SMOOTH().smooth_convolve(y_mean_list, window_len=7)
+                    # plt.plot(x_mean_list, y_mean_list, c='red', alpha=1)
+                    plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
+
+                plt.xlabel(x_var)
+                flag += 1
+                plt.ylim(-0.6, 0.6)
+                plt.title(f'{x_var}')
+                outf = join(outdir, f'{x_var}.png')
+                plt.savefig(outf, dpi=900)
+                plt.close()
+            pass
+
+    def __feature_importances_shap_values(self,shap_values, features):
+        '''
+        Prints the feature importances based on SHAP values in an ordered way
+        shap_values -> The SHAP values calculated from a shap.Explainer object
+        features -> The name of the features, on the order presented to the explainer
+        '''
+        # Calculates the feature importance (mean absolute shap value) for each feature
+        importances = []
+        for i in range(shap_values.values.shape[1]):
+            importances.append(np.mean(np.abs(shap_values.values[:, i])))
+        # Calculates the normalized version
+        # importances_norm = softmax(importances)
+        # Organize the importances and columns in a dictionary
+        feature_importances = {fea: imp for imp, fea in zip(importances, features)}
+        # feature_importances_norm = {fea: imp for imp, fea in zip(importances_norm, features)}
+        # Sorts the dictionary
+        feature_importances = {k: v for k, v in
+                               sorted(feature_importances.items(), key=lambda item: item[1], reverse=True)}
+        # feature_importances_norm = {k: v for k, v in
+        #                             sorted(feature_importances_norm.items(), key=lambda item: item[1], reverse=True)}
+        # Prints the feature importances
+        # for k, v in feature_importances.items():
+        #     print(f"{k} -> {v:.4f} (softmax = {feature_importances_norm[k]:.4f})")
+
+        return feature_importances
+        # return feature_importances_norm
+
+
+    def __train_model(self,X,y):
+        from sklearn.model_selection import train_test_split
+        '''
+        :param X: a dataframe of x variables
+        :param y: a dataframe of y variable
+        :return: a random forest model and the R^2
+        '''
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, random_state=1, test_size=0.3) # split the data into training and testing
+        # model = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=7,) # build a random forest model
+        # rf.fit(X_train, y_train) # train the model
+        # r2 = rf.score(X_test,y_test)
+        model = xgb.XGBRegressor(objective="reg:squarederror",booster='gbtree',n_estimators=100,
+                                 max_depth=13,eta=0.05,random_state=42,n_jobs=24)
+        # model = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=12)
+        model.fit(X_train, y_train)
+        # model.fit(X_train, y_train)
+        # Get predictions
+        y_pred = model.predict(X_test)
+        # plt.scatter(y_test, y_pred)
+        # plt.show()
+        r = stats.pearsonr(y_test, y_pred)
+        r2 = r[0] ** 2
+        print('r2:', r2)
+        # exit()
+
+        return model,y,y_pred
 
 class SEM:
 
@@ -1468,8 +1826,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    Attribution_Dataframe().run()
+    # Attribution_Dataframe().run()
     # Random_forests().run()
+    SHAP().run()
     # copy_files()
     pass
 
