@@ -647,14 +647,16 @@ class Attribution_Dataframe:
         # df = self.add_SOS(df)
         # df = self.add_VPD(df)
         # df = self.add_max_T(df)
+        # df = self.add_mean_T(df)
         # df = self.add_Topt(df)
         # df = self.add_PAR(df)
         # df = self.add_srad(df)
         # df = self.add_T_anomaly(df)
-        df = self.add_detrend_T_anomaly(df)
+        # df = self.add_detrend_T_anomaly(df)
         # df = self.add_delta_Topt_T(df)
-        T.save_df(df, self.dff)
-        T.df_to_excel(df, self.dff)
+        # T.save_df(df, self.dff)
+        # T.df_to_excel(df, self.dff)
+        self.check_variable(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -676,8 +678,8 @@ class Attribution_Dataframe:
         x_list = [
             'SOS',
             'VPD-anomaly',
-            'Temperature-anomaly_detrend',
-            # 'Temperature-anomaly',
+            # 'Temperature-anomaly_detrend',
+            'Temperature-anomaly',
             # 'FAPAR-anomaly_detrend',
             'Radiation-anomaly',
             'delta_Topt_T',
@@ -761,7 +763,7 @@ class Attribution_Dataframe:
 
     def add_Topt(self,df):
         import analysis
-        fpath = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/TCSIF-origin_step_0.5_celsius_Max-Temperature-origin.tif')
+        fpath = join(analysis.Optimal_temperature().this_class_tif,'optimal_temperature/TCSIF-optimal_temperature.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
         df = T.add_spatial_dic_to_df(df, spatial_dict, 'optimal_temp')
         return df
@@ -826,6 +828,32 @@ class Attribution_Dataframe:
             vals_drought_year_mean = np.nanmax(vals_drought_year)
             vals_drought_year_mean_list.append(vals_drought_year_mean)
         df[f'max_{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_mean_T(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Temperature_origin()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'mean_{data_name}'] = vals_drought_year_mean_list
         return df
 
     def add_PAR(self,df):
@@ -964,7 +992,19 @@ class Attribution_Dataframe:
         df[f'{data_name}'] = vals_drought_year_mean_list
         return df
 
-
+    def check_variable(self,df):
+        T.print_head_n(df, 10)
+        df_pix_dict = T.df_groupby(df, 'pix')
+        spatial_dict = {}
+        for pix in df_pix_dict:
+            df_pix = df_pix_dict[pix]
+            delta_Topt_T = df_pix['delta_Topt_T'].tolist()[0]
+            spatial_dict[pix] = delta_Topt_T
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        plt.imshow(arr,interpolation='nearest',vmin=-5,vmax=5,cmap='RdBu_r')
+        plt.colorbar()
+        plt.show()
+        pass
 
 class Random_forests:
 
@@ -975,17 +1015,17 @@ class Random_forests:
         pass
 
     def run(self):
-        self.copy_df()
+        # self.copy_df()
         df = self.__gen_df_init()
 
-        T.print_head_n(df)
+        # T.print_head_n(df)
 
 
-        self.run_importance(df)
-        # self.plot_importance()
+        # self.run_importance(df)
+        self.plot_importance()
 
         # self.run_partial_dependence_plots(df)
-        self.plot_PDP()
+        # self.plot_PDP()
 
         pass
 
@@ -1076,8 +1116,8 @@ class Random_forests:
 
     def plot_importance(self):
         fdir = join(self.this_class_arr, 'importance')
-        # outdir = join(self.this_class_png, 'importance')
-        # T.mk_dir(outdir, force=True)
+        outdir = join(self.this_class_png, 'importance')
+        T.mk_dir(outdir, force=True)
         ELI_class_list = global_ELI_class_list
         # season_list = global_drought_season_list
         x_list = []
@@ -1124,12 +1164,12 @@ class Random_forests:
 
             # plt.title(f'{drt}')
             # plt.legend()
-            # outf = join(outdir, f'{season}_{ELI_class_list[i]}.pdf')
+            outf = join(outdir, f'{ELI_class_list[i]}.pdf')
             plt.tight_layout()
 
-            # plt.savefig(outf, dpi=300)
-            # plt.close()
-        plt.show()
+            plt.savefig(outf, dpi=300)
+            plt.close()
+        # plt.show()
 
     def run_partial_dependence_plots(self,df):
         # fdir = join(Random_Forests_delta().this_class_arr, 'seasonal_delta')
@@ -1256,10 +1296,11 @@ class SHAP:
 
     def run(self):
         # self.copy_df()
-        # df = self.__gen_df_init()
-        # self.pdp_shap(df)
-        # self.plot_pdp_shap_result_line()
+        df = self.__gen_df_init()
+        self.pdp_shap(df)
+        self.plot_pdp_shap_result_line()
         self.plot_pdp_shap_result_scatter()
+        self.plot_importances()
         pass
 
     def copy_df(self):
@@ -1445,7 +1486,7 @@ class SHAP:
             flag = 1
             for x_var in x_list:
                 print(x_var)
-                plt.figure(figsize=(12 * centimeter_factor, 6 * centimeter_factor))
+                plt.figure(figsize=(9 * centimeter_factor, 6 * centimeter_factor))
 
                 shap_values_mat = shap_values[:, x_var]
                 outf_i = join(outdir, f'shaply_{x_var}')
@@ -1510,6 +1551,33 @@ class SHAP:
                 plt.savefig(outf, dpi=900)
                 plt.close()
             pass
+
+    def plot_importances(self):
+        ELI_class_list = global_ELI_class_list
+
+        for ELI in ELI_class_list:
+            plt.figure()
+
+            imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
+            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_xgboost.npy')
+            imp_dict = T.load_npy(imp_dict_fpath)
+
+            x_list = []
+            y_list = []
+            for key in imp_dict.keys():
+                x_list.append(key)
+                y_list.append(imp_dict[key])
+
+            plt.bar(x_list, y_list)
+            print(x_list)
+            # plt.title(f'R2_{R2}')
+            plt.xticks(rotation=90)
+            plt.title(ELI)
+
+            plt.tight_layout()
+        plt.show()
+
+        pass
 
     def __feature_importances_shap_values(self,shap_values, features):
         '''
@@ -1827,8 +1895,8 @@ def main():
     # MAT_Topt().run()
     # MAT_Topt1().run()
     # Attribution_Dataframe().run()
-    # Random_forests().run()
-    SHAP().run()
+    Random_forests().run()
+    # SHAP().run()
     # copy_files()
     pass
 
