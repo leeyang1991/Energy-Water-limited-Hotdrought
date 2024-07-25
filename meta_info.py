@@ -187,6 +187,13 @@ class Load_Data:
         valid_range = (0,10000)
         return self.__load_data(data_path, path_type), var_name,valid_range
 
+    def NDVI_anomaly_with_trend(self,year_range=global_year_range):
+        data_path = join(data_root, 'NDVI4g/per_pix_anomaly', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI-anomaly_with_trend'
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name,valid_range
+
     def NDVI_anomaly_detrend(self,year_range=global_year_range):
         data_path = join(data_root, 'NDVI4g/per_pix_anomaly_detrend', year_range)
         path_type = 'dir'

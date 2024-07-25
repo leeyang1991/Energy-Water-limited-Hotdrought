@@ -644,6 +644,7 @@ class Attribution_Dataframe:
         df = self.__gen_df_init()
 
         # df = self.add_NDVI(df)
+        # df = self.add_NDVI_with_trend(df)
         # df = self.add_SOS(df)
         # df = self.add_VPD(df)
         # df = self.add_max_T(df)
@@ -656,7 +657,9 @@ class Attribution_Dataframe:
         # df = self.add_delta_Topt_T(df)
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
-        self.check_variable(df)
+        # self.check_variable(df)
+        # self.check_Topt_vs_ndvi(df)
+        self.plot_variables(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -699,6 +702,7 @@ class Attribution_Dataframe:
             'delta_Topt_T':(-10,10),
             'drought_mon':(5,10),
             'NDVI-anomaly_detrend':(-3,3),
+            'NDVI-anomaly_with_trend':(-3,3),
 
         }
         return variables_threshold_dict
@@ -708,7 +712,7 @@ class Attribution_Dataframe:
         x_variables,y_variable = self.variables_info()
         for key in x_variables:
             left,right = delta_threshold_dict[key]
-            print(key,(left,right))
+            # print(key,(left,right))
             df = df[df[key]>=left]
             df = df[df[key]<=right]
         y_left,y_right = delta_threshold_dict[y_variable]
@@ -992,6 +996,32 @@ class Attribution_Dataframe:
         df[f'{data_name}'] = vals_drought_year_mean_list
         return df
 
+    def add_NDVI_with_trend(self, df):
+        # df = Load_dataframe()
+        vals_spatial_dict, data_name, valid_range = Load_Data().NDVI_anomaly_with_trend()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals, dtype=float)
+            vals[vals > valid_range[1]] = np.nan
+            vals[vals < valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
+            vals_gs_dict = T.dict_zip(year_list, vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
     def check_variable(self,df):
         T.print_head_n(df, 10)
         df_pix_dict = T.df_groupby(df, 'pix')
@@ -1004,6 +1034,50 @@ class Attribution_Dataframe:
         plt.imshow(arr,interpolation='nearest',vmin=-5,vmax=5,cmap='RdBu_r')
         plt.colorbar()
         plt.show()
+        pass
+
+    def check_Topt_vs_ndvi(self,df):
+        df = self.clean_df(df)
+        ELI_class_list = global_ELI_class_list
+        for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            delta_Topt_T = df_ELI['delta_Topt_T'].tolist()
+            NDVI_anomaly_detrend = df_ELI['NDVI-anomaly_detrend'].tolist()
+            NDVI_anomaly_detrend = df_ELI['NDVI-anomaly_with_trend'].tolist()
+            KDE_plot().plot_scatter(delta_Topt_T,NDVI_anomaly_detrend)
+            plt.title(f'{ELI}')
+            plt.show()
+
+        pass
+
+    def plot_variables(self,df):
+        df = df[df['drought_type']=='hot-drought']
+        # df = df[df['drought_type']=='normal-drought']
+        df_pix_dict = T.df_groupby(df, 'pix')
+        # col = 'delta_Topt_T'
+        # col = 'NDVI-anomaly_with_trend'
+        # col = 'NDVI-anomaly_detrend'
+        # col = 'Temperature-anomaly_detrend'
+        # col = 'VPD-anomaly'
+        col = 'mean_Temperature-origin'
+        spatial_dict = {}
+        for pix in tqdm(df_pix_dict):
+            df_pix = df_pix_dict[pix]
+            vals = df_pix[col].tolist()
+            vals_mean = np.nanmean(vals)
+            spatial_dict[pix] = vals_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        arr_flatten = arr.flatten()
+        plt.hist(arr_flatten,bins=100)
+        plt.figure()
+        plt.imshow(arr,interpolation='nearest',cmap='RdBu_r') # temperature origin
+        # plt.imshow(arr,interpolation='nearest',cmap='RdBu_r',vmin=-1,vmax=1) # temperature vpd
+        # plt.imshow(arr,interpolation='nearest',cmap='RdBu',vmin=-1,vmax=1) # ndvi
+        # plt.imshow(arr,interpolation='nearest',cmap='RdBu_r',vmin=-5,vmax=5) # delta_Topt_T
+        plt.colorbar()
+        plt.title(f'{col}')
+        plt.show()
+
         pass
 
 class Random_forests:
@@ -1297,10 +1371,10 @@ class SHAP:
     def run(self):
         # self.copy_df()
         df = self.__gen_df_init()
-        self.pdp_shap(df)
-        self.plot_pdp_shap_result_line()
-        self.plot_pdp_shap_result_scatter()
-        self.plot_importances()
+        # self.pdp_shap(df)
+        # self.plot_pdp_shap_result_line()
+        self.plot_pdp_shap_result_scatter(df)
+        # self.plot_importances()
         pass
 
     def copy_df(self):
@@ -1465,9 +1539,12 @@ class SHAP:
             pass
 
 
-    def plot_pdp_shap_result_scatter(self):
+    def plot_pdp_shap_result_scatter(self,df):
+        df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
         for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            print('len(df_ELI):',len(df_ELI))
 
             fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
             outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
@@ -1492,6 +1569,8 @@ class SHAP:
                 outf_i = join(outdir, f'shaply_{x_var}')
                 # T.save_npy(shap_values_mat, outf_i)
                 data_i = shap_values_mat.data
+                print('data_i',len(data_i))
+                exit()
                 value_i = shap_values_mat.values
                 df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i})
                 # df_i_random = df_i.sample(n=len(df_i) // 2)
@@ -1894,8 +1973,8 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    # Attribution_Dataframe().run()
-    Random_forests().run()
+    Attribution_Dataframe().run()
+    # Random_forests().run()
     # SHAP().run()
     # copy_files()
     pass
