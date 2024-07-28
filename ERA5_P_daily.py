@@ -1,6 +1,7 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
 from lytools import *
+from pprint import pprint
 T = Tools()
 this_root = '/home/liyang/Desktop/disk/Precip_cv_trend/'
 data_root = this_root + 'data/'
@@ -19,7 +20,9 @@ class ERA5_P:
         # self.plot_extreme_events_trend()
         # self.cal_dry_days()
         # self.cal_dry_days_trend()
-        self.plot_dry_days_trend()
+        # self.plot_dry_days_trend()
+        # self.composite_to_biweekly_26()
+        self.composite_to_biweekly_24()
 
     def cal_cv(self):
         fdir = join(self.datadir,'precip_transform')
@@ -226,6 +229,83 @@ class ERA5_P:
         plt.show()
         pass
 
+    def composite_to_biweekly_26(self):
+        fdir = join(self.datadir,'precip_transform')
+        outdir = join(self.datadir,'biweekly_perpix_26')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            # if not '005' in f:
+            #     continue
+            outf = join(outdir,f)
+            fpath = join(fdir,f)
+            spatial_dict_i = T.load_npy(fpath)
+            spatial_dict_biweekly = {}
+            for pix in spatial_dict_i:
+                vals = spatial_dict_i[pix]
+                vals = np.array(vals)
+                vals_flatten = vals.flatten()
+                if T.is_all_nan(vals_flatten):
+                    continue
+                all_year_vals = []
+                for daily_vals in vals:
+                    # biweekly_vals = []
+                    for i in range(0,len(daily_vals),14):
+                        if not len(daily_vals[i:i+14])==14:
+                            continue
+                        all_year_vals.append(np.nansum(daily_vals[i:i+14]))
+                all_year_vals = np.array(all_year_vals)
+                spatial_dict_biweekly[pix] = all_year_vals
+            T.save_npy(spatial_dict_biweekly,outf)
+        pass
+
+    def composite_to_biweekly_24(self):
+        fdir = join(self.datadir,'precip_transform')
+        outdir = join(self.datadir,'biweekly_perpix_24')
+        T.mk_dir(outdir)
+        date_list = []
+        base_date = datetime.datetime(2001,1,1)
+        for i in range(365):
+            date_i = base_date + datetime.timedelta(days=i)
+            date_list.append(date_i)
+        date_group_dict = {}
+        # for mon in range(1,13):
+
+        for i, date in enumerate(date_list):
+            mon = date.month
+            day = date.day
+            if day <= 15:
+                if not (mon,1) in date_group_dict:
+                    date_group_dict[(mon,1)] = []
+                date_group_dict[(mon, 1)].append(i)
+            else:
+                if not (mon, 16) in date_group_dict:
+                    date_group_dict[(mon, 16)] = []
+                date_group_dict[(mon, 16)].append(i)
+
+        for f in tqdm(T.listdir(fdir)):
+            # if not '005' in f:
+            #     continue
+            outf = join(outdir,f)
+            fpath = join(fdir,f)
+            spatial_dict_i = T.load_npy(fpath)
+            spatial_dict_biweekly = {}
+            for pix in spatial_dict_i:
+                vals = spatial_dict_i[pix]
+                vals = np.array(vals)
+                vals_flatten = vals.flatten()
+                if T.is_all_nan(vals_flatten):
+                    continue
+                all_year_vals = []
+                for year_val in vals:
+                    for date_group in date_group_dict:
+                        indx = date_group_dict[date_group]
+                        vals_pick = year_val[indx]
+                        vals_sum = np.nansum(vals_pick)
+                        all_year_vals.append(vals_sum)
+                all_year_vals = np.array(all_year_vals)
+                spatial_dict_biweekly[pix] = all_year_vals
+            T.save_npy(spatial_dict_biweekly,outf)
+        pass
 
 class CRU:
 
@@ -272,8 +352,8 @@ class CRU:
         pass
 
 def main():
-    # ERA5_P().run()
-    CRU().run()
+    ERA5_P().run()
+    # CRU().run()
     pass
 
 if __name__ == '__main__':
