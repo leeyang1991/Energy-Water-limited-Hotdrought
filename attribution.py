@@ -1370,10 +1370,12 @@ class SHAP:
 
     def run(self):
         # self.copy_df()
-        df = self.__gen_df_init()
+        # df = self.__gen_df_init()
         # self.pdp_shap(df)
         # self.plot_pdp_shap_result_line()
-        self.plot_pdp_shap_result_scatter(df)
+        # self.plot_pdp_shap_result_scatter(df)
+        # self.pdp_shap_split_df(df)
+        self.plot_pdp_shap_split_df()
         # self.plot_importances()
         pass
 
@@ -1542,12 +1544,16 @@ class SHAP:
     def plot_pdp_shap_result_scatter(self,df):
         df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
+        drought_type_color_dict = global_drought_type_color_dict
         for ELI in ELI_class_list:
-            df_ELI = df[df['ELI_class'] == ELI]
-            print('len(df_ELI):',len(df_ELI))
+            df_ELI = df_clean[df_clean['ELI_class'] == ELI]
+            T.print_head_n(df_ELI)
+            drought_type_list = df_ELI['drought_type'].tolist()
+
 
             fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
             outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
+            # outdir = join(self.this_class_png, 'pdp_shap_split', str(ELI))
             T.mk_dir(outdir, force=True)
             imp_dict_fpath = join(fdir, 'shaply_imp_dict.npy')
             shap_values_fpath = join(fdir, 'shaply_shap_values.pkl')
@@ -1569,10 +1575,10 @@ class SHAP:
                 outf_i = join(outdir, f'shaply_{x_var}')
                 # T.save_npy(shap_values_mat, outf_i)
                 data_i = shap_values_mat.data
-                print('data_i',len(data_i))
-                exit()
+                # print('data_i',len(data_i))
+                # exit()
                 value_i = shap_values_mat.values
-                df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i})
+                df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i, 'drought_type': drought_type_list})
                 # df_i_random = df_i.sample(n=len(df_i) // 2)
                 # df_i = df_i_random
 
@@ -1587,6 +1593,11 @@ class SHAP:
                     y_err_list = []
                     scatter_x_list = df_i[x_var].tolist()
                     scatter_y_list = df_i['shap_v'].tolist()
+                    drought_type_list_i = df_i['drought_type'].tolist()
+                    color_list = []
+                    for drought_type_i in drought_type_list_i:
+                        color_i = drought_type_color_dict[drought_type_i]
+                        color_list.append(color_i)
                     for name, df_group_i in df_group:
                         x_i = name[0].left
                         # print(x_i)
@@ -1620,16 +1631,109 @@ class SHAP:
                 else:
                     y_mean_list = SMOOTH().smooth_convolve(y_mean_list, window_len=7)
                     # plt.plot(x_mean_list, y_mean_list, c='red', alpha=1)
-                    plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
+                    # plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
+                    plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c=color_list, marker='.', s=1, zorder=-1)
 
                 plt.xlabel(x_var)
                 flag += 1
                 plt.ylim(-0.6, 0.6)
                 plt.title(f'{x_var}')
                 outf = join(outdir, f'{x_var}.png')
+                # plt.show()
                 plt.savefig(outf, dpi=900)
                 plt.close()
             pass
+
+    def pdp_shap_split_df(self,df):
+        outdir = join(self.this_class_arr, 'pdp_shap_split')
+        df_clean = Attribution_Dataframe().clean_df(df)
+        ELI_class_list = global_ELI_class_list
+        drought_type_color_dict = global_drought_type_color_dict
+        for ELI in ELI_class_list:
+            df_ELI = df_clean[df_clean['ELI_class'] == ELI]
+            T.print_head_n(df_ELI)
+            drought_type_list = df_ELI['drought_type'].tolist()
+
+            fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            outdir_i = join(outdir, str(ELI))
+            # outdir = join(self.this_class_png, 'pdp_shap_split', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            imp_dict_fpath = join(fdir, 'shaply_imp_dict.npy')
+            shap_values_fpath = join(fdir, 'shaply_shap_values.pkl')
+            shap_values = T.load_dict_from_binary(shap_values_fpath)
+            # exit()
+            imp_dict = T.load_npy(imp_dict_fpath)
+            x_list = []
+            y_list = []
+            for key in imp_dict.keys():
+                x_list.append(key)
+                y_list.append(imp_dict[key])
+
+            for x_var in tqdm(x_list,desc=f'{ELI}'):
+
+                shap_values_mat = shap_values[:, x_var]
+                outf_i = join(outdir_i, f'shaply_{x_var}.df')
+                data_i = shap_values_mat.data
+                value_i = shap_values_mat.values
+                df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i, 'drought_type': drought_type_list})
+                T.save_df(df_i, outf_i)
+                T.df_to_excel(df_i, outf_i)
+            pass
+
+    def plot_pdp_shap_split_df(self):
+        fdir = join(self.this_class_arr, 'pdp_shap_split')
+        drt_list = global_drought_type_list
+
+        for ELI in global_ELI_class_list:
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'pdp_shap_split', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 50)
+
+                for drt in drt_list:
+                    df_i = df[df['drought_type'] == drt]
+                    df_group, bins_list_str = T.df_bin(df_i, var_name, bins)
+                    # T.print_head_n(df)
+                    x_mean_list = []
+                    y_mean_list = []
+                    y_err_list = []
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                    plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
+                    x_vals = df_i[var_name].tolist()
+                    y_vals = df_i['shap_v'].tolist()
+                    color = global_drought_type_color_dict[drt]
+                    if drt == 'hot-drought':
+                        zorder = 2
+                    else:
+                        zorder = 1
+                    plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
+                    # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
+                plt.legend()
+                plt.title(f'{ELI}\n{var_name}')
+
+                plt.savefig(join(outdir_i, f'{var_name}.png'))
+                plt.close()
 
     def plot_importances(self):
         ELI_class_list = global_ELI_class_list
@@ -1973,9 +2077,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    Attribution_Dataframe().run()
+    # Attribution_Dataframe().run()
     # Random_forests().run()
-    # SHAP().run()
+    SHAP().run()
     # copy_files()
     pass
 
