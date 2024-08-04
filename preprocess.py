@@ -26,8 +26,9 @@ class GIMMS_NDVI:
         # self.per_pix_biweekly()
         # self.check_per_pix_biweekly()
         # self.per_pix_anomaly()
-        self.per_pix_anomaly_detrend()
-        self.per_pix_anomaly_detrend_GS()
+        # self.per_pix_anomaly_detrend()
+        # self.per_pix_anomaly_detrend_GS()
+        self.per_pix_percentage()
         pass
 
     def resample(self):
@@ -124,6 +125,43 @@ class GIMMS_NDVI:
             spatial_dict_gs[pix] = vals_gs
         outf = join(outdir,'GS_mean.npy')
         T.save_npy(spatial_dict_gs,outf)
+
+    def per_pix_percentage(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'per_pix_percentage',global_year_range)
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_percentage = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals_percentage = self.climatology_percentage(vals)
+            spatial_dict_percentage[pix] = vals_percentage
+        outf = join(outdir,'vals_percentage.npy')
+        T.save_npy(spatial_dict_percentage,outf)
+
+    def climatology_percentage(self, vals):
+        '''
+        percentage
+        :param vals:
+        :return:
+        '''
+        pix_percentage = []
+        climatology_means = []
+        for m in range(1, 13):
+            one_mon = []
+            for i in range(len(vals)):
+                mon = i % 12 + 1
+                if mon == m:
+                    one_mon.append(vals[i])
+            mean = np.nanmean(one_mon)
+            climatology_means.append(mean)
+        for i in range(len(vals)):
+            mon = i % 12
+            mean_ = climatology_means[mon]
+            percentage = vals[i] / mean_ * 100 - 100
+            pix_percentage.append(percentage)
+        pix_percentage = np.array(pix_percentage)
+        return pix_percentage
 
 
 class SPEI:
@@ -3208,7 +3246,7 @@ class IPCC_cliamte_zone:
         pass
 
 def main():
-    # GIMMS_NDVI().run()
+    GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
@@ -3239,7 +3277,7 @@ def main():
     # Aridity_Index().run()
     # TCSIF().run()
     # Global_Ecological_Zone().run()
-    IPCC_cliamte_zone().run()
+    # IPCC_cliamte_zone().run()
 
     pass
 
