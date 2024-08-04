@@ -681,8 +681,8 @@ class Attribution_Dataframe:
         x_list = [
             'SOS',
             'VPD-anomaly',
-            # 'Temperature-anomaly_detrend',
-            'Temperature-anomaly',
+            'Temperature-anomaly_detrend',
+            # 'Temperature-anomaly',
             # 'FAPAR-anomaly_detrend',
             'Radiation-anomaly',
             'delta_Topt_T',
@@ -1375,7 +1375,9 @@ class SHAP:
         # self.plot_pdp_shap_result_line()
         # self.plot_pdp_shap_result_scatter(df)
         # self.pdp_shap_split_df(df)
-        self.plot_pdp_shap_split_df()
+        # self.plot_pdp_shap_split_df_scatter()
+        # self.plot_pdp_shap_split_df_line()
+        self.plot_pdp_shap_split_df_drought_mon()
         # self.plot_importances()
         pass
 
@@ -1645,7 +1647,7 @@ class SHAP:
             pass
 
     def pdp_shap_split_df(self,df):
-        outdir = join(self.this_class_arr, 'pdp_shap_split')
+        outdir = join(self.this_class_arr, 'pdp_shap_split1')
         df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
         drought_type_color_dict = global_drought_type_color_dict
@@ -1680,13 +1682,71 @@ class SHAP:
                 T.df_to_excel(df_i, outf_i)
             pass
 
-    def plot_pdp_shap_split_df(self):
-        fdir = join(self.this_class_arr, 'pdp_shap_split')
+    def plot_pdp_shap_split_df_scatter(self):
+        fdir = join(self.this_class_arr, 'pdp_shap_split1')
         drt_list = global_drought_type_list
 
         for ELI in global_ELI_class_list:
             fdir_i = join(fdir, str(ELI))
-            outdir_i = join(self.this_class_png, 'pdp_shap_split', str(ELI))
+            outdir_i = join(self.this_class_png, 'pdp_shap_split_df_scatter1', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 50)
+
+                for drt in drt_list:
+                    df_i = df[df['drought_type'] == drt]
+                    df_group, bins_list_str = T.df_bin(df_i, var_name, bins)
+                    # T.print_head_n(df)
+                    x_mean_list = []
+                    y_mean_list = []
+                    y_err_list = []
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                    # plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
+                    x_vals = df_i[var_name].tolist()
+                    y_vals = df_i['shap_v'].tolist()
+                    color = global_drought_type_color_dict[drt]
+                    if drt == 'hot-drought':
+                        zorder = 2
+                    else:
+                        zorder = 1
+                    plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
+                    # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
+                # plt.legend()
+                plt.title(f'{ELI}\n{var_name}')
+                # plt.xlim(start, end)
+                plt.ylim(-0.6, 0.6)
+                # plt.show()
+
+                plt.savefig(join(outdir_i, f'{var_name}.png'))
+                plt.close()
+
+    def plot_pdp_shap_split_df_line(self):
+        fdir = join(self.this_class_arr, 'pdp_shap_split1')
+        drt_list = global_drought_type_list
+
+        for ELI in global_ELI_class_list:
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'pdp_shap_split_df_scatter1', str(ELI))
             T.mk_dir(outdir_i, force=True)
             for f in T.listdir(fdir_i):
                 if not f.endswith('.df'):
@@ -1727,13 +1787,56 @@ class SHAP:
                         zorder = 2
                     else:
                         zorder = 1
-                    plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
+                    # plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
                     # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
-                plt.legend()
+                # plt.legend()
                 plt.title(f'{ELI}\n{var_name}')
+                # plt.xlim(start, end)
+                plt.ylim(-0.6, 0.6)
+                # plt.show()
 
-                plt.savefig(join(outdir_i, f'{var_name}.png'))
+                plt.savefig(join(outdir_i, f'{var_name}.pdf'))
                 plt.close()
+
+    def plot_pdp_shap_split_df_drought_mon(self):
+        fdir = join(self.this_class_arr, 'pdp_shap_split1')
+        drt_list = global_drought_type_list
+
+        for ELI in global_ELI_class_list:
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'pdp_shap_split_df_scatter1', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                if not var_name == 'drought_mon':
+                    continue
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 50)
+
+                for drt in drt_list:
+                    df_i = df[df['drought_type'] == drt]
+                    df_group, bins_list_str = T.df_bin(df_i, var_name, bins)
+                    x_unique = df_i[var_name].unique()
+                    x_unique = list(x_unique)
+                    x_unique.sort()
+                    y_vals_list = []
+                    for x_i in x_unique:
+                        y_i = df_i[df_i[var_name] == x_i]['shap_v'].tolist()
+                        y_vals_list.append(y_i)
+                    plt.boxplot(y_vals_list, positions=x_unique, showfliers=False, showmeans=False)
+                    # plt.show()
+                    plt.title(f'{ELI}\n{var_name}\n{drt}')
+                    # plt.xlim(start, end)
+                    plt.ylim(-0.6, 0.6)
+                    # plt.show()
+
+                    plt.savefig(join(outdir_i, f'{var_name}_{drt}.pdf'))
+                    plt.close()
 
     def plot_importances(self):
         ELI_class_list = global_ELI_class_list
