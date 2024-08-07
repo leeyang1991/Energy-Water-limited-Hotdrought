@@ -24,11 +24,11 @@ class MAT_Topt:
         # self.delta_temp_vs_compensation()
         # self.compensation_excerbation_delta()
         # self.compensation_excerbation_MAT_AI()
-        # self.compensation_excerbation_MAT_MAP()
+        self.compensation_excerbation_MAT_MAP()
         # self.pairplot()
         # self.hist_plot()
-        self.opt_mat_drought_temp_matrix()
-        self.delta_tif()
+        # self.opt_mat_drought_temp_matrix()
+        # self.delta_tif()
         pass
 
 
@@ -220,12 +220,12 @@ class MAT_Topt:
         # exit()
         # df = df.dropna(how='any')
         bins_Topt_MAT_delta = np.arange(-5,36,1)
-        bins_MAP = np.arange(0,1501,50)
+        bins_MAP = np.arange(0,4001,100)
         col_name = 'compensation_excerbation'
         df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df,'MAT',bins_Topt_MAT_delta)
         # plt.figure(figsize=(10*centimeter_factor,11*centimeter_factor))
         # plt.figure(figsize=(10*centimeter_factor,11*centimeter_factor))
-        plt.figure(figsize=(16*centimeter_factor,18*centimeter_factor))
+        # plt.figure(figsize=(16*centimeter_factor,18*centimeter_factor))
         for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
             y_pos = name_Topt_MAT_delta[0].left
             df_group_MAP, bins_list_str_MAP = T.df_bin(df_group_i_Topt_MAT_delta,'MAP',bins_MAP)
@@ -237,7 +237,7 @@ class MAT_Topt:
                 if T.is_all_nan(vals):
                     continue
                 mean = np.nanmean(vals)
-                plt.scatter(x_pos,y_pos,s=40,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
+                plt.scatter(y_pos,x_pos,s=40,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
                 # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
         plt.colorbar()
         plt.xlabel('MAP')
@@ -2178,11 +2178,11 @@ def copy_files():
 
 def main():
     # SEM().run()
-    # MAT_Topt().run()
+    MAT_Topt().run()
     # MAT_Topt1().run()
     # Attribution_Dataframe().run()
     # Random_forests().run()
-    SHAP().run()
+    # SHAP().run()
     # copy_files()
     pass
 

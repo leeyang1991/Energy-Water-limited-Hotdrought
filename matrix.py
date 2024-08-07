@@ -248,10 +248,10 @@ class Matrix:
         # plt.xticks(range(len(x_label_list)),x_label_list,rotation=90)
         # plt.yticks(range(len(y_label_list))[::-1],y_label_list)
         # plt.tight_layout()
-        # plt.show()
-        outf = join(outdir,'matrix1.pdf')
-        plt.savefig(outf)
-        plt.close()
+        plt.show()
+        # outf = join(outdir,'matrix1.pdf')
+        # plt.savefig(outf)
+        # plt.close()
 
         pass
 

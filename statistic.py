@@ -1880,7 +1880,7 @@ class Drought_timing:
         # self.delta_season_boxplot(df)
         # self.season_excerbation_alleviation_ratio_tif(df)
         # self.season_excerbation_alleviation_ratio_statistic()
-        self.plot_season_excerbation_alleviation_ratio()
+        # self.plot_season_excerbation_alleviation_ratio()
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
@@ -1888,7 +1888,7 @@ class Drought_timing:
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
-        # self.GEZ_statistic()
+        self.GEZ_statistic()
         # self.VPD_delta_tif(df)
         # self.VPD_alleviation_excerbation()
         # self.VPD_NDVI(df)
@@ -2863,17 +2863,17 @@ class Drought_timing:
         plt.tight_layout()
 
         outf = join(outdir, 'delta_bar.pdf')
-        plt.savefig(outf)
-        plt.close()
+        # plt.savefig(outf)
+        # plt.close()
 
         plt.figure()
         plt.bar(gez_list,count_list)
         plt.xticks(rotation=90)
         plt.tight_layout()
         outf = join(outdir,'count.pdf')
-        plt.savefig(outf)
-        plt.close()
-        # plt.show()
+        # plt.savefig(outf)
+        # plt.close()
+        plt.show()
         pass
 
     def add_VPD_anomaly_process(self,df):
@@ -5654,6 +5654,236 @@ class Optimal_temperature_statistic:
                 # plt.show()
         # T.open_path_and_file(outdir)
 
+class MAT_MAP:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('MAT_MAP', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe.df')
+        pass
+
+    def run(self):
+        # self.copy_df()
+        # self.compensation_excerbation_MAT_MAP_matrix()
+        self.compensation_excerbation_MAT_MAP_scatter()
+        # self.GEZ_MAT_MAP_scatter()
+        pass
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+    def copy_df(self):
+        if isfile(self.dff):
+            print('already exists: ', self.dff)
+            print('press enter to overwrite')
+            pause()
+            pause()
+            pause()
+        dff = Drought_timing().dff
+        df = T.load_df(dff)
+        T.save_df(df,self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def compensation_excerbation_MAT_MAP_matrix(self):
+        outdir = join(self.this_class_png,'compensation_excerbation_MAT_MAP_matrix')
+        T.mk_dir(outdir)
+        compensation_excerbation_tif = join(Compensation_Excerbation().this_class_tif,'delta_hot_normal/drought_year_1.tif')
+        compensation_excerbation_dict = DIC_and_TIF().spatial_tif_to_dic(compensation_excerbation_tif)
+        # Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
+        # Topt_MAT_delta_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_MAT_delta_tif)
+
+        MAT_tif = join(data_root,r'CRU_tmp\mat','mat_gs.tif')
+        MAT_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_tif)
+
+        MAP_tif = join(data_root,r'CRU_precip\map','map.tif')
+        MAP_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_tif)
+        spatial_dict_all = {
+            'compensation_excerbation':compensation_excerbation_dict,
+            'MAT':MAT_dict,
+            'MAP':MAP_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = df.dropna(how='any')
+        map = df['MAP'].tolist()
+        # plt.hist(map, bins=100, range=(0, 1500), zorder=-99, color='gray', alpha=0.5)
+        # plt.show()
+        T.print_head_n(df)
+        # exit()
+        # df = df.dropna(how='any')
+        bins_Topt_MAT_delta = np.arange(-5,36,1)
+        bins_MAP = np.arange(0,4001,100)
+        col_name = 'compensation_excerbation'
+        df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df,'MAT',bins_Topt_MAT_delta)
+        for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
+            y_pos = name_Topt_MAT_delta[0].left
+            df_group_MAP, bins_list_str_MAP = T.df_bin(df_group_i_Topt_MAT_delta,'MAP',bins_MAP)
+            for name_MAP, df_group_i_MAP in df_group_MAP:
+                x_pos = name_MAP[0].left
+                vals = df_group_i_MAP[col_name].tolist()
+                # if len(vals) < 10:
+                #     continue
+                if T.is_all_nan(vals):
+                    continue
+                mean = np.nanmean(vals)
+                plt.scatter(y_pos,x_pos,s=40,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
+                # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
+        plt.colorbar()
+        plt.xlabel('MAP')
+        plt.ylabel('MAT')
+        outf = join(outdir,'compensation_excerbation_MAT_MAP.pdf')
+        # plt.savefig(outf)
+        plt.show()
+
+        # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
+        # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
+        # plt.xlabel('MAT - Topt')
+        # plt.ylabel('Compensation Excerbation')
+        # plt.twinx()
+        # plt.plot(x_list, y_list, c='r')
+        # plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+        #                  alpha=0.3)
+        #
+        # plt.show()
+        # exit()
+        pass
+
+
+    def compensation_excerbation_MAT_MAP_scatter(self):
+        outdir = join(self.this_class_png,'compensation_excerbation_MAT_MAP_scatter')
+        T.mk_dir(outdir)
+        compensation_excerbation_tif = join(Compensation_Excerbation().this_class_tif,'delta_hot_normal/drought_year_1.tif')
+        compensation_excerbation_dict = DIC_and_TIF().spatial_tif_to_dic(compensation_excerbation_tif)
+        # Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
+        # Topt_MAT_delta_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_MAT_delta_tif)
+
+        MAT_tif = join(data_root,r'CRU_tmp\mat','mat_gs.tif')
+        MAT_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_tif)
+
+        MAP_tif = join(data_root,r'CRU_precip\map','map.tif')
+        MAP_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_tif)
+        spatial_dict_all = {
+            'compensation_excerbation':compensation_excerbation_dict,
+            'MAT':MAT_dict,
+            'MAP':MAP_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = df.dropna(how='any')
+        map = df['MAP'].tolist()
+        # plt.hist(map, bins=100, range=(0, 1500), zorder=-99, color='gray', alpha=0.5)
+        # plt.show()
+        # T.print_head_n(df)
+        # exit()
+        # df = df.dropna(how='any')
+        # bins_Topt_MAT_delta = np.arange(-5,36,1)
+        # bins_MAP = np.arange(0,4001,100)
+        col_name = 'compensation_excerbation'
+        col_MAT = 'MAT'
+        col_MAP = 'MAP'
+        temp_vals = df[col_MAT].tolist()
+        precip_vals = df[col_MAP].tolist()
+        color_list = df[col_name].tolist()
+
+        plt.scatter(temp_vals,precip_vals,c=color_list,vmin=-.5,vmax=.5,cmap='RdBu',linewidths=0,alpha=0.5,s=4)
+        # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
+        plt.colorbar()
+        plt.xlabel('MAP')
+        plt.ylabel('MAT')
+        plt.ylim(0,4000)
+        plt.xlim(-10,35)
+        outf = join(outdir,'compensation_excerbation_MAT_MAP.pdf')
+        plt.savefig(outf)
+        # plt.show()
+
+        # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
+        # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
+        # plt.xlabel('MAT - Topt')
+        # plt.ylabel('Compensation Excerbation')
+        # plt.twinx()
+        # plt.plot(x_list, y_list, c='r')
+        # plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+        #                  alpha=0.3)
+        #
+        # plt.show()
+        # exit()
+        pass
+
+    def GEZ_MAT_MAP_scatter(self):
+        outdir = join(self.this_class_png,'GEZ_MAT_MAP_scatter')
+        T.mk_dir(outdir)
+        # T.color_map_choice()
+        df = self.__gen_df_init()
+        # T.print_head_n(df)
+        df = df.dropna(subset=['GEZ'])
+        df = df.drop_duplicates(subset=['pix'],keep='first')
+        # print(len(df));exit()
+        gez_str_list = df['GEZ'].tolist()
+        gez_list = T.get_df_unique_val_list(df,'GEZ')
+        gez_list = list(gez_list)
+        gez_code = list(range(len(gez_list)))
+        gez_dict = T.dict_zip(gez_list,gez_code)
+        # print(gez_list_shuffle);exit()
+        gez_str_spatial_dict = T.df_to_spatial_dic(df,'GEZ')
+        gez_code_spatial_dict = {}
+        for pix in gez_str_spatial_dict:
+            val = gez_str_spatial_dict[pix]
+            val = gez_dict[val]
+            gez_code_spatial_dict[pix] = val
+        # Topt_MAT_delta_tif = join(self.this_class_tif,'mat_Topt_delta/Topt_MAT_delta.tif')
+        # Topt_MAT_delta_dict = DIC_and_TIF().spatial_tif_to_dic(Topt_MAT_delta_tif)
+
+        MAT_tif = join(data_root,r'CRU_tmp\mat','mat_gs.tif')
+        MAT_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_tif)
+
+        MAP_tif = join(data_root,r'CRU_precip\map','map.tif')
+        MAP_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_tif)
+        spatial_dict_all = {
+            'gez_code':gez_code_spatial_dict,
+            'gez_str':gez_str_spatial_dict,
+            'MAT':MAT_dict,
+            'MAP':MAP_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = df.dropna(how='any')
+        map = df['MAP'].tolist()
+        col_name = 'gez_code'
+        col_MAT = 'MAT'
+        col_MAP = 'MAP'
+        color_list = T.gen_colors(len(gez_list))
+        flag = 0
+        for gez in gez_list:
+            df_gez = df[df['gez_str']==gez]
+            temp_vals = df_gez[col_MAT].tolist()
+            precip_vals = df_gez[col_MAP].tolist()
+
+            plt.scatter(temp_vals,precip_vals,linewidths=0,alpha=1,s=8,label=gez,color=color_list[flag])
+
+            flag += 1
+
+            plt.xlabel('MAP')
+            plt.ylabel('MAT')
+            plt.ylim(0,2000)
+            plt.xlim(-10,35)
+            plt.legend(fontsize=10)
+            plt.tight_layout()
+            # plt.show()
+            outf = join(outdir,f'{gez}.pdf')
+            plt.savefig(outf)
+            plt.close()
+
+
+        pass
+
 def Load_dataframe():
     dff = Dataframe().dff
     df = T.load_df(dff)
@@ -5663,7 +5893,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5672,10 +5902,9 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-
+    MAT_MAP().run()
 
     pass
-
 
 if __name__ == '__main__':
     main()
