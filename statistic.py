@@ -2835,14 +2835,21 @@ class Drought_timing:
         gez_list.remove('Water')
         print(gez_list)
         count_list = []
+        count_list_humid = []
+        count_list_arid = []
         delta_list = []
         # delta_max_list = []
         delta_25_list = []
         bar_delta_list = []
         for gez in gez_list:
             df_gez = df[df['GEZ'] == gez]
+            df_gez_humid = df_gez[df_gez['AI_class'] == 'Humid']
+            df_gez_arid = df_gez[df_gez['AI_class'] == 'Arid']
+            # T.print_head_n(df_gez);exit()
             delta = df_gez['delta'].tolist()
             count_list.append(len(df_gez))
+            count_list_humid.append(len(df_gez_humid))
+            count_list_arid.append(len(df_gez_arid))
             delta_mean = np.nanmean(delta)
             delta_25_percentile = np.percentile(delta,25)
             delta_75_percentile = np.percentile(delta,75)
@@ -2864,16 +2871,19 @@ class Drought_timing:
 
         outf = join(outdir, 'delta_bar.pdf')
         # plt.savefig(outf)
-        # plt.close()
+        plt.close()
 
         plt.figure()
-        plt.bar(gez_list,count_list)
+        # plt.bar(gez_list,count_list)
+        # print(count_list_humid);exit()
+        plt.bar(gez_list,count_list_humid,color='b')
+        plt.bar(gez_list,count_list_arid,bottom=count_list_humid,color='r')
         plt.xticks(rotation=90)
         plt.tight_layout()
         outf = join(outdir,'count.pdf')
-        # plt.savefig(outf)
-        # plt.close()
-        plt.show()
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
         pass
 
     def add_VPD_anomaly_process(self,df):
@@ -5663,8 +5673,8 @@ class MAT_MAP:
 
     def run(self):
         # self.copy_df()
-        # self.compensation_excerbation_MAT_MAP_matrix()
-        self.compensation_excerbation_MAT_MAP_scatter()
+        self.compensation_excerbation_MAT_MAP_matrix()
+        # self.compensation_excerbation_MAT_MAP_scatter()
         # self.GEZ_MAT_MAP_scatter()
         pass
 
@@ -5723,6 +5733,7 @@ class MAT_MAP:
         # df = df.dropna(how='any')
         bins_Topt_MAT_delta = np.arange(-5,36,1)
         bins_MAP = np.arange(0,4001,100)
+        plt.figure(figsize=(7, 6))
         col_name = 'compensation_excerbation'
         df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df,'MAT',bins_Topt_MAT_delta)
         for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
@@ -5736,25 +5747,15 @@ class MAT_MAP:
                 if T.is_all_nan(vals):
                     continue
                 mean = np.nanmean(vals)
-                plt.scatter(y_pos,x_pos,s=40,c=mean,vmin=-0.5,vmax=0.5,cmap='RdBu',marker='s',linewidths=0)
+                plt.scatter(y_pos,x_pos,s=40,c=mean,vmin=-0.7,vmax=0.7,cmap='RdBu',marker='s',linewidths=0)
                 # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
-        plt.colorbar()
-        plt.xlabel('MAP')
-        plt.ylabel('MAT')
+        # plt.colorbar()
+        plt.xlabel('MAT')
+        plt.ylabel('MAP')
+        plt.ylim(-100, 4500)
+        plt.xlim(-13, 35)
         outf = join(outdir,'compensation_excerbation_MAT_MAP.pdf')
-        # plt.savefig(outf)
-        plt.show()
-
-        # plt.hist(df['Topt_MAT_delta'], bins=100, range=(-8, 8), zorder=-99,color='gray',alpha=0.5)
-        # # plt.hist(df['Topt_MAT_delta_arr_flatten'], bins=100, zorder=-99,color='gray',alpha=0.5)
-        # plt.xlabel('MAT - Topt')
-        # plt.ylabel('Compensation Excerbation')
-        # plt.twinx()
-        # plt.plot(x_list, y_list, c='r')
-        # plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
-        #                  alpha=0.3)
-        #
-        # plt.show()
+        plt.savefig(outf)
         # exit()
         pass
 
@@ -5893,7 +5894,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    # Drought_timing().run()
+    Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5902,7 +5903,7 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-    MAT_MAP().run()
+    # MAT_MAP().run()
 
     pass
 
