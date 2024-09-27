@@ -252,7 +252,7 @@ class Compensation_Excerbation:
         # self.plot_Drought_year_NDVI_percentage_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
         # self.bar_Drought_year_NDVI_percentage_spatial_tif()
-        # self.bar_Drought_year_NDVI_percentage_spatial_tif_all_area()
+        self.bar_Drought_year_NDVI_percentage_spatial_tif_all_area()
         # self.AI_gradient_Drought_year_spatial_tif()
         # self.delta_area_ratio_gradient_bar()
 
@@ -5673,9 +5673,13 @@ class MAT_MAP:
 
     def run(self):
         # self.copy_df()
-        self.compensation_excerbation_MAT_MAP_matrix()
+        # self.compensation_excerbation_MAT_MAP_matrix()
         # self.compensation_excerbation_MAT_MAP_scatter()
         # self.GEZ_MAT_MAP_scatter()
+        # self.GEZ_AI_delta_NDVI()
+        # self.GEZ_AI_anomaly_NDVI()
+        self.GEZ_MAT_anomaly_NDVI()
+        # self.GEZ_MAT_MAP()
         pass
 
     def __gen_df_init(self):
@@ -5885,6 +5889,171 @@ class MAT_MAP:
 
         pass
 
+    def GEZ_AI_delta_NDVI(self):
+        df = self.__gen_df_init()
+        delta_tif = join(Drought_timing().this_class_tif,'delta/delta.tif')
+        df_group_pix = T.df_groupby(df,'pix')
+        GEZ_spatial_dict = {}
+        AI_spatial_dict = {}
+        for pix in df_group_pix:
+            GEZ = df_group_pix[pix]['GEZ'].tolist()[0]
+            AI = df_group_pix[pix]['aridity_index'].tolist()[0]
+            GEZ_spatial_dict[pix] = GEZ
+            AI_spatial_dict[pix] = AI
+        delta_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(delta_tif)
+
+        spatial_dicts = {
+            'GEZ':GEZ_spatial_dict,
+            'delta':delta_spatial_dict,
+            'AI':AI_spatial_dict
+        }
+
+        df_new = T.spatial_dics_to_df(spatial_dicts)
+        df_new = df_new.dropna()
+        GEZ_list = T.get_df_unique_val_list(df_new,'GEZ')
+        for GEZ in GEZ_list:
+            df_GEZ = df_new[df_new['GEZ']==GEZ]
+            if len(df_GEZ) < 100:
+                continue
+            AI = df_GEZ['AI'].tolist()
+            RT = df_GEZ['delta'].tolist()
+            AI_mean = np.nanmean(AI)
+            RT_mean = np.nanmean(RT)
+            AI_std = np.nanstd(AI)/4.
+            RT_std = np.nanstd(RT)/4.
+            plt.scatter(AI_mean,RT_mean)
+            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std)
+            plt.text(AI_mean,RT_mean,GEZ)
+            plt.xlabel('AI')
+            plt.ylabel('NDVI delta')
+        plt.show()
+        pass
+
+    def GEZ_AI_anomaly_NDVI(self):
+        df = self.__gen_df_init()
+        MAT_f = join(data_root, r"CRU_tmp\mat\mat_gs.tif")
+        MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
+        MAP_f = join(data_root, r"CRU_precip\map\map.tif")
+        MAP_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_f)
+        df = T.add_spatial_dic_to_df(df, MAT_spatial_dict, 'MAT')
+        df = T.add_spatial_dic_to_df(df, MAP_spatial_dict, 'MAP')
+        outdir = join(self.this_class_png,'GEZ_AI_anomaly_NDVI')
+        T.mk_dir(outdir)
+        drought_type = 'hot-drought'
+        # drought_type = 'normal-drought'
+        df = df[df['drought_type']==drought_type]
+        plt.figure(figsize=(10,8))
+        plt.title(f'{drought_type}')
+
+        GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        for GEZ in GEZ_list:
+            df_GEZ = df[df['GEZ']==GEZ]
+            if len(df_GEZ) < 500:
+                continue
+            # AI = df_GEZ['aridity_index'].tolist()
+            AI = df_GEZ['MAT'].tolist()
+            RT = df_GEZ['NDVI-anomaly_detrend'].tolist()
+            AI_mean = np.nanmean(AI)
+            RT_mean = np.nanmean(RT)
+            AI_std = np.nanstd(AI)/8.
+            RT_std = np.nanstd(RT)/8.
+            plt.scatter(AI_mean,RT_mean,label=GEZ)
+            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std)
+            # plt.text(AI_mean,RT_mean,GEZ)
+            plt.xlabel('AI')
+            plt.ylabel('NDVI-anomaly')
+        # plt.show()
+        plt.legend(fontsize=10,ncol=2)
+        plt.ylim(-0.8,0.3)
+        outf = join(outdir,f'{drought_type}.pdf')
+        plt.show()
+        # plt.savefig(outf)
+        # plt.close()
+        pass
+
+    def GEZ_MAT_MAP(self):
+        df = self.__gen_df_init()
+        outdir = join(self.this_class_png,'GEZ_MAT_MAP')
+        T.mk_dir(outdir)
+        MAT_f = join(data_root,r"CRU_tmp\mat\mat_gs.tif")
+        MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
+        MAP_f = join(data_root,r"CRU_precip\map\map.tif")
+        MAP_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_f)
+        df = T.add_spatial_dic_to_df(df, MAT_spatial_dict, 'MAT')
+        df = T.add_spatial_dic_to_df(df, MAP_spatial_dict, 'MAP')
+
+        GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        plt.figure(figsize=(10, 8))
+        for GEZ in GEZ_list:
+            df_GEZ = df[df['GEZ']==GEZ]
+            if len(df_GEZ) < 100:
+                continue
+            # AI = df_GEZ['aridity_index'].tolist()
+            MAP = df_GEZ['MAP'].tolist()
+            RT = df_GEZ['NDVI-anomaly_detrend'].tolist()
+            RT_mean = np.nanmean(RT)
+            MAT = df_GEZ['MAT'].tolist()
+            MAP_mean = np.nanmean(MAP)
+            MAT_mean = np.nanmean(MAT)
+            MAP_std = np.nanstd(MAP)/2.
+            MAT_std = np.nanstd(MAT)/2.
+            plt.scatter(MAT_mean,MAP_mean,c='k')
+            plt.errorbar(MAT_mean,MAP_mean,xerr=MAT_std,yerr=MAP_std,c='gray',zorder=-99)
+            plt.text(MAT_mean,MAP_mean,GEZ)
+            # plt.xlabel('AI')
+            plt.ylabel('MAP')
+            # plt.ylabel('NDVI-anomaly')
+            plt.xlabel('MAT')
+            # plt.ylim(0,4000)
+        # plt.colorbar()
+        # plt.show()
+        outf = join(outdir,f'GEZ_MAT_MAP.pdf')
+        plt.savefig(outf)
+        plt.close()
+        pass
+
+    def GEZ_MAT_anomaly_NDVI(self):
+        df = self.__gen_df_init()
+        MAT_f = join(data_root, r"CRU_tmp\mat\mat_gs.tif")
+        MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
+        MAP_f = join(data_root, r"CRU_precip\map\map.tif")
+        MAP_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_f)
+        df = T.add_spatial_dic_to_df(df, MAT_spatial_dict, 'MAT')
+        df = T.add_spatial_dic_to_df(df, MAP_spatial_dict, 'MAP')
+        outdir = join(self.this_class_png,'GEZ_MAT_anomaly_NDVI')
+        T.mk_dir(outdir)
+        drought_type = 'hot-drought'
+        # drought_type = 'normal-drought'
+        df = df[df['drought_type']==drought_type]
+        plt.figure(figsize=(10,8))
+        plt.title(f'{drought_type}')
+
+        GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        for GEZ in GEZ_list:
+            df_GEZ = df[df['GEZ']==GEZ]
+            if len(df_GEZ) < 500:
+                continue
+            # AI = df_GEZ['aridity_index'].tolist()
+            AI = df_GEZ['MAT'].tolist()
+            RT = df_GEZ['NDVI-anomaly_detrend'].tolist()
+            AI_mean = np.nanmean(AI)
+            RT_mean = np.nanmean(RT)
+            AI_std = np.nanstd(AI)/4.
+            RT_std = np.nanstd(RT)/4.
+            plt.scatter(AI_mean,RT_mean,label=GEZ)
+            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std)
+            # plt.text(AI_mean,RT_mean,GEZ)
+            plt.xlabel('MAT')
+            plt.ylabel('NDVI-anomaly')
+        # plt.show()
+        plt.legend(fontsize=10,ncol=2)
+        plt.ylim(-0.8,0.3)
+        outf = join(outdir,f'{drought_type}.pdf')
+        # plt.show()
+        plt.savefig(outf)
+        plt.close()
+        pass
+
 def Load_dataframe():
     dff = Dataframe().dff
     df = T.load_df(dff)
@@ -5894,7 +6063,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5903,7 +6072,7 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-    # MAT_MAP().run()
+    MAT_MAP().run()
 
     pass
 
