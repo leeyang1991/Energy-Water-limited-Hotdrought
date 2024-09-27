@@ -1377,7 +1377,8 @@ class SHAP:
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
-        self.plot_pdp_shap_split_df_drought_mon()
+        self.plot_pdp_shap_split_df_line_breakpoints()
+        # self.plot_pdp_shap_split_df_drought_mon()
         # self.plot_importances()
         pass
 
@@ -1793,10 +1794,175 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
+                plt.show()
+
+                # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
+                # plt.close()
+
+    def plot_pdp_shap_split_df_line_breakpoints(self):
+
+        fdir = join(self.this_class_arr, 'pdp_shap_split1')
+        drt_list = global_drought_type_list
+
+        for ELI in global_ELI_class_list:
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'plot_pdp_shap_split_df_line_breakpoints', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 100)
+
+                for drt in drt_list:
+                    df_i = df[df['drought_type'] == drt]
+                    df_group, bins_list_str = T.df_bin(df_i, var_name, bins)
+                    # T.print_head_n(df)
+                    x_mean_list = []
+                    y_mean_list = []
+                    y_err_list = []
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                    # plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
+                    y_mean_list = np.array(y_mean_list)
+                    x_mean_list = np.array(x_mean_list)
+                    # change_point = self.change_point_detection_mk(y_mean_list)
+                    # print(len(y_mean_list))
+                    # change_point, trend = self.mann_kendall_change_point(y_mean_list,window_size=int(len(y_mean_list)/2.))
+                    # change_point = self.change_point_detection_cusum(y_mean_list,threshold=0.2)
+                    # change_point = self.detect_adf(y_mean_list)
+                    # change_point = self.change_point_detection_ruptures(y_mean_list)
+                    # change_point = self.detect_wavelet(y_mean_list)
+                    try:
+                        change_point = self.change_point_rbeast(y_mean_list,title=f'{ELI}_{var_name}_{drt}')
+                        outf = join(outdir_i,f'{ELI}_{var_name}_{drt}.pdf')
+                        plt.savefig(outf)
+                        plt.close()
+                    except:
+                        continue
+                    # change_point = self.sliding_window_change_detection(y_mean_list,
+                    #                                                     window_size=10, threshold=0.5)
+                    # print(change_point)
+                    # if len(change_point) != 0:
+                    #     plt.scatter(x_mean_list[change_point],y_mean_list[change_point])
+                    # exit()
+                    # x_vals = df_i[var_name].tolist()
+                    # y_vals = df_i['shap_v'].tolist()
+                    # color = global_drought_type_color_dict[drt]
+                    # if drt == 'hot-drought':
+                    #     zorder = 2
+                    # else:
+                    #     zorder = 1
+                    # plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
+                    # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
+                # plt.legend()
+                # print('-----')
+                # plt.title(f'{ELI}\n{var_name}')
+                # # plt.xlim(start, end)
+                # plt.ylim(-0.6, 0.6)
                 # plt.show()
 
-                plt.savefig(join(outdir_i, f'{var_name}.pdf'))
-                plt.close()
+                # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
+                # plt.close()
+
+    def change_point_detection_ruptures(self,vals,n_bkps=2):
+        import ruptures as rpt
+        import pymannkendall as mk
+        algo = rpt.Binseg(model="rbf").fit(vals)
+        result = algo.predict(n_bkps=n_bkps)
+        result = np.array(result) - 1
+
+        return result
+
+    def mann_kendall_change_point(self,data, window_size=5):
+        import pymannkendall as mk
+        change_points = []
+        trends = []
+
+        for i in range(0, len(data) - window_size + 1, window_size):
+            window = data[i:i + window_size]
+            test_result = mk.original_test(window)
+            trends.append(test_result.trend)  # Capture trend for each window
+
+            # Check if there is a trend and if there is a shift compared to the previous window
+            if len(trends) > 1 and trends[-1] != trends[-2]:
+                change_points.append(i + window_size)
+        change_points = np.array(change_points) - 1
+
+        return change_points, trends
+
+    def change_point_detection_cusum(self,data, threshold=5., drift=0):
+        # Cumulative sum
+        S_pos, S_neg = np.zeros(len(data)), np.zeros(len(data))
+        change_points = []
+
+        for i in range(1, len(data)):
+            S_pos[i] = max(0, S_pos[i - 1] + data[i] - data[i - 1] - drift)
+            S_neg[i] = min(0, S_neg[i - 1] + data[i] - data[i - 1] + drift)
+
+            if S_pos[i] > threshold or S_neg[i] < -threshold:
+                change_points.append(i)
+                S_pos[i], S_neg[i] = 0, 0  # Resetting after change point
+        change_points = np.array(change_points)
+        return change_points
+
+
+
+    def detect_adf(self,data, p_value_threshold=0.05):
+        from statsmodels.tsa.stattools import adfuller
+        result = adfuller(data)
+        p_value = result[1]
+        return p_value < p_value_threshold  # If p-value is below threshold, the series is stationary
+
+
+    def detect_wavelet(self,vals):
+        import numpy as np
+        import pywt
+
+        # Perform continuous wavelet transform (CWT)
+        scales = np.arange(1, 128)
+        coefficients, frequencies = pywt.cwt(vals, scales, 'mexh')
+        return coefficients, frequencies
+
+    def sliding_window_change_detection(self,data, window_size=10, threshold=0.2):
+        change_points = []
+        for i in range(len(data) - window_size):
+            window_1 = data[i:i + window_size]
+            window_2 = data[i + window_size:i + 2 * window_size]
+
+            mean_diff = abs(np.mean(window_1) - np.mean(window_2))
+            if mean_diff > threshold:
+                change_points.append(i + window_size)
+        return change_points
+
+    def change_point_rbeast(self,vals,title):
+        import Rbeast as rb
+        # beach, year = rb.load_example('googletrend')
+        vals_df = pd.Series(vals)
+        # print(len(vals))
+        # beach = beach[:25]
+
+        # print(vals_df);exit()
+        o = rb.beast(vals_df, start=1)
+        # plt.figure(figsize=(10,10))
+        rb.plot(o,title=title,fig=plt.figure(figsize=(15,10)))
+        pass
 
     def plot_pdp_shap_split_df_drought_mon(self):
         fdir = join(self.this_class_arr, 'pdp_shap_split1')
@@ -2178,11 +2344,11 @@ def copy_files():
 
 def main():
     # SEM().run()
-    MAT_Topt().run()
+    # MAT_Topt().run()
     # MAT_Topt1().run()
     # Attribution_Dataframe().run()
     # Random_forests().run()
-    # SHAP().run()
+    SHAP().run()
     # copy_files()
     pass
 
