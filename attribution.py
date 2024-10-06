@@ -6,6 +6,8 @@ import semopy
 import shap
 import xgboost as xgb
 from meta_info import *
+import Rbeast as rb
+
 result_root_this_script = join(results_root, 'attribution')
 
 
@@ -1377,7 +1379,8 @@ class SHAP:
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
-        self.plot_pdp_shap_split_df_line_breakpoints()
+        # self.plot_pdp_shap_split_df_line_breakpoints()
+        self.plot_pdp_shap_split_df_line_breakpoints_detail()
         # self.plot_pdp_shap_split_df_drought_mon()
         # self.plot_importances()
         pass
@@ -1839,47 +1842,107 @@ class SHAP:
                         y_mean_list.append(mean)
                         x_mean_list.append(x_i)
                         y_err_list.append(err)
-                    # plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
                     y_mean_list = np.array(y_mean_list)
                     x_mean_list = np.array(x_mean_list)
-                    # change_point = self.change_point_detection_mk(y_mean_list)
-                    # print(len(y_mean_list))
-                    # change_point, trend = self.mann_kendall_change_point(y_mean_list,window_size=int(len(y_mean_list)/2.))
-                    # change_point = self.change_point_detection_cusum(y_mean_list,threshold=0.2)
-                    # change_point = self.detect_adf(y_mean_list)
-                    # change_point = self.change_point_detection_ruptures(y_mean_list)
-                    # change_point = self.detect_wavelet(y_mean_list)
-                    try:
-                        change_point = self.change_point_rbeast(y_mean_list,title=f'{ELI}_{var_name}_{drt}')
-                        outf = join(outdir_i,f'{ELI}_{var_name}_{drt}.pdf')
-                        plt.savefig(outf)
-                        plt.close()
-                    except:
-                        continue
-                    # change_point = self.sliding_window_change_detection(y_mean_list,
-                    #                                                     window_size=10, threshold=0.5)
-                    # print(change_point)
-                    # if len(change_point) != 0:
-                    #     plt.scatter(x_mean_list[change_point],y_mean_list[change_point])
+                    # try:
+                    #     y_mean_list = SMOOTH().mid_window_smooth(y_mean_list, window=5)
+                    # except:
+                    #     continue
+                    # if not 'VPD' in var_name:
+                    #     continue
+                    o = self.change_point_rbeast(y_mean_list,
+                                                season='none',
+                                                tcp_minmax=(0, 1),
+                                                    )
+                    # rb.plot(o, title=var_name, fig=plt.figure(figsize=(15, 10)))
+                    change_point = o.trend.cp[0]
+                    change_point = int(change_point)
                     # exit()
-                    # x_vals = df_i[var_name].tolist()
-                    # y_vals = df_i['shap_v'].tolist()
-                    # color = global_drought_type_color_dict[drt]
-                    # if drt == 'hot-drought':
-                    #     zorder = 2
-                    # else:
-                    #     zorder = 1
+                    x_vals = df_i[var_name].tolist()
+                    y_vals = df_i['shap_v'].tolist()
+                    color = global_drought_type_color_dict[drt]
+                    if drt == 'hot-drought':
+                        zorder = 2
+                    else:
+                        zorder = 1
+                    plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
+
+                    plt.scatter(x_mean_list[change_point], y_mean_list[change_point], color=color, alpha=1, zorder=100)
                     # plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
                     # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
                 # plt.legend()
-                # print('-----')
-                # plt.title(f'{ELI}\n{var_name}')
+                print('-----')
+                plt.title(f'{ELI}\n{var_name}')
                 # # plt.xlim(start, end)
-                # plt.ylim(-0.6, 0.6)
-                # plt.show()
+                plt.ylim(-0.6, 0.6)
+                plt.show()
 
                 # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
                 # plt.close()
+
+    def plot_pdp_shap_split_df_line_breakpoints_detail(self):
+
+        fdir = join(self.this_class_arr, 'pdp_shap_split1')
+        drt_list = global_drought_type_list
+
+        for ELI in global_ELI_class_list:
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'plot_pdp_shap_split_df_line_breakpoints_detail', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 100)
+
+                for drt in drt_list:
+                    df_i = df[df['drought_type'] == drt]
+                    df_group, bins_list_str = T.df_bin(df_i, var_name, bins)
+                    # T.print_head_n(df)
+                    x_mean_list = []
+                    y_mean_list = []
+                    y_err_list = []
+                    for name, df_group_i in df_group:
+                        x_i = name[0].left
+                        # print(x_i)
+                        # exit()
+                        vals = df_group_i['shap_v'].tolist()
+
+                        if len(vals) == 0:
+                            continue
+                        # mean = np.nanmean(vals)
+                        mean = np.nanmedian(vals)
+                        err = np.nanstd(vals)
+                        y_mean_list.append(mean)
+                        x_mean_list.append(x_i)
+                        y_err_list.append(err)
+                    y_mean_list = np.array(y_mean_list)
+                    x_mean_list = np.array(x_mean_list)
+                    # try:
+                    #     y_mean_list = SMOOTH().mid_window_smooth(y_mean_list, window=5)
+                    # except:
+                    #     continue
+                    # if not 'VPD' in var_name:
+                    #     continue
+                    o = self.change_point_rbeast(y_mean_list,
+                                                season='none',
+                                                tcp_minmax=(0, 1),
+                                                    )
+                    rb.plot(o, title=f'{ELI}_{var_name}_{drt}', fig=plt.figure(figsize=(15, 10)))
+                    change_point = o.trend.cp[0]
+                    change_point = int(change_point)
+                    # exit()
+                    x_vals = df_i[var_name].tolist()
+                    y_vals = df_i['shap_v'].tolist()
+                    color = global_drought_type_color_dict[drt]
+                    # plt.show()
+
+                    plt.savefig(join(outdir_i, f'{ELI}_{var_name}_{drt}.pdf'))
+                    plt.close()
 
     def change_point_detection_ruptures(self,vals,n_bkps=2):
         import ruptures as rpt
@@ -1951,17 +2014,12 @@ class SHAP:
                 change_points.append(i + window_size)
         return change_points
 
-    def change_point_rbeast(self,vals,title):
-        import Rbeast as rb
+    def change_point_rbeast(self,vals,**kwargs):
         # beach, year = rb.load_example('googletrend')
         vals_df = pd.Series(vals)
-        # print(len(vals))
-        # beach = beach[:25]
-
-        # print(vals_df);exit()
-        o = rb.beast(vals_df, start=1)
-        # plt.figure(figsize=(10,10))
-        rb.plot(o,title=title,fig=plt.figure(figsize=(15,10)))
+        o = rb.beast(vals_df,quiet=True,**kwargs)
+        # rb.plot(o,title=title,fig=plt.figure(figsize=(15,10)))
+        return o
         pass
 
     def plot_pdp_shap_split_df_drought_mon(self):
