@@ -1377,23 +1377,27 @@ class CSIF:
 
 class Terraclimate:
     def __init__(self):
-        self.datadir = join(data_root,'Terraclimate')
+        # self.datadir = join(data_root,'Terraclimate')
+        self.datadir = this_root = '/home/liyang/Desktop/14T/yang/Aridity_index_calculate/'
         pass
 
     def run(self):
-        self.nc_to_tif_srad()
+        self.nc_to_tif()
         # self.nc_to_tif_aet()
         # self.resample()
         # self.per_pix()
         # self.anomaly()
-        self.detrend()
+        # self.detrend()
         # self.download_all()
         pass
 
-    def nc_to_tif_srad(self):
-        outdir = self.datadir + '/srad/tif/'
+    def nc_to_tif(self):
+        product = 'Precipitation'
+        variable = 'ppt'
+        outdir = self.datadir + f'data/{product}/tif/'
+        # print(outdir);exit()
         T.mk_dir(outdir,force=True)
-        fdir = self.datadir + '/srad/nc/'
+        fdir = self.datadir + f'data/{product}/nc/'
         for fi in T.listdir(fdir):
             print(fi)
             if fi.startswith('.'):
@@ -1440,7 +1444,7 @@ class Terraclimate:
                 # print(date_str)
                 # exit()
                 # arr = ncin.variables['tmax'][i]
-                arr = ncin_xarr['srad'][i]
+                arr = ncin_xarr[variable][i]
                 arr = np.array(arr)
                 # print(arr)
                 # grid = arr < 99999
@@ -3054,13 +3058,52 @@ class FAPAR:
 class Aridity_Index:
 
     def __init__(self):
-        self.datadir = join(data_root, 'Aridity_Index')
+        # self.datadir = join(data_root, 'Aridity_Index')
+        self.datadir = this_root = '/home/liyang/Desktop/14T/yang/Aridity_index_calculate/'
         pass
 
     def run(self):
         # self.Binary_tif()
-        self.plot_binary_tif()
+        # self.plot_binary_tif()
+        self.cal_Aridity_index()
         pass
+
+    def cal_tif_dir_sum(self,product):
+        fdir = join(self.datadir,'data',product,'tif')
+        outdir = join(self.datadir,'data',product,'sum')
+        T.mk_dir(outdir,force=True)
+        outf = join(outdir,'sum.tif')
+        if isfile(outf):
+            arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(outf)
+            return arr, originX, originY, pixelWidth, pixelHeight
+
+        sum = 0.
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+            sum += arr
+        ToRaster().array2raster(outf, originX, originY, pixelWidth, pixelHeight, sum)
+        return sum, originX, originY, pixelWidth, pixelHeight
+
+        pass
+
+    def cal_Aridity_index(self):
+        # fdir_pet = join(self.datadir,'data','PET/tif')
+        sum_pet, originX, originY, pixelWidth, pixelHeight = self.cal_tif_dir_sum('PET')
+        sum_ppt, originX, originY, pixelWidth, pixelHeight = self.cal_tif_dir_sum('Precipitation')
+        AI = sum_ppt / sum_pet
+        AI[AI<0] = np.nan
+        AI[AI>10] = np.nan
+        outdir = join(self.datadir,'Aridity_index')
+        T.mk_dir(outdir)
+        ouf = join(outdir,'AI_4km.tif')
+        ToRaster().array2raster(ouf, originX, originY, pixelWidth, pixelHeight, AI)
+        # plt.imshow(AI,vmin=0,vmax=3,cmap='jet_r',interpolation='nearest')
+        # plt.colorbar()
+        # plt.show()
+
 
     def Binary_tif(self):
         fpath = join(self.datadir,'aridity_index.tif')
@@ -3246,7 +3289,7 @@ class IPCC_cliamte_zone:
         pass
 
 def main():
-    GIMMS_NDVI().run()
+    # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
@@ -3274,7 +3317,7 @@ def main():
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
-    # Aridity_Index().run()
+    Aridity_Index().run()
     # TCSIF().run()
     # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
