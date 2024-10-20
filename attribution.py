@@ -2,6 +2,7 @@
 import shutil
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import semopy
 import shap
 import xgboost as xgb
@@ -1380,7 +1381,8 @@ class SHAP:
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
         # self.plot_pdp_shap_split_df_line_breakpoints()
-        self.plot_pdp_shap_split_df_line_breakpoints_detail()
+        self.plot_pdp_shap_split_df_line_breakpoints_all_regions()
+        # self.plot_pdp_shap_split_df_line_breakpoints_detail()
         # self.plot_pdp_shap_split_df_drought_mon()
         # self.plot_importances()
         pass
@@ -1804,7 +1806,7 @@ class SHAP:
 
     def plot_pdp_shap_split_df_line_breakpoints(self):
 
-        fdir = join(self.this_class_arr, 'pdp_shap_split1')
+        fdir = join(self.this_class_arr, 'pdp_shap_split')
         drt_list = global_drought_type_list
 
         for ELI in global_ELI_class_list:
@@ -1868,6 +1870,7 @@ class SHAP:
                     plt.plot(x_mean_list, y_mean_list, label=drt,zorder=3)
 
                     plt.scatter(x_mean_list[change_point], y_mean_list[change_point], color=color, alpha=1, zorder=100)
+                    plt.vlines(x_mean_list[change_point], -0.6, 0.6, color=color, alpha=1, zorder=100)
                     # plt.scatter(x_vals, y_vals, color=color, alpha=0.1, zorder=zorder,linewidths=0)
                     # plt.scatter(x_vals, y_vals, color=color, alpha=0.5,linewidths=0)
                 # plt.legend()
@@ -1875,10 +1878,171 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
-                plt.show()
+                # plt.show()
+
+                plt.savefig(join(outdir_i, f'{var_name}.pdf'))
+                plt.close()
+
+
+    def plot_pdp_shap_split_df_line_breakpoints_all_regions(self):
+
+        fdir_energy = join(self.this_class_arr, 'pdp_shap_split1')
+        fdir_water = join(self.this_class_arr, 'pdp_shap_split')
+        drt_list = global_drought_type_list
+        # print_fdir(fdir)
+        # ('Energy-Limited', 'Water-Limited')
+        for ELI in global_ELI_class_list[::-1]:
+            if ELI == 'Energy-Limited':
+                fdir = fdir_energy
+            elif ELI == 'Water-Limited':
+                fdir = fdir_water
+            else:
+                raise
+            fdir_i = join(fdir, str(ELI))
+            outdir_i = join(self.this_class_png, 'plot_pdp_shap_split_df_line_breakpoints_all_regions', str(ELI))
+            T.mk_dir(outdir_i, force=True)
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.df'):
+                    continue
+                var_name = f.split('.')[0].replace('shaply_', '')
+                if 'drought_mon' in var_name:
+                    continue
+                fpath = join(fdir_i, f)
+                df = T.load_df(fpath)
+                # T.print_head_n(df)
+                start, end = Attribution_Dataframe().variables_threshold()[var_name]
+                bins = np.linspace(start, end, 100)
+
+                df_group, bins_list_str = T.df_bin(df, var_name, bins)
+                # T.print_head_n(df)
+                x_mean_list = []
+                y_mean_list = []
+                y_err_list = []
+                for name, df_group_i in df_group:
+                    x_i = name[0].left
+                    # print(x_i)
+                    # exit()
+                    vals = df_group_i['shap_v'].tolist()
+
+                    if len(vals) < 100:
+                        continue
+                    # mean = np.nanmean(vals)
+                    mean = np.nanmedian(vals)
+                    err = np.nanstd(vals)
+                    y_mean_list.append(mean)
+                    x_mean_list.append(x_i)
+                    y_err_list.append(err)
+                y_mean_list = np.array(y_mean_list)
+                x_mean_list = np.array(x_mean_list)
+                o = self.change_point_rbeast(y_mean_list,
+                                            season='none',
+                                            tcp_minmax=(0, 1),
+                                                )
+                # rb.plot(o, title=var_name, fig=plt.figure(figsize=(15, 10)))
+                # plt.show()
+                plt.figure()
+                change_point = o.trend.cp[0]
+                change_point = int(change_point)
+                # exit()
+                x_vals = df[var_name].tolist()
+                y_vals = df['shap_v'].tolist()
+                plt.vlines(x_mean_list[change_point], -0.6, 0.6, alpha=1, zorder=100)
+                threshold = x_mean_list[change_point]
+                plt.scatter(x_vals, y_vals, alpha=0.1,linewidths=0)
+                # plt.scatter(x_vals, y_vals,  alpha=0.5,linewidths=0)
+                # df_i = pd.DataFrame({'x': x_mean_list, 'y': y_mean_list})
+                # df_i = pd.DataFrame({'x': x_mean_list, 'y': y_mean_list})
+                df_i = pd.DataFrame({'x': x_vals, 'y': y_vals})
+                df_i_1 = df_i[df_i['x'] < threshold]
+                df_i_2 = df_i[df_i['x'] >= threshold]
+                x1_bins = np.linspace(df_i_1['x'].min(), df_i_1['x'].max(), 100)
+                x2_bins = np.linspace(df_i_2['x'].min(), df_i_2['x'].max(), 100)
+                df1_group, bins_list_str1 = T.df_bin(df_i_1,'x',x1_bins)
+                df2_group, bins_list_str2 = T.df_bin(df_i_2,'x',x2_bins)
+                err1_y_list = []
+                bin1_x_list = []
+                for name,df_group_i in df1_group:
+                    x_vals = df_group_i['x'].tolist()
+                    y_vals = df_group_i['y'].tolist()
+
+                    mean_x = np.nanmean(x_vals)
+                    mean_y = np.nanmean(y_vals)
+                    bin1_x_list.append(mean_x)
+                    err = np.nanstd(y_vals)
+                    err1_y_list.append(err)
+                err1_y_list = SMOOTH().smooth_convolve(err1_y_list,window_len=21)
+                bin1_x_list = np.array(bin1_x_list)
+                err2_y_list = []
+                bin2_x_list = []
+                for name,df_group_i in df2_group:
+                    x_vals = df_group_i['x'].tolist()
+                    y_vals = df_group_i['y'].tolist()
+
+                    mean_x = np.nanmean(x_vals)
+                    mean_y = np.nanmean(y_vals)
+                    bin2_x_list.append(mean_x)
+                    err = np.nanstd(y_vals)
+                    err2_y_list.append(err)
+                bin2_x_list = np.array(bin2_x_list)
+                err2_y_list = SMOOTH().smooth_convolve(err2_y_list,window_len=21)
+                # plt.plot(bin1_x_list,err1_y_list)
+                # plt.show()
+                x1 = df_i_1['x'].tolist()
+                y1 = df_i_1['y'].tolist()
+                x2 = df_i_2['x'].tolist()
+                y2 = df_i_2['y'].tolist()
+                # a, b, r, p = T.nan_line_fit(x1, y1)
+                a1, b1, r1, p1 = KDE_plot().linefit(x1, y1)
+                a2, b2, r2, p2 = KDE_plot().linefit(x2, y2)
+                # print(x1_bins[:-1],err1_y_list)
+                self.plot_fit_line(a1, b1, r1, p1, bin1_x_list,err1_y_list)
+                self.plot_fit_line(a2, b2, r2, p2, bin2_x_list,err2_y_list)
+                plt.title(f'{ELI}\n{var_name}')
+                plt.ylim(-0.6, 0.6)
 
                 # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
-                # plt.close()
+                plt.savefig(join(outdir_i, f'{var_name}_with_scatter.png'),dpi=300)
+                plt.close()
+
+
+    def plot_fit_line(self, a, b, r, p, x, err_list,ax=None, title='', is_label=True, is_formula=True, line_color='k', **argvs):
+        '''
+        画拟合直线 y=ax+b
+        画散点图 X,Y
+        :param a:
+        :param b:
+        :param X:
+        :param Y:
+        :param i:
+        :param title:
+        :return:
+        '''
+        # x = np.linspace(min(X), max(X), len(X))
+        y = a * x + b
+        #
+        # plt.subplot(2,2,i)
+        # plt.scatter(X,Y,marker='o',s=5,c = 'grey')
+        # plt.plot(X,Y)
+        c = line_color
+        if is_label == True:
+            if is_formula == True:
+                label = 'y={:0.2f}x+{:0.2f}\nr={:0.2f}\np={:0.2f}'.format(a, b, r, p)
+            else:
+                label = 'r={:0.2f}'.format(r)
+        else:
+            label = None
+
+        if ax == None:
+            if not 'linewidth' in argvs:
+                plt.plot(x, y, linestyle='dashed', c=c, alpha=0.7, label=label, **argvs)
+            else:
+                plt.plot(x, y, linestyle='dashed', c=c, alpha=0.7, label=label, **argvs)
+        else:
+            if not 'linewidth' in argvs:
+                ax.plot(x, y, linestyle='dashed', c=c, alpha=0.7, label=label, **argvs)
+            else:
+                ax.plot(x, y, linestyle='dashed', c=c, alpha=0.7, label=label, **argvs)
+        plt.fill_between(x, y - err_list, y + err_list, alpha=0.5, color='gray',linewidth=0)
 
     def plot_pdp_shap_split_df_line_breakpoints_detail(self):
 
@@ -2017,7 +2181,7 @@ class SHAP:
     def change_point_rbeast(self,vals,**kwargs):
         # beach, year = rb.load_example('googletrend')
         vals_df = pd.Series(vals)
-        o = rb.beast(vals_df,quiet=True,**kwargs)
+        o = rb.beast(vals_df,quiet=True,start=0,**kwargs)
         # rb.plot(o,title=title,fig=plt.figure(figsize=(15,10)))
         return o
         pass

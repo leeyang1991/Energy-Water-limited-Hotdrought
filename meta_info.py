@@ -394,3 +394,10 @@ def year_range_str_to_list(year_range_str):
     year_range = year_range_str.split('-')
     year_range = list(range(int(year_range[0]), int(year_range[1]) + 1))
     return year_range
+
+def print_fdir(fdir):
+
+    # E:\Energy_water_hotdrought
+    new_fdir = fdir.replace(this_root, '').replace('/', '\\')
+    new_fdir = 'E:\\Energy_water_hotdrought\\' + new_fdir
+    print(new_fdir)
