@@ -5881,10 +5881,10 @@ class MAT_MAP:
             plt.xlim(-10,35)
             plt.legend(fontsize=10)
             plt.tight_layout()
-            # plt.show()
-            outf = join(outdir,f'{gez}.pdf')
-            plt.savefig(outf)
-            plt.close()
+            plt.show()
+            # outf = join(outdir,f'{gez}.pdf')
+            # plt.savefig(outf)
+            # plt.close()
 
 
         pass
@@ -5930,6 +5930,8 @@ class MAT_MAP:
         pass
 
     def GEZ_AI_anomaly_NDVI(self):
+        GEZ_color_dict = self.GEZ_color_dict()
+        GEZ_marker_dict = self.GEZ_marker_dict()
         df = self.__gen_df_init()
         MAT_f = join(data_root, r"CRU_tmp\mat\mat_gs.tif")
         MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
@@ -5946,32 +5948,92 @@ class MAT_MAP:
         plt.title(f'{drought_type}')
 
         GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        xx = []
+        yy = []
         for GEZ in GEZ_list:
+            if not GEZ in GEZ_color_dict:continue
             df_GEZ = df[df['GEZ']==GEZ]
-            if len(df_GEZ) < 500:
-                continue
-            # AI = df_GEZ['aridity_index'].tolist()
-            AI = df_GEZ['MAT'].tolist()
+            # if len(df_GEZ) < 500:
+            #     continue
+            AI = df_GEZ['aridity_index'].tolist()
             RT = df_GEZ['NDVI-anomaly_detrend'].tolist()
             AI_mean = np.nanmean(AI)
             RT_mean = np.nanmean(RT)
-            AI_std = np.nanstd(AI)/8.
-            RT_std = np.nanstd(RT)/8.
-            plt.scatter(AI_mean,RT_mean,label=GEZ)
-            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std)
+            AI_std = np.nanstd(AI)/2.
+            RT_std = np.nanstd(RT)/2.
+            plt.scatter(AI_mean,RT_mean,label=GEZ,color=GEZ_color_dict[GEZ],marker=GEZ_marker_dict[GEZ],
+                        s=140,zorder=10,edgecolors='k')
+            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std,c='gray')
             # plt.text(AI_mean,RT_mean,GEZ)
             plt.xlabel('AI')
             plt.ylabel('NDVI-anomaly')
-        # plt.show()
-        plt.legend(fontsize=10,ncol=2)
+            xx.append(AI_mean)
+            yy.append(RT_mean)
+        # plt.legend(fontsize=10,ncol=2)
+        sns.regplot(x=xx, y=yy, scatter=False, color='gray')
         plt.ylim(-0.8,0.3)
+        plt.xlim(0,2)
         outf = join(outdir,f'{drought_type}.pdf')
-        plt.show()
-        # plt.savefig(outf)
-        # plt.close()
+        # plt.show()
+        plt.savefig(outf)
+        plt.close()
         pass
 
+    def GEZ_color_dict(self):
+        gez_list = ('Boreal coniferous forest', 'Boreal mountain system', 'Boreal tundra woodland', 'Polar', 'Subtropical desert', 'Subtropical dry forest', 'Subtropical humid forest', 'Subtropical mountain system', 'Subtropical steppe', 'Temperate continental forest', 'Temperate desert', 'Temperate mountain system', 'Temperate oceanic forest', 'Temperate steppe', 'Tropical desert', 'Tropical dry forest', 'Tropical moist forest', 'Tropical shrubland', 'Water')
+        # for gez in gez_list:
+        #     print(f"'{gez}':'#ff0000',")
+            # exit()
+        gez_color_dict = {
+            'Boreal coniferous forest': '#F8A790',
+            'Boreal mountain system': '#ACD481',
+            'Boreal tundra woodland': '#E658A0',
+
+            'Polar': '#454FA2',
+
+            'Subtropical desert': '#F8A790',
+            'Subtropical dry forest': '#86C9EF',
+            'Subtropical humid forest': '#454FA2',
+            'Subtropical mountain system': '#ACD481',
+            'Subtropical steppe': '#E658A0',
+
+            'Temperate continental forest': '#86C9EF',
+            'Temperate desert': '#F8A790',
+            'Temperate mountain system': '#ACD481',
+            'Temperate oceanic forest': '#454FA2',
+            'Temperate steppe': '#E658A0',
+
+            'Tropical desert': '#F8A790',
+        }
+        return gez_color_dict
+        pass
+
+    def GEZ_marker_dict(self):
+        marker_dict = {
+            'Boreal coniferous forest': 'o',
+            'Boreal mountain system': 'o',
+            'Boreal tundra woodland': 'o',
+
+            'Polar': '^',
+
+            'Subtropical desert': 'D',
+            'Subtropical dry forest': 'D',
+            'Subtropical humid forest': 'D',
+            'Subtropical mountain system': 'D',
+            'Subtropical steppe': 'D',
+
+            'Temperate continental forest': 'X',
+            'Temperate desert': 'X',
+            'Temperate mountain system': 'X',
+            'Temperate oceanic forest': 'X',
+            'Temperate steppe': 'X',
+
+            'Tropical desert': '*',
+        }
+        return marker_dict
+
     def GEZ_MAT_MAP(self):
+        GEZ_color_dict =self.GEZ_color_dict()
         df = self.__gen_df_init()
         outdir = join(self.this_class_png,'GEZ_MAT_MAP')
         T.mk_dir(outdir)
@@ -5983,8 +6045,13 @@ class MAT_MAP:
         df = T.add_spatial_dic_to_df(df, MAP_spatial_dict, 'MAP')
 
         GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        # for GEZ in GEZ_list:
+        #     print(GEZ)
+        # exit()
+        # print(GEZ_list);exit()
         plt.figure(figsize=(10, 8))
         for GEZ in GEZ_list:
+            if not GEZ in GEZ_color_dict:continue
             df_GEZ = df[df['GEZ']==GEZ]
             if len(df_GEZ) < 100:
                 continue
@@ -5995,17 +6062,19 @@ class MAT_MAP:
             MAT = df_GEZ['MAT'].tolist()
             MAP_mean = np.nanmean(MAP)
             MAT_mean = np.nanmean(MAT)
-            MAP_std = np.nanstd(MAP)/2.
-            MAT_std = np.nanstd(MAT)/2.
-            plt.scatter(MAT_mean,MAP_mean,c='k')
+            MAP_std = np.nanstd(MAP)/1.
+            MAT_std = np.nanstd(MAT)/1.
+            plt.scatter(MAT_mean,MAP_mean,c=GEZ_color_dict[GEZ],label=GEZ,s=140,zorder=99,
+                        marker=self.GEZ_marker_dict()[GEZ],edgecolors='black')
             plt.errorbar(MAT_mean,MAP_mean,xerr=MAT_std,yerr=MAP_std,c='gray',zorder=-99)
-            plt.text(MAT_mean,MAP_mean,GEZ)
+            # plt.text(MAT_mean,MAP_mean,GEZ)
             # plt.xlabel('AI')
             plt.ylabel('MAP')
             # plt.ylabel('NDVI-anomaly')
             plt.xlabel('MAT')
             # plt.ylim(0,4000)
         # plt.colorbar()
+        plt.legend()
         # plt.show()
         outf = join(outdir,f'GEZ_MAT_MAP.pdf')
         plt.savefig(outf)
@@ -6013,6 +6082,8 @@ class MAT_MAP:
         pass
 
     def GEZ_MAT_anomaly_NDVI(self):
+        GEZ_color_dict = self.GEZ_color_dict()
+        GEZ_marker_dict = self.GEZ_marker_dict()
         df = self.__gen_df_init()
         MAT_f = join(data_root, r"CRU_tmp\mat\mat_gs.tif")
         MAT_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_f)
@@ -6022,31 +6093,38 @@ class MAT_MAP:
         df = T.add_spatial_dic_to_df(df, MAP_spatial_dict, 'MAP')
         outdir = join(self.this_class_png,'GEZ_MAT_anomaly_NDVI')
         T.mk_dir(outdir)
-        drought_type = 'hot-drought'
-        # drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
+        drought_type = 'normal-drought'
         df = df[df['drought_type']==drought_type]
         plt.figure(figsize=(10,8))
         plt.title(f'{drought_type}')
 
         GEZ_list = T.get_df_unique_val_list(df,'GEZ')
+        xx = []
+        yy = []
         for GEZ in GEZ_list:
+            if not GEZ in GEZ_color_dict:continue
             df_GEZ = df[df['GEZ']==GEZ]
-            if len(df_GEZ) < 500:
-                continue
+            # if len(df_GEZ) < 500:
+            #     continue
             # AI = df_GEZ['aridity_index'].tolist()
             AI = df_GEZ['MAT'].tolist()
             RT = df_GEZ['NDVI-anomaly_detrend'].tolist()
             AI_mean = np.nanmean(AI)
             RT_mean = np.nanmean(RT)
-            AI_std = np.nanstd(AI)/4.
-            RT_std = np.nanstd(RT)/4.
-            plt.scatter(AI_mean,RT_mean,label=GEZ)
-            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std)
+            AI_std = np.nanstd(AI)/2.
+            RT_std = np.nanstd(RT)/2.
+            plt.scatter(AI_mean,RT_mean,label=GEZ,c=GEZ_color_dict[GEZ],s=140,marker=GEZ_marker_dict[GEZ],
+                        edgecolors='black',zorder=99)
+            plt.errorbar(AI_mean,RT_mean,xerr=AI_std,yerr=RT_std,c='gray')
+            xx.append(AI_mean)
+            yy.append(RT_mean)
             # plt.text(AI_mean,RT_mean,GEZ)
             plt.xlabel('MAT')
             plt.ylabel('NDVI-anomaly')
         # plt.show()
-        plt.legend(fontsize=10,ncol=2)
+        # plt.legend(fontsize=10,ncol=2)
+        sns.regplot(x=xx, y=yy, scatter=False, color='gray')
         plt.ylim(-0.8,0.3)
         outf = join(outdir,f'{drought_type}.pdf')
         # plt.show()

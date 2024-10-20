@@ -3193,7 +3193,8 @@ class Global_Ecological_Zone:
 
     def run(self):
         # self.rasterize()
-        self.legend()
+        # self.legend()
+        self.plot_ortho_GEZ_map()
         pass
 
     def rasterize(self):
@@ -3234,6 +3235,14 @@ class Global_Ecological_Zone:
             legend_dict[gez_code[i]] = gez_name[i]
         outf = join(self.datadir,'legend')
         T.save_npy(legend_dict,outf)
+        pass
+
+    def plot_ortho_GEZ_map(self):
+        tif = join(self.datadir,'tif/gez_2010.tif')
+        arr = DIC_and_TIF().spatial_tif_to_arr(tif)
+        plt.imshow(arr,cmap='Spectral')
+        plt.colorbar()
+        plt.show()
         pass
 
 class IPCC_cliamte_zone:
@@ -3317,9 +3326,9 @@ def main():
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
-    Aridity_Index().run()
+    # Aridity_Index().run()
     # TCSIF().run()
-    # Global_Ecological_Zone().run()
+    Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
 
     pass
