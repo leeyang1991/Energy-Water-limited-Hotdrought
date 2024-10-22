@@ -1888,7 +1888,8 @@ class Drought_timing:
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
-        self.GEZ_statistic()
+        # self.GEZ_statistic()
+        self.high_latitude_hot_drought()
         # self.VPD_delta_tif(df)
         # self.VPD_alleviation_excerbation()
         # self.VPD_NDVI(df)
@@ -2884,6 +2885,27 @@ class Drought_timing:
         plt.savefig(outf)
         plt.close()
         # plt.show()
+        pass
+
+    def high_latitude_hot_drought(self):
+        df = self.__gen_df_init()
+        df_hotdrought_50N = df[df['lat'] >= 60]
+        df_hotdrought = df_hotdrought_50N[df_hotdrought_50N['drought_type'] == 'hot-drought']
+        df_hotdrought_increase_NDVI = df_hotdrought[df_hotdrought['rt'] > 1]
+        ratio = len(df_hotdrought_increase_NDVI) / len(df_hotdrought)
+        df_pix_dict = T.df_groupby(df_hotdrought, 'pix')
+        spatial_dict = {}
+        for pix in df_pix_dict:
+            df_pix = df_pix_dict[pix]
+            val = df_pix['rt'].tolist()
+            spatial_dict[pix] = np.nanmean(val)
+        print(ratio)
+
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        plt.imshow(arr,interpolation='nearest',vmin=0.9,vmax=1.1,cmap='RdBu',aspect='auto')
+        plt.colorbar()
+        plt.show()
+
         pass
 
     def add_VPD_anomaly_process(self,df):
@@ -6141,7 +6163,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    # Drought_timing().run()
+    Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -6150,7 +6172,7 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-    MAT_MAP().run()
+    # MAT_MAP().run()
 
     pass
 
