@@ -1096,6 +1096,17 @@ class VPD:
         self.check_per_pix()
         pass
 
+    def __kernel_cal_VPD(self,tmn,tmx,vap):
+        '''
+        Worldwide impacts of atmospheric vapor pressure deficit on the interannual variability of terrestrial carbon sinks
+        https://doi.org/10.1093/nsr/nwab150
+        '''
+        vap = vap * 0.1
+        svp = 0.5 * (0.611 * np.exp((17.3*tmn)/(tmn+237.3)) + 0.611 * np.exp((17.3*tmx)/(tmx+237.3)))
+        vpd = svp - vap
+
+        return vpd
+
     def tif_to_perpix_1982_2020(self):
         fdir = join(self.datadir,'tif')
         outdir = join(self.datadir,'perpix/1982-2020')
