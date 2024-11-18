@@ -3264,17 +3264,18 @@ class IPCC_cliamte_zone:
         pass
 
     def run(self):
-        # self.rasterize()
-        self.legend()
+        self.rasterize()
+        # self.legend()
         pass
 
     def rasterize(self):
-        fpath = join(self.datadir,r"IPCC-WGI-reference-regions-v4_shapefile\IPCC-WGI-reference-regions-v4_shapefile\IPCC-WGI-reference-regions-v4.shp")
+        # fpath = join(self.datadir,r"IPCC-WGI-reference-regions-v4_shapefile\IPCC-WGI-reference-regions-v4_shapefile\IPCC-WGI-reference-regions-v4.shp")
+        fpath = join(self.datadir,r"v3\shp\referenceRegions.shp")
         # print(fpath);exit()
         outdir = join(self.datadir,'tif')
         in_raster_template = join(this_root,'conf/land.tif')
         T.mk_dir(outdir)
-        outf = join(outdir,'IPCC-WGI.tif')
+        outf = join(outdir,'IPCC-WGI-v3.tif')
         self.shp_to_raster(fpath,outf,0.5,in_raster_template)
 
         pass
@@ -3315,7 +3316,23 @@ class HWSD:
         pass
 
     def run(self):
+        # self.gen_soil_property_dict()
         self.gen_soil_SILT_CLAY_SAND_map()
+        pass
+
+    def DEPTH_information(self):
+        # see https://openknowledge.fao.org/server/api/core/bitstreams/149f1562-bf6a-439f-9d3a-eb93940f39cf/content
+        # 2.3.3 Soil Attributes per depth layer
+        # Page 14
+
+        # DEPTH OF LAYER.
+        # D1 = 0-20 cm
+        # D2 = 20-40 cm
+        # D3 = 40-60 cm
+        # D4 = 60-80 cm
+        # D5 = 80-100 cm
+        # D6 = 100-150 cm
+        # D7 = 150-200 cm
         pass
 
     def read_Database(self):
@@ -3330,24 +3347,77 @@ class HWSD:
         pass
 
     def gen_soil_SILT_CLAY_SAND_map(self):
-        df = self.read_Database()
-        df = df[['HWSD2_SMU_ID','SILT','CLAY','SAND']]
+        soil_prop_df = self.gen_soil_property_dict()
+        soil_prop_dict = T.df_to_dic(soil_prop_df, 'SMU')
+        # for smu in soil_prop_dict:
+        #     print(smu,soil_prop_dict[smu]);exit()
+
+        # T.print_head_n(soil_prop_dict);exit()
         soil_property = ['SILT','CLAY','SAND']
         outdir = join(self.datadir,'tif')
         T.mk_dir(outdir)
         raster_f = join(self.datadir,'raster/HWSD2.bil')
         array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(raster_f)
+        array = np.array(array, dtype=float)
+        array[array>60000] = np.nan
         for p in soil_property:
-            soil_property_dict = T.dict_zip(df['HWSD2_SMU_ID'].tolist(),df[p].tolist())
-            soil_property_dict[65535] = np.nan
-            outpath_soil = join(outdir,p+'.tif')
+            # exit()
             array_soil = np.ones_like(array)*np.nan
             for r in tqdm(range(array.shape[0]),desc=p):
                 for c in range(array.shape[1]):
                     SMU = array[r,c]
-                    array_soil[r,c] = soil_property_dict[SMU]
+                    if np.isnan(SMU):
+                        continue
+                    SMU = int(SMU)
+                    if not SMU in soil_prop_dict:
+                        continue
+                    # if SMU > 60000:
+                    #     continue
+                    try:
+                        val = soil_prop_dict[SMU][p]
+                    except Exception as e:
+                        val = np.nan
+                        print(e)
+                    array_soil[r,c] = val
+            outpath_soil = join(outdir,p+'.tif')
             ToRaster().array2raster(outpath_soil, originX, originY, pixelWidth, pixelHeight, array_soil)
 
+        pass
+
+    def gen_soil_property_dict(self):
+        outdir = join(self.datadir,'DB')
+        outf = join(outdir,'soil_property_dict.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        picked_cols = ['HWSD2_SMU_ID','SILT','CLAY','SAND','LAYER']
+        layers_list = ['D1','D2','D3','D4','D5']
+        soil_property = ['SILT','CLAY','SAND']
+
+        df = self.read_Database()
+        df = df[picked_cols]
+        df_group = T.df_groupby(df,'HWSD2_SMU_ID')
+        soil_property_dict = {}
+        for SMU in tqdm(df_group):
+            df_i = df_group[SMU]
+            df_i_picked_layers = df_i[df_i['LAYER'].isin(layers_list)]
+            # T.print_head_n(df_i_picked_layers)
+            soil_property_dict_i = {}
+            for p in soil_property:
+                vals = df_i_picked_layers[p].tolist()
+                vals = np.array(vals)
+                vals = vals[vals>=0]
+                if len(vals)<5:
+                    continue
+                vals_mean = np.nanmean(vals)
+                soil_property_dict_i[p] = vals_mean
+            SMU = int(SMU)
+            soil_property_dict[SMU] = soil_property_dict_i
+        df_result = T.dic_to_df(soil_property_dict,'SMU')
+        # T.print_head_n(df_result);exit()
+        T.save_df(df_result,outf)
+        T.df_to_excel(df_result, outf)
+        return df_result
 
         pass
 
