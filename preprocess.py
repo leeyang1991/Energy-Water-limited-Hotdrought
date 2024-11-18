@@ -3,6 +3,7 @@ import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tqdm
 
 from __init__ import *
@@ -3308,6 +3309,48 @@ class IPCC_cliamte_zone:
         T.save_npy(legend_dict,outf)
         pass
 
+class HWSD:
+    def __init__(self):
+        self.datadir = join(data_root, 'HWSD')
+        pass
+
+    def run(self):
+        self.gen_soil_SILT_CLAY_SAND_map()
+        pass
+
+    def read_Database(self):
+        fpath = join(self.datadir,'DB/HWSD2_LAYERS.txt')
+        header_f = join(self.datadir,'DB/header.txt')
+        hearder_list = open(header_f).readline().split()
+        # print(hearder_list);exit()
+        df = pd.read_csv(fpath,header=None,low_memory=False)
+        df = df.rename(columns=dict(zip(range(len(hearder_list)), hearder_list)))
+        return df
+
+        pass
+
+    def gen_soil_SILT_CLAY_SAND_map(self):
+        df = self.read_Database()
+        df = df[['HWSD2_SMU_ID','SILT','CLAY','SAND']]
+        soil_property = ['SILT','CLAY','SAND']
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        raster_f = join(self.datadir,'raster/HWSD2.bil')
+        array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(raster_f)
+        for p in soil_property:
+            soil_property_dict = T.dict_zip(df['HWSD2_SMU_ID'].tolist(),df[p].tolist())
+            soil_property_dict[65535] = np.nan
+            outpath_soil = join(outdir,p+'.tif')
+            array_soil = np.ones_like(array)*np.nan
+            for r in tqdm(range(array.shape[0]),desc=p):
+                for c in range(array.shape[1]):
+                    SMU = array[r,c]
+                    array_soil[r,c] = soil_property_dict[SMU]
+            ToRaster().array2raster(outpath_soil, originX, originY, pixelWidth, pixelHeight, array_soil)
+
+
+        pass
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -3339,8 +3382,9 @@ def main():
     # FAPAR().run()
     # Aridity_Index().run()
     # TCSIF().run()
-    Global_Ecological_Zone().run()
+    # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
+    HWSD().run()
 
     pass
 
