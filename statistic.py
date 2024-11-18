@@ -243,7 +243,7 @@ class Compensation_Excerbation:
         # self.ELI_gradient(df)
         # self.ELI_gradient_ratio(df)
         # self.Drought_year_spatial_tif(df)
-        # self.plot_Drought_year_spatial_tif()
+        self.plot_Drought_year_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
 
         # self.Drought_year_NDVI_percentage_spatial_tif(df)
@@ -252,7 +252,7 @@ class Compensation_Excerbation:
         # self.plot_Drought_year_NDVI_percentage_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
         # self.bar_Drought_year_NDVI_percentage_spatial_tif()
-        self.bar_Drought_year_NDVI_percentage_spatial_tif_all_area()
+        # self.bar_Drought_year_NDVI_percentage_spatial_tif_all_area()
         # self.AI_gradient_Drought_year_spatial_tif()
         # self.delta_area_ratio_gradient_bar()
 
