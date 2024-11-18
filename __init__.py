@@ -30,7 +30,7 @@ import copy
 import scipy
 import sklearn
 import random
-import h5py
+# import h5py
 from netCDF4 import Dataset
 import shutil
 import requests
@@ -50,7 +50,7 @@ import pickle
 from dateutil import relativedelta
 from sklearn.inspection import permutation_importance
 # from statsmodels.stats.outliers_influence import variance_inflation_factor
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+# from statsmodels.stats.outliers_influence import variance_inflation_factor
 import glob
 from osgeo import osr
 from osgeo import ogr

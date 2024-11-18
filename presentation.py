@@ -163,6 +163,7 @@ class Aridity_index:
     def plot_ortho_tif_humid(self):
         fpath = join(self.datadir, 'aridity_index_humid.tif')
         Plot().plot_ortho(fpath, cmap='RdBu', vmin=-.3, vmax=1.3)
+        plt.show()
         outf = join(self.datadir, 'aridity_index_humid.png')
         plt.savefig(outf, dpi=300)
         plt.close()
