@@ -3317,7 +3317,11 @@ class HWSD:
 
     def run(self):
         # self.gen_soil_property_dict()
-        self.gen_soil_SILT_CLAY_SAND_map()
+        # self.gen_soil_SILT_CLAY_SAND_map()
+        # self.npy_to_tif()
+        # self.resample()
+        # self.resample1()
+        self.check_resample()
         pass
 
     def DEPTH_information(self):
@@ -3356,12 +3360,17 @@ class HWSD:
         soil_property = ['SILT','CLAY','SAND']
         outdir = join(self.datadir,'tif')
         T.mk_dir(outdir)
+
         raster_f = join(self.datadir,'raster/HWSD2.bil')
         array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(raster_f)
         array = np.array(array, dtype=float)
         array[array>60000] = np.nan
         for p in soil_property:
             # exit()
+            outpath_soil = join(outdir, p + '.npy')
+            if isfile(outpath_soil):
+                continue
+
             array_soil = np.ones_like(array)*np.nan
             for r in tqdm(range(array.shape[0]),desc=p):
                 for c in range(array.shape[1]):
@@ -3379,10 +3388,69 @@ class HWSD:
                         val = np.nan
                         print(e)
                     array_soil[r,c] = val
-            outpath_soil = join(outdir,p+'.tif')
-            ToRaster().array2raster(outpath_soil, originX, originY, pixelWidth, pixelHeight, array_soil)
+            T.save_npy(array_soil,outpath_soil)
+            # ToRaster().array2raster(outpath_soil, originX, originY, pixelWidth, pixelHeight, array_soil)
 
         pass
+
+    def npy_to_tif(self):
+        outdir = join(self.datadir,'tif')
+        for f in tqdm(T.listdir(outdir)):
+            fpath = join(outdir,f)
+            if not f.endswith('.npy'):
+                continue
+            outpath = join(outdir,f.replace('.npy','.tif'))
+            array = np.load(fpath)
+            originX, originY, pixelWidth, pixelHeight = -180, 90, 0.0083333333333, -0.0083333333333
+            ToRaster().array2raster(outpath, originX, originY, pixelWidth, pixelHeight, array)
+
+    def resample1(self):
+        fdir = join(self.datadir,'tif')
+        soil_type_list = ['SILT','CLAY','SAND']
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir)
+        for soil_type in soil_type_list:
+            print(soil_type)
+            fpath = join(fdir,soil_type + '.tif')
+            outpath = join(outdir,soil_type + '.tif')
+            if isfile(outpath):
+                continue
+            ToRaster().resample_reproj(fpath,outpath,0.5)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        soil_type_list = ['SILT','CLAY','SAND']
+        outdir = join(self.datadir,'tif_05_1')
+        T.mk_dir(outdir)
+        for soil_type in soil_type_list:
+            print(soil_type)
+            fpath = join(fdir,soil_type + '.tif')
+            outpath = join(outdir,soil_type + '.tif')
+            if isfile(outpath):
+                continue
+            array = ToRaster().raster2array(fpath)[0]
+            target_res = 0.5
+            original_res = 0.0083333333333
+            array_res = T.resample_nan(array, target_res, original_res,)
+            originX, originY, pixelWidth, pixelHeight = -180, 90, 0.5, -0.5
+            ToRaster().array2raster(outpath, originX, originY, pixelWidth, pixelHeight, array_res)
+
+    def check_resample(self):
+        fdir = join(self.datadir,'tif_05')
+        spatial_dicts = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            spatial_dicts[f.split('.')[0]] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dicts)
+        df['sum'] = df['SILT'] + df['CLAY'] + df['SAND']
+        sum_spatial_dict = T.df_to_spatial_dic(df,'sum')
+        arr_sum = DIC_and_TIF().pix_dic_to_spatial_arr(sum_spatial_dict)
+        plt.imshow(arr_sum,cmap='jet',vmin=99,vmax=101,interpolation='nearest')
+        plt.show()
+
 
     def gen_soil_property_dict(self):
         outdir = join(self.datadir,'DB')
