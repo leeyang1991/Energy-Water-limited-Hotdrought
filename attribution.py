@@ -656,13 +656,16 @@ class Attribution_Dataframe:
         # df = self.add_PAR(df)
         # df = self.add_srad(df)
         # df = self.add_T_anomaly(df)
+        # df = self.add_SMRoot_anomaly(df)
+        df = self.add_SMRoot_origin(df)
+        # df = self.add_Soil_SILT(df)
         # df = self.add_detrend_T_anomaly(df)
         # df = self.add_delta_Topt_T(df)
-        # T.save_df(df, self.dff)
-        # T.df_to_excel(df, self.dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
         # self.check_variable(df)
         # self.check_Topt_vs_ndvi(df)
-        self.plot_variables(df)
+        # self.plot_variables(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -687,9 +690,11 @@ class Attribution_Dataframe:
             'Temperature-anomaly_detrend',
             # 'Temperature-anomaly',
             # 'FAPAR-anomaly_detrend',
+            'GLEAM-SMRoot-anomaly_detrend',
             'Radiation-anomaly',
             'delta_Topt_T',
             'drought_mon',
+            'SILT',
         ]
         y = 'NDVI-anomaly_detrend'
         return x_list,y
@@ -706,6 +711,8 @@ class Attribution_Dataframe:
             'drought_mon':(5,10),
             'NDVI-anomaly_detrend':(-3,3),
             'NDVI-anomaly_with_trend':(-3,3),
+            'GLEAM-SMRoot-anomaly_detrend':(-3,3),
+            'SILT':(0,100),
 
         }
         return variables_threshold_dict
@@ -939,6 +946,59 @@ class Attribution_Dataframe:
             vals_drought_year_mean = np.nanmean(vals_drought_year)
             vals_drought_year_mean_list.append(vals_drought_year_mean)
         df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_SMRoot_anomaly(self,df):
+        # df = Load_dataframe()
+        vals_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            NDVI_progress = row['GLEAM-SMRoot-anomaly_detrend_progress'].tolist()
+            # print(NDVI_progress)
+            try:
+                NDVI_progress_reshape = np.reshape(NDVI_progress, (-1, 6))
+            except:
+                vals_mean_list.append(np.nan)
+                continue
+            if len(NDVI_progress_reshape) != 6:
+                vals_mean_list.append(np.nan)
+                continue
+            drought_year_NDVI = NDVI_progress_reshape[1]
+            drought_year_NDVI_mean = np.nanmean(drought_year_NDVI)
+            vals_mean_list.append(drought_year_NDVI_mean)
+        df['GLEAM-SMRoot-anomaly_detrend'] = vals_mean_list
+        return df
+
+    def add_SMRoot_origin(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().GLEAM_SMRoot_origin()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_Soil_SILT(self,df):
+        # df = Load_dataframe()
+        fpath = join(data_root,'HWSD/tif_05/SILT.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'SILT')
         return df
 
     def add_detrend_T_anomaly(self,df):
@@ -1367,13 +1427,13 @@ class SHAP:
 
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('SHAP', result_root_this_script, mode=2)
+            T.mk_class_dir('SHAP_with_soil', result_root_this_script, mode=2)
         self.dff = join(self.this_class_arr, 'dataframe', 'dataframe.df')
         pass
 
     def run(self):
         # self.copy_df()
-        # df = self.__gen_df_init()
+        df = self.__gen_df_init()
         # self.pdp_shap(df)
         # self.plot_pdp_shap_result_line()
         # self.plot_pdp_shap_result_scatter(df)
@@ -1381,7 +1441,7 @@ class SHAP:
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
         # self.plot_pdp_shap_split_df_line_breakpoints()
-        self.plot_pdp_shap_split_df_line_breakpoints_all_regions()
+        # self.plot_pdp_shap_split_df_line_breakpoints_all_regions()
         # self.plot_pdp_shap_split_df_line_breakpoints_detail()
         # self.plot_pdp_shap_split_df_drought_mon()
         # self.plot_importances()
@@ -1402,6 +1462,7 @@ class SHAP:
         T.df_to_excel(df, self.dff)
 
     def __gen_df_init(self):
+        T.mkdir(join(self.this_class_arr, 'dataframe'))
         if not os.path.isfile(self.dff):
             df = pd.DataFrame()
             T.save_df(df,self.dff)
@@ -1520,7 +1581,7 @@ class SHAP:
                     for x_i in x_unique:
                         y_i = df_i[df_i[x_var] == x_i]['shap_v'].tolist()
                         y_vals_list.append(y_i)
-                plt.subplot(2, 3, flag)
+                plt.subplot(3, 3, flag)
                 # print(data_i[0])
                 # exit()
                 # interp_model = interpolate.interp1d(x_mean_list, y_mean_list, kind='cubic')
@@ -2568,9 +2629,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    # Attribution_Dataframe().run()
+    Attribution_Dataframe().run()
     # Random_forests().run()
-    SHAP().run()
+    # SHAP().run()
     # copy_files()
     pass
 
