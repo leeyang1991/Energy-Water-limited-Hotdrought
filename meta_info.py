@@ -350,14 +350,22 @@ class Load_Data:
         data_path = join(data_root, 'CSIF/anomaly', year_range)
         path_type = 'dir'
         var_name = 'CSIF-anomaly'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def CSIF_anomaly_detrend(self,year_range=global_VIs_year_range_dict['CSIF']):
         data_path = join(data_root, 'CSIF/anomaly_detrend', year_range)
         path_type = 'dir'
         var_name = 'CSIF-anomaly_detrend'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
+    def CSIF_percentage(self,year_range=global_VIs_year_range_dict['CSIF']):
+        data_path = join(data_root, 'CSIF/per_pix_percentage', year_range)
+        path_type = 'dir'
+        var_name = 'CSIF-percentage'
+        valid_range = (-200,200)
+        return self.__load_data(data_path, path_type), var_name,valid_range
 
     def TCSIF_origin(self,year_range=global_VIs_year_range_dict['TCSIF']):
         data_path = join(data_root, 'TCSIF/per_pix', year_range)

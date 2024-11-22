@@ -1866,6 +1866,8 @@ class Drought_timing:
         # df = self.add_VPD_anomaly_process(df)
         # df = self.add_VPD_origin_process(df)
         # df = self.add_NDVI_percentage_process(df)
+        # df = self.add_CSIF_percentage_process(df)
+        # df = self.add_CSIF_anomaly_process(df)
 
 
         # T.save_df(df, self.dff)
@@ -1873,14 +1875,21 @@ class Drought_timing:
 
         # statistic
         # self.timing_trajectory(df)
+        # self.timing_trajectory_CSIF(df)
         # self.timing_trajectory_sm(df)
         # self.timing_trajectory_Tair(df)
         # self.delta_season_tif(df)
         # self.delta_season_bar(df)
         # self.delta_season_boxplot(df)
+
         # self.season_excerbation_alleviation_ratio_tif(df)
         # self.season_excerbation_alleviation_ratio_statistic()
         # self.plot_season_excerbation_alleviation_ratio()
+
+        # self.season_excerbation_alleviation_ratio_tif_CSIF(df)
+        # self.season_excerbation_alleviation_ratio_statistic_CSIF()
+        self.plot_season_excerbation_alleviation_ratio_CSIF()
+
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
@@ -1889,7 +1898,7 @@ class Drought_timing:
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
         # self.GEZ_statistic()
-        self.high_latitude_hot_drought()
+        # self.high_latitude_hot_drought()
         # self.VPD_delta_tif(df)
         # self.VPD_alleviation_excerbation()
         # self.VPD_NDVI(df)
@@ -1948,6 +1957,65 @@ class Drought_timing:
                     df_drt = df_ELI[df_ELI['drought_type'] == drt]
                     df_timing = df_drt[df_drt['drought_season'] == timing]
                     NDVI_process = df_timing['NDVI_progress'].tolist()
+                    NDVI_process = np.array(NDVI_process)
+                    NDVI_process_mean = np.nanmean(NDVI_process,axis=0)
+                    NDVI_process_std = np.nanstd(NDVI_process,axis=0) / 6.
+                    # NDVI_process_std = T.uncertainty_err_2d(NDVI_process,axis=0)
+                    NDVI_process_mean = NDVI_process_mean[:3*6]
+                    NDVI_process_std = NDVI_process_std[:3*6]
+                    x_list = list(range(len(NDVI_process_mean)))
+                    x_list = np.array(x_list)
+                    x_list = np.insert(x_list,6,6.5)
+                    x_list = np.insert(x_list,13,12.5)
+
+                    NDVI_process_mean = np.insert(NDVI_process_mean,6,np.nan)
+                    NDVI_process_std = np.insert(NDVI_process_std,6,np.nan)
+                    NDVI_process_mean = np.insert(NDVI_process_mean,13,np.nan)
+                    NDVI_process_std = np.insert(NDVI_process_std,13,np.nan)
+                    plt.plot(x_list,NDVI_process_mean)
+                    plt.scatter(x_list,NDVI_process_mean,marker='o',s=10,c=color_dict[drt],zorder=10,alpha=0.5)
+                    plt.fill_between(x_list,NDVI_process_mean-NDVI_process_std,NDVI_process_mean+NDVI_process_std,alpha=0.3)
+                # plt.legend()
+                plt.title(f'{timing}\n{ELI_class}')
+                plt.ylim(-1.1,0.5)
+                # plt.grid()
+                # plt.xticks(list(range(len(NDVI_process_mean)))[::6],[-1,0,1])
+                fname = f'{timing}_{ELI_class}.pdf'
+                outf = join(outdir,fname)
+                plt.savefig(outf)
+                plt.close()
+                # plt.show()
+        # T.open_path_and_file(outdir)
+
+        pass
+
+    def timing_trajectory_CSIF(self,df):
+        outdir = join(self.this_class_png, 'timing_trajectory_CSIF')
+        T.mk_dir(outdir)
+        timing_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+
+        season_list = []
+
+        for i,row in df.iterrows():
+            mon = row['drought_mon']
+            season = global_season_mon_dict[mon]
+            season_list.append(season)
+        df['drought_season'] = season_list
+        color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
+
+        for timing in timing_list:
+            for ELI_class in ELI_class_list:
+                plt.figure(figsize=(9*centimeter_factor,6*centimeter_factor))
+                for drt in drought_type_list:
+                    df_ELI = df[df['ELI_class'] == ELI_class]
+                    df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                    df_timing = df_drt[df_drt['drought_season'] == timing]
+                    NDVI_process = df_timing['CSIF-anomaly_detrend_progress'].tolist()
                     NDVI_process = np.array(NDVI_process)
                     NDVI_process_mean = np.nanmean(NDVI_process,axis=0)
                     NDVI_process_std = np.nanstd(NDVI_process,axis=0) / 6.
@@ -2430,10 +2498,170 @@ class Drought_timing:
             plt.tight_layout()
             plt.ylim(-75, 30)
             outf = join(outdir, f'{ELI}.pdf')
+            # plt.savefig(outf, dpi=300)
+            # plt.close()
+            plt.show()
+
+    def season_excerbation_alleviation_ratio_tif_CSIF(self,df):
+        # T.print_head_n(df)
+        outdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio_CSIF')
+        T.mk_dir(outdir)
+        global_drought_season_index_dict = {
+            'spring': [0,1],
+            'summer': [2,3],
+            'autumn': [4,5],
+        }
+        drought_season_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list[::-1]
+        alleviation_list = []
+        excerbation_list = []
+        progress_col_name = 'CSIF-percentage_progress'
+
+        for season in drought_season_list:
+            df_season = df[df['drought_season'] == season]
+            df_pix_dict = T.df_groupby(df_season, 'pix')
+            spatial_dict_normal = {}
+            spatial_dict_hot = {}
+            for pix in tqdm(df_pix_dict):
+                df_pix = df_pix_dict[pix]
+                df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                NDVI_progress_hot = df_hot[progress_col_name].tolist()
+                NDVI_progress_normal = df_normal[progress_col_name].tolist()
+                if len(NDVI_progress_hot) == 0 or len(NDVI_progress_normal) == 0:
+                    continue
+                NDVI_progress_hot_mean = np.nanmean(NDVI_progress_hot,axis=0)
+                NDVI_progress_hot_mean_reshape = np.reshape(NDVI_progress_hot_mean,(6,-1))
+                drought_season_vals_hot = NDVI_progress_hot_mean_reshape[1][global_drought_season_index_dict[season]]
+                drought_season_vals_hot_mean = np.nanmean(drought_season_vals_hot)
+
+                NDVI_progress_normal_mean = np.nanmean(NDVI_progress_normal,axis=0)
+                NDVI_progress_normal_mean_reshape = np.reshape(NDVI_progress_normal_mean,(6,-1))
+                drought_season_vals_normal = NDVI_progress_normal_mean_reshape[1][global_drought_season_index_dict[season]]
+                drought_season_vals_normal_mean = np.nanmean(drought_season_vals_normal)
+
+                # delta = drought_season_vals_hot_mean - drought_season_vals_normal_mean
+
+                # spatial_dict[pix] = delta
+                spatial_dict_hot[pix] = drought_season_vals_hot_mean
+                spatial_dict_normal[pix] = drought_season_vals_normal_mean
+            arr_hot = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_hot)
+            outf_hot = join(outdir, f'hot_{season}.tif')
+            DIC_and_TIF().arr_to_tif(arr_hot, outf_hot)
+
+            arr_normal = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_normal)
+            outf_normal = join(outdir, f'normal_{season}.tif')
+            DIC_and_TIF().arr_to_tif(arr_normal, outf_normal)
+
+        pass
+
+    def season_excerbation_alleviation_ratio_statistic_CSIF(self):
+        fdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio_CSIF')
+        outdir = join(self.this_class_arr, 'season_excerbation_alleviation_ratio_statistic_CSIF')
+        drt_list = ['hot', 'normal']
+        T.mk_dir(outdir)
+        spatial_dict_all = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir, f)
+            # arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+            # plt.imshow(arr, cmap='RdBu', vmin=-0.2, vmax=0.2, interpolation='nearest')
+            # plt.colorbar()
+            # plt.show()
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            spatial_dict_mode = {}
+            for pix in spatial_dict:
+                val = spatial_dict[pix]
+                if np.isnan(val):
+                    continue
+
+                if val > 5:
+                    mode = 'alleviation'
+                elif val < -5:
+                    mode = 'excerbation'
+                else:
+                    mode = 'normal'
+                    # raise ValueError
+                spatial_dict_mode[pix] = mode
+            key = f.replace('.tif', '')
+            spatial_dict_all[key] = spatial_dict_mode
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = Dataframe_func(df).df
+        # T.print_head_n(df);exit()
+        T.print_head_n(df)
+        ratio_dict = {}
+        ELI_class_list = global_ELI_class_list
+        flag = 0
+        for drt in drt_list:
+            for season in global_drought_season_list:
+                col_name = f'{drt}_{season}'
+                df_season = df.dropna(subset=[col_name])
+                for ELI_class in ELI_class_list:
+                    df_ELI = df_season[df_season['ELI_class'] == ELI_class]
+                    mode_list = T.get_df_unique_val_list(df_ELI, col_name)
+                    # print(mode_list)
+                    for mode in mode_list:
+                        df_mode = df_ELI[df_ELI[col_name] == mode]
+                        count = len(df_mode)
+                        ratio = count / len(df_ELI)
+                        # print(season, ELI_class, mode, count, f'{ratio:.3f}%')
+                        ratio_dict[flag] = {
+                            'season': season,
+                            'drt': drt,
+                            'ELI_class': ELI_class,
+                            'mode': mode,
+                            'count': count,
+                            'ratio': f'{ratio*100:.3f}%'
+                        }
+                        flag += 1
+        df_result = T.dic_to_df(ratio_dict, 'flag')
+        T.print_head_n(df_result)
+        outf = join(outdir, 'ratio')
+        T.df_to_excel(df_result, outf)
+
+        pass
+
+    def plot_season_excerbation_alleviation_ratio_CSIF(self):
+        fpath = join(self.this_class_arr, 'season_excerbation_alleviation_ratio_statistic_CSIF', 'ratio.xlsx')
+        outdir = join(self.this_class_png, 'plot_season_excerbation_alleviation_ratio_CSIF')
+        T.mk_dir(outdir)
+        df = pd.read_excel(fpath, index_col=0)
+        # T.print_head_n(df);exit()
+        drt_list = ['hot', 'normal']
+        ELI_class_list = global_ELI_class_list
+        drought_season_list = global_drought_season_list
+        mode_list = ['alleviation', 'excerbation']
+
+        for ELI in ELI_class_list:
+            plt.figure(figsize=(5, 5))
+
+            for drt in drt_list:
+                df_drt = df[df['drt'] == drt]
+                for season in drought_season_list:
+                    df_ELI = df_drt[df_drt['ELI_class'] == ELI]
+                    for mode in mode_list:
+                        df_mode = df_ELI[df_ELI['mode'] == mode]
+                        df_season = df_mode[df_mode['season'] == season]
+                        print(df_season)
+                        if len(df_season) != 1:
+                            raise
+                        ratio_str = df_season['ratio'].tolist()[0]
+                        ratio = ratio_str.split('%')[0]
+                        ratio = float(ratio)
+                        color = 'blue'
+                        if mode == 'excerbation':
+                            ratio = -ratio
+                            color = 'red'
+                        plt.bar(f'{season} {ELI} {drt}', ratio, color=color)
+            plt.title(f'{ELI}')
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.ylim(-75, 30)
+            outf = join(outdir, f'{ELI}.pdf')
             plt.savefig(outf, dpi=300)
             plt.close()
-        # plt.show()
-
+            # plt.show()
 
 
 
@@ -3010,6 +3238,72 @@ class Drought_timing:
         # print(data_name)
         # exit()
         year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>valid_range[1]] = np.nan
+            NDVI[NDVI<valid_range[0]] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def add_CSIF_percentage_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().CSIF_percentage()
+        # print(data_name)
+        # exit()
+        year_list = year_range_str_to_list(global_VIs_year_range_dict['CSIF'])
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>valid_range[1]] = np.nan
+            NDVI[NDVI<valid_range[0]] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def add_CSIF_anomaly_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().CSIF_anomaly_detrend()
+        # print(data_name)
+        # exit()
+        year_list_str = global_VIs_year_range_dict['CSIF']
+        year_list = year_range_str_to_list(year_list_str)
+        # print(year_list);exit()
         gs = global_gs
         NDVI_list_all = []
         for i,row in tqdm(df.iterrows(),total=len(df)):

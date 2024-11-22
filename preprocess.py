@@ -1326,8 +1326,9 @@ class CSIF:
         # self.resample()
         # self.MVC()
         # self.per_pix()
+        self.per_pix_percentage()
         # self.anomaly()
-        self.detrend()
+        # self.detrend()
         pass
 
     def nc_to_tif(self):
@@ -1369,6 +1370,19 @@ class CSIF:
         outdir = join(self.datadir,'per_pix',self.year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_percentage(self):
+        fdir = join(self.datadir,'per_pix',self.year_range)
+        outdir = join(self.datadir,'per_pix_percentage',self.year_range)
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_percentage = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals_percentage = GIMMS_NDVI().climatology_percentage(vals)
+            spatial_dict_percentage[pix] = vals_percentage
+        outf = join(outdir,'vals_percentage.npy')
+        T.save_npy(spatial_dict_percentage,outf)
 
     def anomaly(self):
         fdir = join(self.datadir,'per_pix',self.year_range)
@@ -3505,7 +3519,7 @@ def main():
     # CCI_SM_v7().run()
     # VOD_Kband().run()
     # VOD_AMSRU().run()
-    # CSIF().run()
+    CSIF().run()
     # Terraclimate().run()
     # SPI().run()
     # GLEAM().run()
@@ -3522,7 +3536,7 @@ def main():
     # TCSIF().run()
     # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
-    HWSD().run()
+    # HWSD().run()
 
     pass
 
