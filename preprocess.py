@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tqdm
+from fontTools.varLib.instancer.names import pruningUnusedNames
 
 from __init__ import *
 import xarray as xr
@@ -3503,6 +3504,98 @@ class HWSD:
 
         pass
 
+class GPP_NIRv:
+    def __init__(self):
+        self.datadir = join(data_root,'GPP_NIRv')
+        self.daterange = '1982-2018'
+        pass
+
+    def run(self):
+        # self.unzip()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.per_pix()
+        # self.per_pix_anomaly()
+        self.per_pix_percentage()
+        pass
+
+    def unzip(self):
+        fdir = join(self.datadir,'origin_data','12981977')
+        outdir = join(self.datadir,'nc')
+        T.mk_dir(outdir,force=True)
+        T.unzip(fdir,outdir)
+        pass
+
+    def nc_to_tif(self):
+        import warnings
+        # warnings.filterwarnings("ignore")
+        # warnings.("ignore")
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for folder in tqdm(T.listdir(fdir)):
+            for f in T.listdir(join(fdir,folder,folder)):
+                date = f.split('.')[-3]
+                outf = join(outdir,f'{date}.tif')
+                fpath = join(fdir,folder,folder,f)
+                ncin = Dataset(fpath, 'r')
+                # print(ncin.variables.keys());exit()
+                arr = ncin.variables['GPP'][:]
+                arr = np.array(arr,dtype=float).T
+                arr[arr<0] = np.nan
+                arr = arr * 0.001
+                newRasterfn, longitude_start, latitude_start, pixelWidth, pixelHeight = outf, -180, 90, 0.05, -0.05
+                ToRaster().array2raster(newRasterfn, longitude_start, latitude_start, pixelWidth, pixelHeight, arr)
+                # exit()
+
+            pass
+        pass
+
+    def resample(self):
+
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,0.5)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'per_pix',self.daterange)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_anomaly(self):
+        fdir = join(self.datadir,'per_pix',self.daterange)
+        outdir = join(self.datadir,'per_pix_anomaly',self.daterange)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def per_pix_percentage(self):
+        fdir = join(self.datadir,'per_pix',self.daterange)
+        outdir = join(self.datadir,'per_pix_percentage',self.daterange)
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_percentage = {}
+            for pix in spatial_dict:
+                vals = spatial_dict[pix]
+                if T.is_all_nan(vals):
+                    continue
+                try:
+                    vals_percentage = GIMMS_NDVI().climatology_percentage(vals)
+                    spatial_dict_percentage[pix] = vals_percentage
+                except:
+                    continue
+            outf = join(outdir,f)
+            T.save_npy(spatial_dict_percentage,outf)
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -3519,7 +3612,7 @@ def main():
     # CCI_SM_v7().run()
     # VOD_Kband().run()
     # VOD_AMSRU().run()
-    CSIF().run()
+    # CSIF().run()
     # Terraclimate().run()
     # SPI().run()
     # GLEAM().run()
@@ -3537,6 +3630,7 @@ def main():
     # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
     # HWSD().run()
+    GPP_NIRv().run()
 
     pass
 

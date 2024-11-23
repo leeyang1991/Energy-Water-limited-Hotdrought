@@ -1888,7 +1888,7 @@ class Drought_timing:
 
         # self.season_excerbation_alleviation_ratio_tif_CSIF(df)
         # self.season_excerbation_alleviation_ratio_statistic_CSIF()
-        self.plot_season_excerbation_alleviation_ratio_CSIF()
+        # self.plot_season_excerbation_alleviation_ratio_CSIF()
 
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
@@ -6457,7 +6457,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
