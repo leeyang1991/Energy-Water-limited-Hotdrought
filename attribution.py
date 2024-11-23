@@ -657,15 +657,16 @@ class Attribution_Dataframe:
         # df = self.add_srad(df)
         # df = self.add_T_anomaly(df)
         # df = self.add_SMRoot_anomaly(df)
-        df = self.add_SMRoot_origin(df)
+        # df = self.add_SMRoot_origin(df)
         # df = self.add_Soil_SILT(df)
         # df = self.add_detrend_T_anomaly(df)
         # df = self.add_delta_Topt_T(df)
-        T.save_df(df, self.dff)
-        T.df_to_excel(df, self.dff)
+        # T.save_df(df, self.dff)
+        # T.df_to_excel(df, self.dff)
         # self.check_variable(df)
         # self.check_Topt_vs_ndvi(df)
         # self.plot_variables(df)
+        self.print_drought_events_numbers(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -1140,6 +1141,29 @@ class Attribution_Dataframe:
         plt.colorbar()
         plt.title(f'{col}')
         plt.show()
+
+        pass
+
+    def print_drought_events_numbers(self,df):
+
+        total_number = len(df)
+        total_number_str = 'total_number'
+        print(f'{total_number_str:22s}{str(total_number):6s}')
+
+        df_dryland = df[df['AI_class'] == 'Arid']
+        dryland_number = len(df_dryland)
+        dryland_number_str = 'dryland_number'
+        print(f'{dryland_number_str:22s}{str(dryland_number):6s}')
+
+        df_dryland_hot_drought = df_dryland[df_dryland['drought_type'] == 'hot-drought']
+        hot_drought_number = len(df_dryland_hot_drought)
+        hot_drought_number_str = 'hot_drought_number'
+        print(f'{hot_drought_number_str:22s}{str(hot_drought_number):6s}')
+
+        df_dryland_normal_drought = df_dryland[df_dryland['drought_type'] == 'normal-drought']
+        normal_drought_number = len(df_dryland_normal_drought)
+        normal_drought_number_str = 'normal_drought_number'
+        print(f'{normal_drought_number_str:22s}{str(normal_drought_number):6s}')
 
         pass
 
