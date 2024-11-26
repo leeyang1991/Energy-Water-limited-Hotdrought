@@ -9,8 +9,9 @@ class Different_VIS_analysis:
 
     def __init__(self):
         # self.VI_name = 'NDVI3g'
-        self.VI_name = 'NDVI4g'
+        # self.VI_name = 'NDVI4g'
         # self.VI_name = 'CSIF'
+        self.VI_name = 'GPP_NIRv'
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
             f'Different_VIS_analysis/{self.VI_name}',
             result_root_this_script, mode=2)
@@ -57,11 +58,13 @@ class Different_VIS_analysis:
 
     def add_GS_VI(self,df):
         if self.VI_name == 'NDVI3g':
-            spatial_dict,var_name = Load_Data().NDVI_3g_anomaly_detrend()
+            spatial_dict,var_name,valid_range = Load_Data().NDVI_3g_anomaly_detrend()
         elif self.VI_name == 'CSIF':
-            spatial_dict,var_name = Load_Data().CSIF_anomaly_detrend()
+            spatial_dict,var_name,valid_range = Load_Data().CSIF_anomaly_detrend()
         elif self.VI_name == 'NDVI4g':
-            spatial_dict,var_name = Load_Data().NDVI_anomaly_detrend()
+            spatial_dict,var_name,valid_range = Load_Data().NDVI_anomaly_detrend()
+        elif self.VI_name == 'GPP_NIRv':
+            spatial_dict,var_name,valid_range = Load_Data().GPP_NIRv_anomaly_detrend()
         else:
             raise IOError('VI_name error')
         year_list = year_range_str_to_list(global_VIs_year_range_dict[self.VI_name])
@@ -90,18 +93,20 @@ class Different_VIS_analysis:
     def add_percentage_process(self,df):
         # df = Load_dataframe()
         if self.VI_name == 'NDVI3g':
-            NDVI_spatial_dict,var_name = Load_Data().NDVI_3g_origin()
+            NDVI_spatial_dict,var_name,valid_range = Load_Data().NDVI_3g_origin()
         elif self.VI_name == 'CSIF':
-            NDVI_spatial_dict,var_name = Load_Data().CSIF_origin()
+            NDVI_spatial_dict,var_name,valid_range = Load_Data().CSIF_origin()
         elif self.VI_name == 'NDVI4g':
-            NDVI_spatial_dict,var_name = Load_Data().NDVI_origin()
+            NDVI_spatial_dict,var_name,valid_range = Load_Data().NDVI_origin()
+        elif self.VI_name == 'GPP_NIRv':
+            NDVI_spatial_dict,var_name,valid_range = Load_Data().GPP_NIRv_origin()
         else:
             raise
         NDVI_percentage_spatial_dict = {}
         for pix in tqdm(NDVI_spatial_dict):
             NDVI = NDVI_spatial_dict[pix]
-            NDVI[NDVI > 10000] = np.nan
-            NDVI[NDVI < 0] = np.nan
+            NDVI[NDVI > valid_range[1]] = np.nan
+            NDVI[NDVI < valid_range[0]] = np.nan
             if T.is_all_nan(NDVI):
                 continue
             percentage = self.climatology_percentage(NDVI)
@@ -171,7 +176,7 @@ class Different_VIS_analysis:
                 spatial_dict[pix] = mean_drought_year_NDVI
             outf = join(outdir,'{}.tif'.format(drt))
             DIC_and_TIF().pix_dic_to_tif(spatial_dict,outf)
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
     def Drought_year_percentage_sig_spatial_tif(self):
         fdir = join(self.this_class_tif,'Drought_year_percentage_spatial_tif')
@@ -231,7 +236,7 @@ class Different_VIS_analysis:
             # plt.show()
             plt.savefig(outf, dpi=300)
             plt.close()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
         pass
 
     def delta_tif(self,df):
@@ -288,7 +293,7 @@ class Different_VIS_analysis:
             Plot().plot_ortho_significance_scatter(m,sig_fpath,temp_root)
             plt.savefig(outf,dpi=300)
             plt.close()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
     def percentage_delta_tif(self):
         fdir = join(self.this_class_tif,'Drought_year_percentage_spatial_tif')
@@ -370,7 +375,7 @@ class Different_VIS_analysis:
         # plt.show()
         outf = join(outdir, 'percentage.pdf')
         plt.savefig(outf)
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
         pass
 
@@ -431,7 +436,7 @@ class Different_VIS_analysis:
         # plt.show()
         outf = join(outdir, 'percentage.pdf')
         plt.savefig(outf)
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
         pass
 
     def anomaly_value_statistic(self):
@@ -516,7 +521,7 @@ class Different_VIS_analysis:
 
         plt.savefig(outf,dpi=300)
         plt.close()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
 
     def climatology_percentage(self, vals):
@@ -655,7 +660,7 @@ class Multi_SPI_scale_analysis:
             plt.title(f.replace('.tif',''))
             plt.savefig(outf, dpi=300)
             plt.close()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
         pass
 
     def delta_tif(self):
@@ -691,7 +696,7 @@ class Multi_SPI_scale_analysis:
             plt.title(f.replace('.tif',''))
             plt.savefig(outf,dpi=300)
             plt.close()
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):

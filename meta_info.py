@@ -62,6 +62,7 @@ global_VIs_year_range_dict = {
     'NDVI4g': '1982-2020',
     'CSIF': '2000-2020',
     'TCSIF': '2007-2020',
+    'GPP_NIRv': '1982-2018',
 }
 global_color_list = [
     '#844000',
@@ -372,6 +373,34 @@ class Load_Data:
         path_type = 'dir'
         var_name = 'TCSIF-origin'
         return self.__load_data(data_path, path_type), var_name
+
+    def GPP_NIRv_origin(self,year_range=global_VIs_year_range_dict['GPP_NIRv']):
+        data_path = join(data_root, 'GPP_NIRv/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'GPP_NIRv-origin'
+        valid_range = (0, 50)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+    def GPP_NIRv_anomaly(self,year_range=global_VIs_year_range_dict['GPP_NIRv']):
+        data_path = join(data_root, 'GPP_NIRv/per_pix_anomaly', year_range)
+        path_type = 'dir'
+        var_name = 'GPP_NIRv-anomaly'
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+    def GPP_NIRv_anomaly_detrend(self,year_range=global_VIs_year_range_dict['GPP_NIRv']):
+        data_path = join(data_root, 'GPP_NIRv/per_pix_anomaly_detrend', year_range)
+        path_type = 'dir'
+        var_name = 'GPP_NIRv-anomaly_detrend'
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+    def GPP_NIRv_percentage(self,year_range=global_VIs_year_range_dict['GPP_NIRv']):
+        data_path = join(data_root, 'GPP_NIRv/per_pix_percentage', year_range)
+        path_type = 'dir'
+        var_name = 'GPP_NIRv-percentage'
+        valid_range = (-200,200)
+        return self.__load_data(data_path, path_type), var_name,valid_range
 
 
     def __load_data(self, data_path,path_type):

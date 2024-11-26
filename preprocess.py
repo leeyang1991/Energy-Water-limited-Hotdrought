@@ -3516,7 +3516,8 @@ class GPP_NIRv:
         # self.resample()
         # self.per_pix()
         # self.per_pix_anomaly()
-        self.per_pix_percentage()
+        self.per_pix_anomaly_detrend()
+        # self.per_pix_percentage()
         pass
 
     def unzip(self):
@@ -3575,6 +3576,13 @@ class GPP_NIRv:
         outdir = join(self.datadir,'per_pix_anomaly',self.daterange)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
+
+    def per_pix_anomaly_detrend(self):
+        fdir = join(self.datadir,'per_pix_anomaly',self.daterange)
+        outdir = join(self.datadir,'per_pix_anomaly_detrend',self.daterange)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().detrend(fdir, outdir)
+
 
     def per_pix_percentage(self):
         fdir = join(self.datadir,'per_pix',self.daterange)
