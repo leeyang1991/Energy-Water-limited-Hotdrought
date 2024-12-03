@@ -646,7 +646,7 @@ class Attribution_Dataframe:
         # self.copy_df()
         df = self.__gen_df_init()
 
-        # df = self.add_NDVI(df)
+        df = self.add_NDVI(df)
         # df = self.add_NDVI_with_trend(df)
         # df = self.add_SOS(df)
         # df = self.add_VPD(df)
@@ -2704,9 +2704,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    # Attribution_Dataframe().run()
+    Attribution_Dataframe().run()
     # Random_forests().run()
-    SHAP().run()
+    # SHAP().run()
     # copy_files()
     pass
 
