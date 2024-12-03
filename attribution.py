@@ -666,7 +666,7 @@ class Attribution_Dataframe:
         # self.check_variable(df)
         # self.check_Topt_vs_ndvi(df)
         # self.plot_variables(df)
-        self.print_drought_events_numbers(df)
+        # self.print_drought_events_numbers(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -1468,7 +1468,7 @@ class SHAP:
         # self.plot_pdp_shap_split_df_line_breakpoints_all_regions()
         # self.plot_pdp_shap_split_df_line_breakpoints_detail()
         # self.plot_pdp_shap_split_df_drought_mon()
-        # self.plot_importances()
+        self.plot_importances()
         pass
 
     def copy_df(self):
@@ -1520,7 +1520,7 @@ class SHAP:
             for i in range(len(x_variables)):
                 imp_dict_xgboost[x_variables[i]] = model.feature_importances_[i]
             sorted_imp = sorted(imp_dict_xgboost.items(), key=lambda x: x[1], reverse=True)
-            imp_dict_outf = join(outdir, 'shaply_imp_xgboost')
+            imp_dict_outf = join(outdir, 'imp_xgboost')
             T.save_npy(imp_dict_xgboost, imp_dict_outf)
             x_ = []
             y_ = []
@@ -1616,31 +1616,50 @@ class SHAP:
                 else:
                     y_mean_list = SMOOTH().smooth_convolve(y_mean_list, window_len=7)
                     plt.plot(x_mean_list, y_mean_list, c='red', alpha=1)
+                    var_min = self.__variables_ranges()[ELI][x_var][0]
+                    var_max = self.__variables_ranges()[ELI][x_var][1]
+                    plt.xlim(var_min, var_max)
                     # plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
 
                 plt.xlabel(x_var)
                 flag += 1
-                plt.ylim(-0.6, 0.6)
-                # plt.show()
+                plt.ylim(-0.3, 0.3)
 
 
             # plt.suptitle(y_variable)
             plt.tight_layout()
-            # plt.show()
+            plt.show()
             outf = join(outdir, 'shaply.pdf')
             # outf = join(outdir, 'shaply.png')
-            plt.savefig(outf, dpi=300)
-            plt.close()
+            # plt.savefig(outf, dpi=300)
+            # plt.close()
             pass
 
 
     def plot_pdp_shap_result_scatter(self,df):
         df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
-        drought_type_color_dict = global_drought_type_color_dict
+        variables_range_dict = Attribution_Dataframe().variables_threshold()
+        drought_type_zorder_dict = {
+            'hot-drought':99,
+            'normal-drought':0
+        }
+        drought_type_color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
+        drought_type_alpha_dict = {
+            'normal-drought': 1,
+            'hot-drought': .2,
+        }
+        drought_type_size_dict = {
+            'normal-drought': 1,
+            'hot-drought': .5,
+        }
+
         for ELI in ELI_class_list:
             df_ELI = df_clean[df_clean['ELI_class'] == ELI]
-            T.print_head_n(df_ELI)
+            # T.print_head_n(df_ELI)
             drought_type_list = df_ELI['drought_type'].tolist()
 
 
@@ -1662,7 +1681,6 @@ class SHAP:
             flag = 1
             for x_var in x_list:
                 print(x_var)
-                plt.figure(figsize=(9 * centimeter_factor, 6 * centimeter_factor))
 
                 shap_values_mat = shap_values[:, x_var]
                 outf_i = join(outdir, f'shaply_{x_var}')
@@ -1670,71 +1688,53 @@ class SHAP:
                 data_i = shap_values_mat.data
                 # print('data_i',len(data_i))
                 # exit()
+                # drought_type
                 value_i = shap_values_mat.values
                 df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i, 'drought_type': drought_type_list})
-                # df_i_random = df_i.sample(n=len(df_i) // 2)
-                # df_i = df_i_random
 
-                # x_variable_range_dict = self.x_variable_range_dict
-                # start,end = x_variable_range_dict[x_var]
-                if not x_var == 'drought_mon':
-                    start, end = Attribution_Dataframe().variables_threshold()[x_var]
-                    bins = np.linspace(start, end, 50)
-                    df_group, bins_list_str = T.df_bin(df_i, x_var, bins)
-                    y_mean_list = []
-                    x_mean_list = []
-                    y_err_list = []
-                    scatter_x_list = df_i[x_var].tolist()
-                    scatter_y_list = df_i['shap_v'].tolist()
-                    drought_type_list_i = df_i['drought_type'].tolist()
-                    color_list = []
-                    for drought_type_i in drought_type_list_i:
-                        color_i = drought_type_color_dict[drought_type_i]
-                        color_list.append(color_i)
-                    for name, df_group_i in df_group:
-                        x_i = name[0].left
-                        # print(x_i)
-                        # exit()
-                        vals = df_group_i['shap_v'].tolist()
-
-                        if len(vals) == 0:
-                            continue
-                        # mean = np.nanmean(vals)
-                        mean = np.nanmedian(vals)
-                        err = np.nanstd(vals)
-                        y_mean_list.append(mean)
-                        x_mean_list.append(x_i)
-                        y_err_list.append(err)
-                else:
-                    x_unique = df_i[x_var].unique()
-                    x_unique = list(x_unique)
-                    x_unique.sort()
-                    y_vals_list = []
-                    for x_i in x_unique:
-                        y_i = df_i[df_i[x_var] == x_i]['shap_v'].tolist()
-                        y_vals_list.append(y_i)
-                # plt.subplot(2, 3, flag)
-                # print(data_i[0])
-                # exit()
-                # interp_model = interpolate.interp1d(x_mean_list, y_mean_list, kind='cubic')
-                # y_interp = interp_model(x_mean_list)
                 if x_var == 'drought_mon':
-                    # plt.boxplot(y_vals_list, positions=x_unique, showfliers=False, showmeans=False)
-                    pass
-                else:
-                    y_mean_list = SMOOTH().smooth_convolve(y_mean_list, window_len=7)
-                    # plt.plot(x_mean_list, y_mean_list, c='red', alpha=1)
-                    # plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
-                    plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c=color_list, marker='.', s=1, zorder=-1)
+                    plt.figure(figsize=(9 * centimeter_factor, 6 * centimeter_factor))
 
-                plt.xlabel(x_var)
-                flag += 1
-                plt.ylim(-0.6, 0.6)
-                plt.title(f'{x_var}')
-                outf = join(outdir, f'{x_var}.png')
-                # plt.show()
-                plt.savefig(outf, dpi=900)
-                plt.close()
+                    df_mon_group = T.df_groupby(df_i,x_var)
+                    x_list = []
+                    y_list = []
+                    for x in df_mon_group:
+                        df_mon_group_i = df_mon_group[x]
+                        for drt in global_drought_type_list:
+                            df_mon_group_i_drt = df_mon_group_i[df_mon_group_i['drought_type'] == drt]
+                            scatter_y_list = df_mon_group_i_drt['shap_v'].tolist()
+                            x_list.append(f'{drt}{x}')
+                            y_list.append(scatter_y_list)
+                    plt.boxplot(y_list, labels=x_list, showfliers=False, showmeans=False)
+                    plt.xlabel(x_var)
+                    flag += 1
+                    plt.ylim(-0.3, 0.3)
+                    plt.title(f'{x_var}')
+                    outf = join(outdir, f'{x_var}.pdf')
+                    # plt.show()
+                    plt.savefig(outf, dpi=900)
+                    plt.close()
+                else:
+                    # continue
+                    plt.figure(figsize=(9 * centimeter_factor, 6 * centimeter_factor))
+
+                    for drt in global_drought_type_list:
+                        df_i_drt = df_i[df_i['drought_type'] == drt]
+                        scatter_x_list = df_i_drt[x_var].tolist()
+                        scatter_y_list = df_i_drt['shap_v'].tolist()
+                        plt.scatter(scatter_x_list, scatter_y_list, alpha=drought_type_alpha_dict[drt], c=drought_type_color_dict[drt],
+                            zorder=drought_type_zorder_dict[drt], marker='.', s=drought_type_size_dict[drt])
+                        var_min = self.__variables_ranges()[ELI][x_var][0]
+                        var_max = self.__variables_ranges()[ELI][x_var][1]
+                        plt.xlim(var_min, var_max)
+                    plt.xlabel(x_var)
+                    flag += 1
+                    plt.ylim(-0.3, 0.3)
+                    plt.title(f'{x_var}')
+                    outf = join(outdir, f'{x_var}.png')
+                    # plt.show()
+                    plt.savefig(outf, dpi=900)
+                    plt.close()
             pass
 
     def pdp_shap_split_df(self,df):
@@ -1826,10 +1826,10 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
-                # plt.show()
+                plt.show()
 
-                plt.savefig(join(outdir_i, f'{var_name}.png'))
-                plt.close()
+                # plt.savefig(join(outdir_i, f'{var_name}.png'))
+                # plt.close()
 
     def plot_pdp_shap_split_df_line(self):
         fdir = join(self.this_class_arr, 'pdp_shap_split1')
@@ -1963,10 +1963,10 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
-                # plt.show()
+                plt.show()
 
-                plt.savefig(join(outdir_i, f'{var_name}.pdf'))
-                plt.close()
+                # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
+                # plt.close()
 
 
     def plot_pdp_shap_split_df_line_breakpoints_all_regions(self):
@@ -2313,13 +2313,24 @@ class SHAP:
 
     def plot_importances(self):
         ELI_class_list = global_ELI_class_list
+        outdir = join(self.this_class_png, 'importances')
+        T.mk_dir(outdir, force=True)
+        mode = 'xgboost'
+        # mode = 'shap'
 
         for ELI in ELI_class_list:
             plt.figure()
+            if mode == 'xgboost':
+                imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'imp_xgboost.npy')
+            elif mode == 'shap':
+                imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
+            else:
+                raise
 
-            imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
-            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_xgboost.npy')
+            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
+            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'imp_xgboost.npy')
             imp_dict = T.load_npy(imp_dict_fpath)
+            imp_dict = T.sort_dict_by_value(imp_dict,descending=False)
 
             x_list = []
             y_list = []
@@ -2327,16 +2338,22 @@ class SHAP:
                 x_list.append(key)
                 y_list.append(imp_dict[key])
 
-            plt.bar(x_list, y_list)
+            plt.barh(x_list, y_list)
             print(x_list)
             # plt.title(f'R2_{R2}')
             plt.xticks(rotation=90)
-            plt.title(ELI)
+            plt.title(f'{ELI}_{mode}')
 
             plt.tight_layout()
-        plt.show()
+            outf = join(outdir,f'{ELI}_{mode}.pdf')
+            plt.savefig(outf)
+            plt.close()
+        # plt.show()
 
         pass
+
+    def sort_dict_by_value(self, input_dict,descending=True):
+        return dict(sorted(input_dict.items(), key=lambda item: item[1], reverse=descending))
 
     def __feature_importances_shap_values(self,shap_values, features):
         '''
@@ -2379,7 +2396,7 @@ class SHAP:
         # rf.fit(X_train, y_train) # train the model
         # r2 = rf.score(X_test,y_test)
         model = xgb.XGBRegressor(objective="reg:squarederror",booster='gbtree',n_estimators=100,
-                                 max_depth=13,eta=0.05,random_state=42,n_jobs=24)
+                                 max_depth=10,eta=0.005,random_state=1,n_jobs=24)
         # model = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=12)
         model.fit(X_train, y_train)
         # model.fit(X_train, y_train)
@@ -2393,6 +2410,40 @@ class SHAP:
         # exit()
 
         return model,y,y_pred
+
+    def __variables_ranges(self):
+        range_dict = {
+            'Energy-Limited':{
+                'SOS': (-20, 20),
+                'VPD-anomaly': (-1.5, 2),
+                'Temperature-anomaly_detrend': (-1.5, 1.5),
+                'Temperature-anomaly': (-1.5, 1.5),
+                'FAPAR-anomaly_detrend': (-3, 3),
+                'Radiation-anomaly': (-1.5, 2),
+                'delta_Topt_T': (-8, 10),
+                'drought_mon': (5, 10),
+                'NDVI-anomaly_detrend': (-3, 3),
+                'NDVI-anomaly_with_trend': (-3, 3),
+                'GLEAM-SMRoot-anomaly_detrend': (-3, 2),
+                'SILT': (0, 60),
+            },
+            'Water-Limited':{
+                'SOS': (-20, 20),
+                'VPD-anomaly': (-1,2),
+                'Temperature-anomaly_detrend': (-1,1.5),
+                'Temperature-anomaly': (-1,1.5),
+                'FAPAR-anomaly_detrend': (-3, 3),
+                'Radiation-anomaly': (-1.5,1.5),
+                'delta_Topt_T': (-6, 10),
+                'drought_mon': (5, 10),
+                'NDVI-anomaly_detrend': (-3, 3),
+                'NDVI-anomaly_with_trend': (-3, 3),
+                'GLEAM-SMRoot-anomaly_detrend': (-2, 2),
+                'SILT': (0, 50),
+            }
+        }
+
+        return range_dict
 
 class SEM:
 
@@ -2653,9 +2704,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    Attribution_Dataframe().run()
+    # Attribution_Dataframe().run()
     # Random_forests().run()
-    # SHAP().run()
+    SHAP().run()
     # copy_files()
     pass
 
