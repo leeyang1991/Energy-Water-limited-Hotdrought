@@ -1477,7 +1477,7 @@ class SHAP:
         # self.plot_pdp_shap_split_df_line_breakpoints_all_regions()
         # self.plot_pdp_shap_split_df_line_breakpoints_detail()
         # self.plot_pdp_shap_split_df_drought_mon()
-        self.plot_importances()
+        # self.plot_importances()
         pass
 
     def copy_df(self):
@@ -1637,11 +1637,11 @@ class SHAP:
 
             # plt.suptitle(y_variable)
             plt.tight_layout()
-            plt.show()
+            # plt.show()
             outf = join(outdir, 'shaply.pdf')
             # outf = join(outdir, 'shaply.png')
-            # plt.savefig(outf, dpi=300)
-            # plt.close()
+            plt.savefig(outf, dpi=300)
+            plt.close()
             pass
 
 
@@ -1668,7 +1668,7 @@ class SHAP:
 
         for ELI in ELI_class_list:
             df_ELI = df_clean[df_clean['ELI_class'] == ELI]
-            # T.print_head_n(df_ELI)
+            T.print_head_n(df_ELI)
             drought_type_list = df_ELI['drought_type'].tolist()
 
 
@@ -1697,7 +1697,6 @@ class SHAP:
                 data_i = shap_values_mat.data
                 # print('data_i',len(data_i))
                 # exit()
-                # drought_type
                 value_i = shap_values_mat.values
                 df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i, 'drought_type': drought_type_list})
 
@@ -1835,10 +1834,10 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
-                plt.show()
+                # plt.show()
 
-                # plt.savefig(join(outdir_i, f'{var_name}.png'))
-                # plt.close()
+                plt.savefig(join(outdir_i, f'{var_name}.png'))
+                plt.close()
 
     def plot_pdp_shap_split_df_line(self):
         fdir = join(self.this_class_arr, 'pdp_shap_split1')
@@ -1972,10 +1971,10 @@ class SHAP:
                 plt.title(f'{ELI}\n{var_name}')
                 # # plt.xlim(start, end)
                 plt.ylim(-0.6, 0.6)
-                plt.show()
+                # plt.show()
 
-                # plt.savefig(join(outdir_i, f'{var_name}.pdf'))
-                # plt.close()
+                plt.savefig(join(outdir_i, f'{var_name}.pdf'))
+                plt.close()
 
 
     def plot_pdp_shap_split_df_line_breakpoints_all_regions(self):
@@ -2339,7 +2338,6 @@ class SHAP:
             # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
             # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'imp_xgboost.npy')
             imp_dict = T.load_npy(imp_dict_fpath)
-            imp_dict = T.sort_dict_by_value(imp_dict,descending=False)
 
             x_list = []
             y_list = []
