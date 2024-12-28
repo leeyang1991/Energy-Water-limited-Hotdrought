@@ -1,4 +1,5 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
 from lytools import *
 from pprint import pprint
 import xarray as xr
@@ -13,6 +14,7 @@ class ESA_CCI:
 
     def run(self):
         self.aggregate_lc()
+        # self.gen_tif()
         pass
 
 
@@ -39,27 +41,30 @@ class ESA_CCI:
 
     def aggregate_lc(self):
         fdir = join(self.data_dir,'ESACCI-LC-L4-PFT-Map-300m-P1Y-1992-2020-v2.0.8')
-        # outdir = join(self.data_dir,'tif05')
-        outdir = join(self.data_dir,'tif25')
-        pix_size = .25
+        outdir = join(self.data_dir,'df05')
+        # outdir = join(self.data_dir,'df25')
+        pix_size = .5
         T.mk_dir(outdir,force=True)
         params_list = []
         for f in T.listdir(fdir):
             params = [fdir,f,outdir,pix_size]
             params_list.append(params)
-            self.kernel_aggregate_lc(params)
-        # MULTIPROCESS(self.kernel_aggregate_lc,params_list).run(process=12)
+            # self.kernel_aggregate_lc(params)
+        MULTIPROCESS(self.kernel_aggregate_lc,params_list).run(process=12)
 
     def kernel_aggregate_lc(self,params):
         fdir,f,outdir,pix_size = params
         fpath = join(fdir, f)
         outf = join(outdir, f + '.df')
-        if os.path.exists(outf):
-            return
+        # if os.path.exists(outf):
+        #     return
 
         nc_r = xr.open_dataset(fpath)
         variables_list = self.return_variables_list()
-        # agb_arr = nc_r['agb']
+        # arr = nc_r['WATER']
+        # print(arr)
+        # plt.imshow(arr[0])
+        # plt.show()
         lon = nc_r['lon']
         lat = nc_r['lat']
         # print(len(lon),len(lat)) # 129600 64800
@@ -74,11 +79,11 @@ class ESA_CCI:
         new_lat = np.arange(90, -90, -new_pixelHeight)
         spatial_dict = {}
         for new_r in tqdm(range(len(new_lat))):
-            c_range = [new_r * nx, (new_r + 1) * nx]
-            c_range_int = [int(c_range[0]), int(c_range[1])]
+            r_range = [new_r * nx, (new_r + 1) * nx]
+            r_range_int = [int(r_range[0]), int(r_range[1])]
             for new_c in range(len(new_lon)):
-                r_range = [new_c * ny, (new_c + 1) * ny]
-                r_range_int = [int(r_range[0]), int(r_range[1])]
+                c_range = [new_c * ny, (new_c + 1) * ny]
+                c_range_int = [int(c_range[0]), int(c_range[1])]
                 pix = (new_r, new_c)
                 spatial_dict_i = {}
                 for var in variables_list:
@@ -96,8 +101,33 @@ class ESA_CCI:
         df_result = T.dic_to_df(spatial_dict, 'pix')
         T.save_df(df_result, outf)
         T.df_to_excel(df_result, outf)
+        spatial_dict = {}
         pass
 
+    def gen_tif(self):
+        fdir = join(self.data_dir,'df05')
+        outdir = join(self.data_dir,'tif05')
+        T.mk_dir(outdir,force=True)
+        for f in T.listdir(fdir):
+            if not f.endswith('.df'):
+                continue
+            fpath = join(fdir,f)
+            df = T.load_df(fpath)
+            pix_list = df['pix'].tolist()
+            # for pix in pix_list:
+            #     print(pix)
+            # exit()
+            T.print_head_n(df)
+            variable_list = self.return_variables_list()
+            for var in variable_list:
+                spatial_dict = T.df_to_spatial_dic(df, var)
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                plt.imshow(arr,interpolation='nearest',vmin=0,vmax=100,cmap='jet')
+                plt.colorbar()
+                plt.title(var)
+                plt.show()
+                pass
+            pass
 
 def main():
     ESA_CCI().run()
