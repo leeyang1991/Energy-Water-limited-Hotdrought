@@ -39,17 +39,24 @@ class ESA_CCI:
 
     def aggregate_lc(self):
         fdir = join(self.data_dir,'ESACCI-LC-L4-PFT-Map-300m-P1Y-1992-2020-v2.0.8')
-        outdir = join(self.data_dir,'tif')
+        # outdir = join(self.data_dir,'tif05')
+        outdir = join(self.data_dir,'tif25')
+        pix_size = .25
         T.mk_dir(outdir,force=True)
         params_list = []
         for f in T.listdir(fdir):
-            params = [fdir,f,outdir]
+            params = [fdir,f,outdir,pix_size]
             params_list.append(params)
-        MULTIPROCESS(self.kernel_aggregate_lc,params_list).run(process=24)
+            self.kernel_aggregate_lc(params)
+        # MULTIPROCESS(self.kernel_aggregate_lc,params_list).run(process=12)
 
     def kernel_aggregate_lc(self,params):
-        fdir,f,outdir = params
+        fdir,f,outdir,pix_size = params
         fpath = join(fdir, f)
+        outf = join(outdir, f + '.df')
+        if os.path.exists(outf):
+            return
+
         nc_r = xr.open_dataset(fpath)
         variables_list = self.return_variables_list()
         # agb_arr = nc_r['agb']
@@ -58,8 +65,8 @@ class ESA_CCI:
         # print(len(lon),len(lat)) # 129600 64800
         pixelWidth = 360 / len(lon)
         pixelHeight = 180 / len(lat)
-        new_pixelWidth = 0.5
-        new_pixelHeight = 0.5
+        new_pixelWidth = pix_size
+        new_pixelHeight = pix_size
         nx = new_pixelWidth / pixelWidth
         ny = new_pixelHeight / pixelHeight
 
@@ -87,7 +94,6 @@ class ESA_CCI:
                     spatial_dict_i[var] = vals_mean
                 spatial_dict[pix] = spatial_dict_i
         df_result = T.dic_to_df(spatial_dict, 'pix')
-        outf = join(outdir, f + '.df')
         T.save_df(df_result, outf)
         T.df_to_excel(df_result, outf)
         pass

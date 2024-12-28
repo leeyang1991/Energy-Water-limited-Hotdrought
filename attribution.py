@@ -646,7 +646,7 @@ class Attribution_Dataframe:
         # self.copy_df()
         df = self.__gen_df_init()
 
-        df = self.add_NDVI(df)
+        # df = self.add_NDVI(df)
         # df = self.add_NDVI_with_trend(df)
         # df = self.add_SOS(df)
         # df = self.add_VPD(df)
@@ -666,7 +666,7 @@ class Attribution_Dataframe:
         # self.check_variable(df)
         # self.check_Topt_vs_ndvi(df)
         # self.plot_variables(df)
-        # self.print_drought_events_numbers(df)
+        self.print_drought_events_numbers(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -1149,6 +1149,15 @@ class Attribution_Dataframe:
         total_number = len(df)
         total_number_str = 'total_number'
         print(f'{total_number_str:22s}{str(total_number):6s}')
+        df_hot_drought = df[df['drought_type'] == 'hot-drought']
+        hot_drought_number = len(df_hot_drought)
+        hot_drought_number_str = 'hot_drought_number'
+        print(f'{hot_drought_number_str:22s}{str(hot_drought_number):6s}')
+
+        df_normal_drought = df[df['drought_type'] == 'normal-drought']
+        normal_drought_number = len(df_normal_drought)
+        normal_drought_number_str = 'normal_drought_number'
+        print(f'{normal_drought_number_str:22s}{str(normal_drought_number):6s}')
 
         df_dryland = df[df['AI_class'] == 'Arid']
         dryland_number = len(df_dryland)
