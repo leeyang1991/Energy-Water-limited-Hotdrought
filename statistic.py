@@ -1,8 +1,4 @@
 # coding=utf-8
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
 
 from meta_info import *
 result_root_this_script = join(results_root, 'statistic')
@@ -1566,7 +1562,7 @@ class Drought_timing:
         # df = self.add_VPD_origin_process(df)
         # df = self.add_NDVI_percentage_process(df)
         # df = self.add_CSIF_percentage_process(df)
-        # df = self.add_CSIF_anomaly_process(df)
+        df = self.add_CSIF_anomaly_process(df)
         # df = self.add_GPP_NIRv_percentage_process(df)
         # df = self.add_GPP_NIRv_anomaly_process(df)
 
@@ -1582,6 +1578,8 @@ class Drought_timing:
         # self.timing_trajectory_sm(df)
         # self.timing_trajectory_Tair(df)
         # self.delta_season_tif(df)
+        # self.seasonal_ndvi_tif(df)
+        # self.seasonal_ndvi_tif_statistic()
         # self.delta_season_bar(df)
         # self.delta_season_boxplot(df)
 
@@ -1591,16 +1589,16 @@ class Drought_timing:
 
         # self.season_excerbation_alleviation_ratio_tif_CSIF(df)
         # self.season_excerbation_alleviation_ratio_statistic_CSIF()
-        self.plot_season_excerbation_alleviation_ratio_CSIF()
+        # self.plot_season_excerbation_alleviation_ratio_CSIF()
 
         # self.season_excerbation_alleviation_ratio_tif_GPP_NIRv(df)
         # self.season_excerbation_alleviation_ratio_statistic_GPP_NIRv()
-        self.plot_season_excerbation_alleviation_ratio_GPP_NIRv()
+        # self.plot_season_excerbation_alleviation_ratio_GPP_NIRv()
 
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
-        # self.delta_season_bar_ANOVA(df)
+        self.delta_season_bar_ANOVA(df)
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
@@ -1987,6 +1985,49 @@ class Drought_timing:
                 DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
         T.open_path_and_file(outdir)
 
+
+    def seasonal_ndvi_tif(self,df):
+        outdir = join(self.this_class_tif, 'seasonal_ndvi')
+        T.mk_dir(outdir)
+        T.print_head_n(df)
+        drought_season_list = global_drought_season_list
+        drought_type_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+
+        for season in drought_season_list:
+            df_season = df[df['drought_season'] == season]
+            for drt in drought_type_list:
+                df_drt = df_season[df_season['drought_type'] == drt]
+                for ELI in ELI_class_list:
+                    df_ELI = df_drt[df_drt['ELI_class'] == ELI]
+                    pix_list = T.get_df_unique_val_list(df_ELI, 'pix')
+                    df_group_dict = T.df_groupby(df_ELI, 'pix')
+                    spatial_dict = {}
+                    for pix in tqdm(pix_list):
+                        df_pix = df_group_dict[pix]
+                        rt = df_pix['rt'].tolist()
+                        rt_mean = np.nanmean(rt)
+                        spatial_dict[pix] = rt_mean
+                    outf = join(outdir, f'{season}_{drt}_{ELI}.tif')
+                    DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+        T.open_path_and_file(outdir)
+
+    def seasonal_ndvi_tif_statistic(self):
+        fdir = join(self.this_class_tif, 'seasonal_ndvi')
+        seasonal_ndvi_vals_dic = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            key = f.replace('.tif', '')
+            fpath = join(fdir, f)
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            vals = np.array(list(spatial_dict.values()))
+            vals = vals[~np.isnan(vals)]
+            seasonal_ndvi_vals_dic[key] = vals
+        for key in seasonal_ndvi_vals_dic:
+            print(key)
+            vals = seasonal_ndvi_vals_dic[key]
+            print(np.mean(vals))
 
     def delta_season_bar(self,df):
         outdir = join(self.this_class_png, 'delta_season_bar')
@@ -4717,9 +4758,9 @@ def Load_dataframe():
 
 def main():
     # Dataframe().run()
-    # Compensation_Excerbation().run()
+    Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
