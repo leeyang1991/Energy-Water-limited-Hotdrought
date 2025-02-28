@@ -1,6 +1,4 @@
 # coding=utf-8
-import matplotlib.pyplot as plt
-
 from meta_info import *
 result_root_this_script = join(results_root, 'analysis')
 import xymap

@@ -960,7 +960,7 @@ class Normal_year_Matrix:
         # exit()
         # T_quantile_bins = T.drop_repeat_val_from_list(T_quantile_bins)
         # print(T_quantile_bins)
-        # exi
+        # exit()
 
         df_group_AI, _ = T.df_bin(df,'aridity_index',AI_bins)
 
@@ -1009,6 +1009,7 @@ def main():
     Normal_year_Matrix().run()
 
     pass
+    main()
 
 
 

@@ -3604,6 +3604,99 @@ class GPP_NIRv:
             outf = join(outdir,f)
             T.save_npy(spatial_dict_percentage,outf)
 
+
+class NIRv:
+
+    def __init__(self):
+        self.datadir = join(data_root,'NIRv')
+        self.daterange = '1982-2020'
+        pass
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.tif_clean()
+        # self.resample()
+        # self.per_pix()
+        # self.per_pix_anomaly()
+        self.per_pix_percentage()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            print(fpath)
+            ncin = xr.open_dataset(fpath)
+            arr = ncin['NIRv']
+            arr = np.array(arr,dtype=float).T
+            # print(arr.shape);exit()
+            outf = join(outdir,f.replace('.nc','.tif'))
+            ToRaster().array2raster(outf, -180, 90, 0.05, -0.05, arr)
+            # exit()
+        pass
+    def tif_clean(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_clean')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            if not f.endswith('.tif'):
+                continue
+            outpath = join(outdir,f)
+            if isfile(outpath):
+                continue
+            arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+            arr[arr<=0] = np.nan
+            newRasterfn = outpath
+            longitude_start, latitude_start = originX, originY
+            ToRaster().array2raster(newRasterfn, longitude_start, latitude_start, pixelWidth, pixelHeight, arr)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif_clean')
+        outdir = join(self.datadir,'tif_clean_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,0.5)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_clean_05')
+        outdir = join(self.datadir,'per_pix',self.daterange)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_anomaly(self):
+        fdir = join(self.datadir,'per_pix',self.daterange)
+        outdir = join(self.datadir,'per_pix_anomaly',self.daterange)
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def per_pix_percentage(self):
+        fdir = join(self.datadir,'per_pix',self.daterange)
+        outdir = join(self.datadir,'per_pix_percentage',self.daterange)
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_percentage = {}
+            for pix in spatial_dict:
+                vals = spatial_dict[pix]
+                if T.is_all_nan(vals):
+                    continue
+                try:
+                    vals_percentage = GIMMS_NDVI().climatology_percentage(vals)
+                    spatial_dict_percentage[pix] = vals_percentage
+                except:
+                    continue
+            outf = join(outdir,f)
+            T.save_npy(spatial_dict_percentage,outf)
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -3638,7 +3731,8 @@ def main():
     # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()
     # HWSD().run()
-    GPP_NIRv().run()
+    # GPP_NIRv().run()
+    NIRv().run()
 
     pass
 

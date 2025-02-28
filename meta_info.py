@@ -10,7 +10,8 @@ centimeter_factor = 1 / 2.54
 # this_root = r'D:\Energy_water_hotdrought/'
 # this_root = '/root/Desktop/disk/Energy_water_hotdrought/'
 # this_root = '/home/liyang/Desktop/disk/Energy_water_hotdrought/'
-this_root = '/mnt/disk/Energy_water_hotdrought/'
+# this_root = '/mnt/disk/Energy_water_hotdrought/'
+this_root = '/media/yang/HDD/Energy_water_hotdrought/'
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
@@ -63,6 +64,7 @@ global_VIs_year_range_dict = {
     'CSIF': '2000-2020',
     'TCSIF': '2007-2020',
     'GPP_NIRv': '1982-2018',
+    'NIRv': '1982-2020',
 }
 global_color_list = [
     '#844000',
@@ -401,6 +403,27 @@ class Load_Data:
         var_name = 'GPP_NIRv-percentage'
         valid_range = (-200,200)
         return self.__load_data(data_path, path_type), var_name,valid_range
+
+    def NIRv_origin(self,year_range=global_VIs_year_range_dict['NIRv']):
+        data_path = join(data_root, 'NIRv/per_pix', year_range)
+        path_type = 'dir'
+        var_name = 'NIRv-origin'
+        valid_range = (0,1)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+    def NIRv_anomaly(self,year_range=global_VIs_year_range_dict['NIRv']):
+        data_path = join(data_root, 'NIRv/per_pix_anomaly', year_range)
+        path_type = 'dir'
+        var_name = 'NIRv-anomaly'
+        valid_range = (-3, 3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+    def NIRv_percentage(self,year_range=global_VIs_year_range_dict['NIRv']):
+        data_path = join(data_root, 'NIRv/per_pix_percentage', year_range)
+        path_type = 'dir'
+        var_name = 'NIRv-percentage'
+        valid_range = (-200, 200)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
 
     def __load_data(self, data_path,path_type):
