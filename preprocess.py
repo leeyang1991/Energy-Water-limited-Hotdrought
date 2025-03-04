@@ -3617,8 +3617,8 @@ class NIRv:
         # self.tif_clean()
         # self.resample()
         # self.per_pix()
-        # self.per_pix_anomaly()
-        self.per_pix_percentage()
+        self.per_pix_anomaly()
+        # self.per_pix_percentage()
         pass
 
     def nc_to_tif(self):
@@ -3697,6 +3697,77 @@ class NIRv:
             outf = join(outdir,f)
             T.save_npy(spatial_dict_percentage,outf)
 
+class Soil_grid:
+
+    def __init__(self):
+        self.datadir = join(data_root,'SOIL_Grid')
+
+        pass
+
+    def run(self):
+        # self.resample_reproj()
+        # self.unify()
+        self.compose_sand()
+        pass
+
+    def resample_reproj(self):
+        fdir = join(self.datadir,'origin_tif')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+        spatialRef = osr.SpatialReference()
+        wkt_84 = DIC_and_TIF().wkt_84()
+        spatialRef.ImportFromWkt(wkt_84)
+        spatialRef.MorphToESRI()
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,0.5,dstSRS=spatialRef)
+
+    def unify(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_unify')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            DIC_and_TIF().unify_raster(fpath,outpath)
+
+    def compose_sand(self):
+        fdir = join(self.datadir,'tif_unify')
+        outdir = join(self.datadir,'sand')
+        T.mk_dir(outdir,force=True)
+        weight_dict = {
+            '0-5cm': 5,
+            '5-15cm': 10,
+            '15-30cm': 15,
+            '30-60cm': 30,
+            '60-100cm': 40
+        }
+        weight_sum = sum(weight_dict.values())
+        outdir = join(self.datadir,'sand')
+        arr_all = 0
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            if not f.startswith('sand'):
+                continue
+            fpath = join(fdir,f)
+            depth = f.split('_')[1]
+            if not depth in weight_dict:
+                continue
+            weight = weight_dict[depth]
+            arr = ToRaster().raster2array(fpath)[0]
+            arr[arr<0] = np.nan
+            arr = arr*weight/weight_sum
+            arr_all = arr_all + arr
+        outf = join(outdir,'sand.tif')
+        DIC_and_TIF().arr_to_tif(arr_all,outf)
+
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -3732,7 +3803,8 @@ def main():
     # IPCC_cliamte_zone().run()
     # HWSD().run()
     # GPP_NIRv().run()
-    NIRv().run()
+    # NIRv().run()
+    Soil_grid().run()
 
     pass
 
