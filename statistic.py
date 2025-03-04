@@ -238,12 +238,12 @@ class Compensation_Excerbation:
         # self.spatial_two_mode_ratio(df)
         # self.ELI_gradient(df)
         # self.ELI_gradient_ratio(df)
-        # self.Drought_year_spatial_tif(df)
+        self.Drought_year_spatial_tif(df)
         self.plot_Drought_year_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
 
-        # self.Drought_year_NDVI_percentage_spatial_tif(df)
-        # self.Drought_year_NDVI_percentage_sig_spatial_tif()
+        self.Drought_year_NDVI_percentage_spatial_tif(df)
+        self.Drought_year_NDVI_percentage_sig_spatial_tif()
         # self.delta_percentage_sig()
         # self.plot_Drought_year_NDVI_percentage_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
@@ -1562,14 +1562,20 @@ class Drought_timing:
         # df = self.add_VPD_origin_process(df)
         # df = self.add_NDVI_percentage_process(df)
         # df = self.add_CSIF_percentage_process(df)
-        df = self.add_CSIF_anomaly_process(df)
+        # df = self.add_CSIF_anomaly_process(df)
         # df = self.add_GPP_NIRv_percentage_process(df)
         # df = self.add_GPP_NIRv_anomaly_process(df)
-
-
+        # df = self.add_NIRv_percentage_process(df)
+        # df = self.add_NIRv_anomaly_process(df)
 
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
+
+        # plot tifs
+        # self.Drought_year_spatial_tif(df)
+        # self.Drought_year_percentage_spatial_tif(df)
+        # self.Drought_year_percentage_sig_spatial_tif()
+        self.plot_Drought_year_spatial_tif()
 
         # statistic
         # self.timing_trajectory(df)
@@ -1598,7 +1604,7 @@ class Drought_timing:
         # self.delta_season_bar_all(df)
         # self.delta_season_bar_all1()
         # self.delta_season_box_all(df)
-        self.delta_season_bar_ANOVA(df)
+        # self.delta_season_bar_ANOVA(df)
         # self.delta_season_bar_error_bar(df)
         # self.check_compensation_excerbation_season()
         # self.delta_tif(df)
@@ -3379,6 +3385,79 @@ class Drought_timing:
         df[f'{data_name}_progress'] = NDVI_list_all
         return df
 
+    def add_NIRv_percentage_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().NIRv_percentage()
+        # print(data_name)
+        # exit()
+        year_list = year_range_str_to_list(global_VIs_year_range_dict['NIRv'])
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            if not pix in NDVI_spatial_dict:
+                NDVI_list_all.append(np.nan)
+                continue
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>valid_range[1]] = np.nan
+            NDVI[NDVI<valid_range[0]] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+    def add_NIRv_anomaly_process(self,df):
+        # df = Load_dataframe()
+        NDVI_spatial_dict,data_name,valid_range = Load_Data().NIRv_anomaly()
+        # print(data_name)
+        # exit()
+        year_list_str = global_VIs_year_range_dict['NIRv']
+        year_list = year_range_str_to_list(year_list_str)
+        # print(year_list);exit()
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            if not pix in NDVI_spatial_dict:
+                NDVI_list_all.append(np.nan)
+                continue
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI = np.array(NDVI,dtype=float)
+            NDVI[NDVI>valid_range[1]] = np.nan
+            NDVI[NDVI<valid_range[0]] = np.nan
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df[f'{data_name}_progress'] = NDVI_list_all
+        return df
+
+
     def VPD_delta_tif(self,df):
         outdir = join(self.this_class_tif, 'VPD_delta')
         T.mk_dir(outdir)
@@ -3524,6 +3603,110 @@ class Drought_timing:
         # plt.legend()
         plt.show()
         pass
+
+    def Drought_year_spatial_tif(self,df):
+        col_name = 'NIRv-anomaly_progress'
+
+        outdir = join(self.this_class_tif,'Drought_year_spatial_tif',col_name)
+        T.mk_dir(outdir,force=True)
+        # col_name = 'NDVI_progress'
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type']==drt]
+            df_pix = T.df_groupby(df_drt,'pix')
+            spatial_dict = {}
+            for pix in tqdm(df_pix,desc=drt):
+                df_pix_i = df_pix[pix]
+                NDVI_progress = df_pix_i[col_name].tolist()
+                mean_progress = np.nanmean(NDVI_progress, axis=0)
+                mean_progress_reshape = np.array(mean_progress).reshape(-1, 6)
+                mean_progress_reshape_drought_year = mean_progress_reshape[1]
+                mean_drought_year_NDVI = np.nanmean(mean_progress_reshape_drought_year)
+                spatial_dict[pix] = mean_drought_year_NDVI
+            outf = join(outdir,'{}.tif'.format(drt))
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict,outf)
+
+    def Drought_year_percentage_spatial_tif(self,df):
+
+        col_name = 'NIRv-percentage_progress'
+        outdir = join(self.this_class_tif,'Drought_year_percentage_spatial_tif',col_name)
+        # NDVI_data_dict = Load_Data().NDVI_origin()
+        T.mk_dir(outdir,force=True)
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type']==drt]
+            df_pix = T.df_groupby(df_drt,'pix')
+            spatial_dict = {}
+            for pix in tqdm(df_pix,desc=drt):
+                df_pix_i = df_pix[pix]
+                NDVI_progress = df_pix_i[col_name].tolist()
+                # print(NDVI_progress)
+                NDVI_progress_flatten = np.array(NDVI_progress).flatten()
+                if T.is_all_nan(NDVI_progress_flatten):
+                    continue
+                # plt.plot(NDVI_progress)
+                # plt.show()
+                mean_progress = np.nanmean(NDVI_progress, axis=0)
+                mean_progress_reshape = np.array(mean_progress).reshape(-1, 6)
+                mean_progress_reshape_drought_year = mean_progress_reshape[1]
+                mean_drought_year_NDVI = np.nanmean(mean_progress_reshape_drought_year)
+                if mean_drought_year_NDVI > 50:
+                    continue
+                if mean_drought_year_NDVI < -50:
+                    continue
+                spatial_dict[pix] = mean_drought_year_NDVI
+            outf = join(outdir,'{}.tif'.format(drt))
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict,outf)
+        T.open_path_and_file(outdir)
+
+    def Drought_year_percentage_sig_spatial_tif(self):
+        col_name = 'NIRv-percentage_progress'
+        fdir = join(self.this_class_tif,'Drought_year_percentage_spatial_tif',col_name)
+        outdir = join(self.this_class_tif,'Drought_year_percentage_sig_spatial_tif',col_name)
+        T.mk_dir(outdir,force=True)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            df = T.spatial_dics_to_df({'val':spatial_dict})
+
+            sig_list = []
+            for i,row in df.iterrows():
+                val = row['val']
+                if val > 5 or val < -5:
+                    sig_list.append(0.0001)
+                else:
+                    sig_list.append(1)
+            df['sig'] = sig_list
+            T.print_head_n(df)
+            spatial_dict_sig = T.df_to_spatial_dic(df,'sig')
+            # arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_sig)
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict_sig,outpath)
+
+    def plot_Drought_year_spatial_tif(self):
+        product = 'NIRv'
+        col_name_anomaly = f'{product}-anomaly_progress'
+        col_name_percentage = f'{product}-percentage_progress'
+        fdir = join(self.this_class_tif,'Drought_year_spatial_tif',col_name_anomaly)
+        fdir_sig = join(self.this_class_tif,'Drought_year_percentage_sig_spatial_tif',col_name_percentage)
+
+        outdir = join(self.this_class_png,'Drought_year_spatial_tif',product)
+        T.mk_dir(outdir,force=True)
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            fpath_sig = join(fdir_sig,f)
+            if not f.endswith('.tif'):
+                continue
+            outpath = join(outdir,f'{f.replace(".tif","")}.png')
+            m, ret = Plot().plot_ortho(fpath,vmin=-1,vmax=1,cmap='RdBu')
+            Plot().plot_ortho_significance_scatter(m, fpath_sig, temp_root)
+
+            plt.savefig(outpath,dpi=300)
+            # plt.show()
+            plt.close()
+        T.open_path_and_file(outdir)
 
 
 class Optimal_temperature_statistic:
@@ -4758,9 +4941,9 @@ def Load_dataframe():
 
 def main():
     # Dataframe().run()
-    Compensation_Excerbation().run()
+    # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    # Drought_timing().run()
+    Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
