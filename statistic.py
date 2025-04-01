@@ -1575,10 +1575,11 @@ class Drought_timing:
         # self.Drought_year_spatial_tif(df)
         # self.Drought_year_percentage_spatial_tif(df)
         # self.Drought_year_percentage_sig_spatial_tif()
-        self.plot_Drought_year_spatial_tif()
+        # self.plot_Drought_year_spatial_tif()
 
         # statistic
         # self.timing_trajectory(df)
+        self.timing_trajectory_1_year(df)
         # self.timing_trajectory_CSIF(df)
         # self.timing_trajectory_GPP_NIRv(df)
         # self.timing_trajectory_sm(df)
@@ -1697,6 +1698,66 @@ class Drought_timing:
                 plt.close()
                 # plt.show()
         # T.open_path_and_file(outdir)
+
+        pass
+    def timing_trajectory_1_year(self,df):
+        outdir = join(self.this_class_png, 'timing_trajectory_1_year')
+        T.mk_dir(outdir)
+        timing_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+
+        season_list = []
+
+        for i,row in df.iterrows():
+            mon = row['drought_mon']
+            season = global_season_mon_dict[mon]
+            season_list.append(season)
+        df['drought_season'] = season_list
+        color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
+
+        for timing in timing_list:
+            for ELI_class in ELI_class_list:
+                plt.figure(figsize=(9*centimeter_factor,6*centimeter_factor))
+                for drt in drought_type_list:
+                    df_ELI = df[df['ELI_class'] == ELI_class]
+                    df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                    df_timing = df_drt[df_drt['drought_season'] == timing]
+                    NDVI_process = df_timing['NDVI_progress'].tolist()
+                    NDVI_process = np.array(NDVI_process)
+                    NDVI_process_mean = np.nanmean(NDVI_process,axis=0)
+                    # plt.plot(NDVI_process_mean)
+                    # plt.show()
+                    NDVI_process_std = np.nanstd(NDVI_process,axis=0) / 6.
+                    # NDVI_process_std = T.uncertainty_err_2d(NDVI_process,axis=0)
+                    NDVI_process_mean = NDVI_process_mean[6:2*6]
+                    NDVI_process_std = NDVI_process_std[6:2*6]
+                    x_list = list(range(len(NDVI_process_mean)))
+                    x_list = np.array(x_list)
+                    # x_list = np.insert(x_list,6,6.5)
+                    # x_list = np.insert(x_list,13,12.5)
+
+                    # NDVI_process_mean = np.insert(NDVI_process_mean,6,np.nan)
+                    # NDVI_process_std = np.insert(NDVI_process_std,6,np.nan)
+                    # NDVI_process_mean = np.insert(NDVI_process_mean,13,np.nan)
+                    # NDVI_process_std = np.insert(NDVI_process_std,13,np.nan)
+                    plt.plot(x_list,NDVI_process_mean)
+                    plt.scatter(x_list,NDVI_process_mean,marker='o',s=10,c=color_dict[drt],zorder=10,alpha=0.5)
+                    plt.fill_between(x_list,NDVI_process_mean-NDVI_process_std,NDVI_process_mean+NDVI_process_std,alpha=0.3)
+                # plt.legend()
+                plt.title(f'{timing}\n{ELI_class}')
+                plt.ylim(-1.1,0.5)
+                # plt.grid()
+                # plt.xticks(list(range(len(NDVI_process_mean)))[::6],[-1,0,1])
+                fname = f'{timing}_{ELI_class}.pdf'
+                outf = join(outdir,fname)
+                plt.savefig(outf)
+                plt.close()
+                # plt.show()
+        T.open_path_and_file(outdir)
 
         pass
 

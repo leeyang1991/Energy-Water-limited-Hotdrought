@@ -1,8 +1,5 @@
 # coding=utf-8
-import shutil
-
 import matplotlib.pyplot as plt
-import pandas as pd
 import semopy
 import shap
 import xgboost as xgb
@@ -633,7 +630,6 @@ class MAT_Topt1:
             spatial_dicts[key] = spatial_dict
         df = T.spatial_dics_to_df(spatial_dicts)
         return df
-        pass
 
 class Attribution_Dataframe:
     def __init__(self):
@@ -650,6 +646,7 @@ class Attribution_Dataframe:
         # df = self.add_NDVI_with_trend(df)
         # df = self.add_SOS(df)
         # df = self.add_VPD(df)
+        # df = self.add_Temperature_quantile(df)
         # df = self.add_max_T(df)
         # df = self.add_mean_T(df)
         # df = self.add_Topt(df)
@@ -659,14 +656,15 @@ class Attribution_Dataframe:
         # df = self.add_SMRoot_anomaly(df)
         # df = self.add_SMRoot_origin(df)
         # df = self.add_Soil_SILT(df)
+        # df = self.add_Soil_sand(df)
         # df = self.add_detrend_T_anomaly(df)
         # df = self.add_delta_Topt_T(df)
-        # T.save_df(df, self.dff)
-        # T.df_to_excel(df, self.dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
         # self.check_variable(df)
         # self.check_Topt_vs_ndvi(df)
         # self.plot_variables(df)
-        self.print_drought_events_numbers(df)
+        # self.print_drought_events_numbers(df)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -688,14 +686,15 @@ class Attribution_Dataframe:
         x_list = [
             'SOS',
             'VPD-anomaly',
-            'Temperature-anomaly_detrend',
-            # 'Temperature-anomaly',
+            # 'Temperature-anomaly_detrend',
+            # 'Temperature_quantile',
+            'Temperature-anomaly',
             # 'FAPAR-anomaly_detrend',
             'GLEAM-SMRoot-anomaly_detrend',
             'Radiation-anomaly',
-            'delta_Topt_T',
+            # 'delta_Topt_T',
             'drought_mon',
-            'SILT',
+            'sand',
         ]
         y = 'NDVI-anomaly_detrend'
         return x_list,y
@@ -706,6 +705,7 @@ class Attribution_Dataframe:
             'VPD-anomaly':(-3,3),
             'Temperature-anomaly_detrend':(-3,3),
             'Temperature-anomaly':(-3,3),
+            'Temperature_quantile':(0,100),
             'FAPAR-anomaly_detrend':(-3,3),
             'Radiation-anomaly':(-3,3),
             'delta_Topt_T':(-10,10),
@@ -714,6 +714,7 @@ class Attribution_Dataframe:
             'NDVI-anomaly_with_trend':(-3,3),
             'GLEAM-SMRoot-anomaly_detrend':(-3,3),
             'SILT':(0,100),
+            'sand':(0,1000),
 
         }
         return variables_threshold_dict
@@ -721,6 +722,8 @@ class Attribution_Dataframe:
     def clean_df(self,df):
         delta_threshold_dict = self.variables_threshold()
         x_variables,y_variable = self.variables_info()
+        # print(x_variables)
+        # print(delta_threshold_dict)
         for key in x_variables:
             left,right = delta_threshold_dict[key]
             # print(key,(left,right))
@@ -796,6 +799,32 @@ class Attribution_Dataframe:
     def add_VPD(self,df):
         # df = Load_dataframe()
         vals_spatial_dict,data_name,valid_range = Load_Data().VPD_anomaly()
+        # print(data_name)
+        # exit()
+        year_list = global_year_range_list
+        gs = global_gs
+        vals_drought_year_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            # print(drought_year)
+            # exit()
+            vals = vals_spatial_dict[pix]
+            vals = np.array(vals,dtype=float)
+            vals[vals>valid_range[1]] = np.nan
+            vals[vals<valid_range[0]] = np.nan
+            # vals[vals<0] = np.nan
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs,method='array')
+            vals_gs_dict = T.dict_zip(year_list,vals_gs)
+            vals_drought_year = vals_gs_dict[drought_year]
+            vals_drought_year_mean = np.nanmean(vals_drought_year)
+            vals_drought_year_mean_list.append(vals_drought_year_mean)
+        df[f'{data_name}'] = vals_drought_year_mean_list
+        return df
+
+    def add_Temperature_quantile(self,df):
+        # df = Load_dataframe()
+        vals_spatial_dict,data_name,valid_range = Load_Data().Temperature_quantile()
         # print(data_name)
         # exit()
         year_list = global_year_range_list
@@ -1000,6 +1029,13 @@ class Attribution_Dataframe:
         fpath = join(data_root,'HWSD/tif_05/SILT.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
         df = T.add_spatial_dic_to_df(df, spatial_dict, 'SILT')
+        return df
+
+    def add_Soil_sand(self,df):
+        # df = Load_dataframe()
+        fpath = join(data_root,'SOIL_Grid/sand/sand.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        df = T.add_spatial_dic_to_df(df, spatial_dict, 'sand')
         return df
 
     def add_detrend_T_anomaly(self,df):
@@ -1469,7 +1505,7 @@ class SHAP:
         df = self.__gen_df_init()
         # self.pdp_shap(df)
         # self.plot_pdp_shap_result_line()
-        # self.plot_pdp_shap_result_scatter(df)
+        self.plot_pdp_shap_result_scatter(df)
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
@@ -1551,6 +1587,11 @@ class SHAP:
 
     def plot_pdp_shap_result_line(self):
         ELI_class_list = global_ELI_class_list
+        # ('Energy-Limited', 'Water-Limited')
+        ylim_dict = {
+            'Energy-Limited': [-0.1, 0.1],
+            'Water-Limited': [-0.3, 0.3],
+        }
         for ELI in ELI_class_list:
 
             fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
@@ -1632,7 +1673,8 @@ class SHAP:
 
                 plt.xlabel(x_var)
                 flag += 1
-                plt.ylim(-0.3, 0.3)
+                # plt.ylim(-0.1, 0.1)
+                plt.ylim(ylim_dict[ELI])
 
 
             # plt.suptitle(y_variable)
@@ -1642,7 +1684,7 @@ class SHAP:
             # outf = join(outdir, 'shaply.png')
             plt.savefig(outf, dpi=300)
             plt.close()
-            pass
+        T.open_path_and_file(outdir)
 
 
     def plot_pdp_shap_result_scatter(self,df):
@@ -2432,7 +2474,9 @@ class SHAP:
                 'NDVI-anomaly_detrend': (-3, 3),
                 'NDVI-anomaly_with_trend': (-3, 3),
                 'GLEAM-SMRoot-anomaly_detrend': (-3, 2),
-                'SILT': (0, 60),
+                # 'SILT': (0, 60),
+                'sand': (0, 1000),
+                'Temperature_quantile': (0, 100),
             },
             'Water-Limited':{
                 'SOS': (-20, 20),
@@ -2446,7 +2490,9 @@ class SHAP:
                 'NDVI-anomaly_detrend': (-3, 3),
                 'NDVI-anomaly_with_trend': (-3, 3),
                 'GLEAM-SMRoot-anomaly_detrend': (-2, 2),
-                'SILT': (0, 50),
+                'SILT': (0, 1000),
+                'sand': (0, 1000),
+                'Temperature_quantile': (0, 100),
             }
         }
 
@@ -2711,9 +2757,9 @@ def main():
     # SEM().run()
     # MAT_Topt().run()
     # MAT_Topt1().run()
-    Attribution_Dataframe().run()
+    # Attribution_Dataframe().run()
     # Random_forests().run()
-    # SHAP().run()
+    SHAP().run()
     # copy_files()
     pass
 

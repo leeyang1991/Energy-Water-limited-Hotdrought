@@ -266,6 +266,14 @@ class Load_Data:
         var_name = 'Temperature-anomaly_juping_detrend'
         return self.__load_data(data_path, path_type), var_name
 
+    def Temperature_quantile(self,year_range=global_year_range):
+        data_path = join(data_root, f'CRU_tmp/quantile/{year_range}')
+        path_type = 'dir'
+        var_name = 'Temperature_quantile'
+        valid_range = (0, 100)
+        return self.__load_data(data_path, path_type), var_name, valid_range
+
+
     def Precipitation_detrend(self,year_range=global_year_range):
         data_path = join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy')
         path_type = 'file'

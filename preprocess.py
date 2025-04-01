@@ -713,7 +713,8 @@ class TMP:
         # self.anomaly_juping()
         # self.anomaly_juping_detrend()
         # self.mean_annual_temperature()
-        self.max_annual_temperature()
+        # self.max_annual_temperature()
+        self.quantile()
         pass
 
     def per_pix(self):
@@ -853,6 +854,37 @@ class TMP:
         DIC_and_TIF().arr_to_tif(arr,outf)
         pass
 
+    def quantile(self):
+        fdir = join(self.datadir,'per_pix',global_year_range)
+        outdir = join(self.datadir,'quantile',global_year_range)
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_quantile = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals[vals<-999] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            # vals_climatology_anomaly = Pre_Process().climatology_anomaly(vals)
+            argsort_quantile = []
+            for m in range(1, 13):
+                one_mon = []
+                for i in range(len(vals)):
+                    mon = i % 12 + 1
+                    if mon == m:
+                        one_mon.append(vals[i])
+                one_mon_argsort = np.argsort(one_mon)
+                one_mon_argsort_quantile = one_mon_argsort / len(one_mon_argsort) * 100
+                argsort_quantile.append(one_mon_argsort_quantile)
+            argsort_quantile = np.array(argsort_quantile)
+            argsort_quantile_T = argsort_quantile.T
+            argsort_quantile_T_flatten = argsort_quantile_T.flatten()
+            spatial_dict_quantile[pix] = argsort_quantile_T_flatten
+        outf = join(outdir,'quantile.npy')
+        T.save_npy(spatial_dict_quantile,outf)
+        pass
+
+
 class TMX:
     def __init__(self):
         self.datadir = join(data_root,'CRU_tmx')
@@ -869,7 +901,8 @@ class TMX:
         # self.anomaly_juping()
         # self.anomaly_juping_detrend()
         # self.mean_annual_temperature()
-        self.max_annual_temperature()
+        # self.max_annual_temperature()
+        self.quantile()
         pass
 
     def nc_to_tif(self):
@@ -1081,6 +1114,7 @@ class TMX:
         arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_mean)
         DIC_and_TIF().arr_to_tif(arr,outf)
         pass
+
 
 class VPD:
     '''
@@ -3772,7 +3806,7 @@ def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    # TMP().run()
+    TMP().run()
     # TMX().run()
     # Precipitation().run()
     # VPD().run()
@@ -3804,7 +3838,7 @@ def main():
     # HWSD().run()
     # GPP_NIRv().run()
     # NIRv().run()
-    Soil_grid().run()
+    # Soil_grid().run()
 
     pass
 
