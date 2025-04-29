@@ -1504,8 +1504,8 @@ class SHAP:
         # self.copy_df()
         df = self.__gen_df_init()
         # self.pdp_shap(df)
-        # self.plot_pdp_shap_result_line()
-        self.plot_pdp_shap_result_scatter(df)
+        self.plot_pdp_shap_result_line()
+        # self.plot_pdp_shap_result_scatter(df)
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
@@ -1546,6 +1546,39 @@ class SHAP:
         T.print_head_n(df)
         print('len(df):',len(df))
         return df,dff
+
+    def __ylim(self):
+        # ('Energy-Limited', 'Water-Limited')
+        lim_dict = {
+            'Water-Limited':{
+                'SOS':(-.05,.05),
+                'VPD-anomaly':(-.1,.1),
+                'Temperature-anomaly_detrend':(-.1,.1),
+                'Temperature-anomaly':(-.1,.1),
+                'Temperature_quantile':(-.1,.1),
+                'FAPAR-anomaly_detrend':(-.2,.1),
+                'Radiation-anomaly':(-.2,.1),
+                'drought_mon':(-.1,.1),
+                'GLEAM-SMRoot-anomaly_detrend':(-.2,.3),
+                'SILT':(-.05,.05),
+                'sand':(-.05,.05),
+            },
+            'Energy-Limited':{
+                'SOS':(-.1,.1),
+                'VPD-anomaly':(-.25,.1),
+                'Temperature-anomaly_detrend':(-.05,.1),
+                'Temperature-anomaly':(-.05,.1),
+                'Temperature_quantile':(-.05,.1),
+                'FAPAR-anomaly_detrend':(-.2,.1),
+                'Radiation-anomaly':(-.1,.1),
+                'drought_mon':(-.1,.1),
+                'GLEAM-SMRoot-anomaly_detrend':(-.1,.1),
+                'SILT':(-.05,.05),
+                'sand':(-.1,.1),
+            }
+        }
+        return lim_dict
+
 
     def pdp_shap(self,df):
 
@@ -1588,10 +1621,10 @@ class SHAP:
     def plot_pdp_shap_result_line(self):
         ELI_class_list = global_ELI_class_list
         # ('Energy-Limited', 'Water-Limited')
-        ylim_dict = {
-            'Energy-Limited': [-0.1, 0.1],
-            'Water-Limited': [-0.3, 0.3],
-        }
+        # ylim_dict = {
+        #     'Energy-Limited': [-0.1, 0.1],
+        #     'Water-Limited': [-0.3, 0.3],
+        # }
         for ELI in ELI_class_list:
 
             fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
@@ -1633,6 +1666,8 @@ class SHAP:
                     y_err_list = []
                     scatter_x_list = df_i[x_var].tolist()
                     scatter_y_list = df_i['shap_v'].tolist()
+                    x_q10 = np.quantile(scatter_x_list, 0.1)
+                    x_q90 = np.quantile(scatter_x_list, 0.9)
                     for name, df_group_i in df_group:
                         x_i = name[0].left
                         # print(x_i)
@@ -1649,6 +1684,7 @@ class SHAP:
                         y_err_list.append(err)
                 else:
                     x_unique = df_i[x_var].unique()
+
                     x_unique = list(x_unique)
                     x_unique.sort()
                     y_vals_list = []
@@ -1669,12 +1705,16 @@ class SHAP:
                     var_min = self.__variables_ranges()[ELI][x_var][0]
                     var_max = self.__variables_ranges()[ELI][x_var][1]
                     plt.xlim(var_min, var_max)
+                    up, bottom = self.__ylim()[ELI][x_var]
+                    plt.vlines(x_q10, ymin=bottom, ymax=up, colors='gray', linestyles='dashed', zorder=-1)
+                    plt.vlines(x_q90, ymin=bottom, ymax=up, colors='gray', linestyles='dashed', zorder=-1)
                     # plt.scatter(scatter_x_list, scatter_y_list, alpha=0.2, c='gray', marker='.', s=1, zorder=-1)
 
                 plt.xlabel(x_var)
                 flag += 1
                 # plt.ylim(-0.1, 0.1)
-                plt.ylim(ylim_dict[ELI])
+                up,bottom = self.__ylim()[ELI][x_var]
+                plt.ylim(up,bottom)
 
 
             # plt.suptitle(y_variable)
@@ -1682,6 +1722,7 @@ class SHAP:
             # plt.show()
             outf = join(outdir, 'shaply.pdf')
             # outf = join(outdir, 'shaply.png')
+            # plt.show()
             plt.savefig(outf, dpi=300)
             plt.close()
         T.open_path_and_file(outdir)
@@ -1691,6 +1732,7 @@ class SHAP:
         df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
         variables_range_dict = Attribution_Dataframe().variables_threshold()
+        ylim_dict = self.__ylim()
         drought_type_zorder_dict = {
             'hot-drought':99,
             'normal-drought':0
@@ -1710,10 +1752,8 @@ class SHAP:
 
         for ELI in ELI_class_list:
             df_ELI = df_clean[df_clean['ELI_class'] == ELI]
-            T.print_head_n(df_ELI)
+            # T.print_head_n(df_ELI)
             drought_type_list = df_ELI['drought_type'].tolist()
-
-
             fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
             outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
             # outdir = join(self.this_class_png, 'pdp_shap_split', str(ELI))
@@ -1731,7 +1771,7 @@ class SHAP:
 
             flag = 1
             for x_var in x_list:
-                print(x_var)
+                print(ELI, x_var)
 
                 shap_values_mat = shap_values[:, x_var]
                 outf_i = join(outdir, f'shaply_{x_var}')
@@ -1758,12 +1798,13 @@ class SHAP:
                     plt.boxplot(y_list, labels=x_list, showfliers=False, showmeans=False)
                     plt.xlabel(x_var)
                     flag += 1
-                    plt.ylim(-0.3, 0.3)
+                    up,bottom = ylim_dict[ELI][x_var]
+                    plt.ylim(up,bottom)
                     plt.title(f'{x_var}')
                     outf = join(outdir, f'{x_var}.pdf')
-                    # plt.show()
-                    plt.savefig(outf, dpi=900)
-                    plt.close()
+                    plt.show()
+                    # plt.savefig(outf, dpi=900)
+                    # plt.close()
                 else:
                     # continue
                     plt.figure(figsize=(9 * centimeter_factor, 6 * centimeter_factor))
@@ -1771,6 +1812,9 @@ class SHAP:
                     for drt in global_drought_type_list:
                         df_i_drt = df_i[df_i['drought_type'] == drt]
                         scatter_x_list = df_i_drt[x_var].tolist()
+
+                        # plt.hist(scatter_x_list)
+                        # plt.show()
                         scatter_y_list = df_i_drt['shap_v'].tolist()
                         plt.scatter(scatter_x_list, scatter_y_list, alpha=drought_type_alpha_dict[drt], c=drought_type_color_dict[drt],
                             zorder=drought_type_zorder_dict[drt], marker='.', s=drought_type_size_dict[drt])
@@ -1779,12 +1823,13 @@ class SHAP:
                         plt.xlim(var_min, var_max)
                     plt.xlabel(x_var)
                     flag += 1
-                    plt.ylim(-0.3, 0.3)
+                    up, bottom = ylim_dict[ELI][x_var]
+                    plt.ylim(up, bottom)
                     plt.title(f'{x_var}')
                     outf = join(outdir, f'{x_var}.png')
-                    # plt.show()
-                    plt.savefig(outf, dpi=900)
-                    plt.close()
+                    plt.show()
+                    # plt.savefig(outf, dpi=900)
+                    # plt.close()
             pass
 
     def pdp_shap_split_df(self,df):
@@ -2365,8 +2410,8 @@ class SHAP:
         ELI_class_list = global_ELI_class_list
         outdir = join(self.this_class_png, 'importances')
         T.mk_dir(outdir, force=True)
-        mode = 'xgboost'
-        # mode = 'shap'
+        # mode = 'xgboost'
+        mode = 'shap'
 
         for ELI in ELI_class_list:
             plt.figure()
@@ -2377,9 +2422,8 @@ class SHAP:
             else:
                 raise
 
-            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'shaply_imp_dict.npy')
-            # imp_dict_fpath = join(self.this_class_arr,'pdp_shap',str(ELI), 'imp_xgboost.npy')
             imp_dict = T.load_npy(imp_dict_fpath)
+            imp_dict = T.sort_dict_by_value(imp_dict,descending=False)
 
             x_list = []
             y_list = []
@@ -2398,6 +2442,7 @@ class SHAP:
             plt.savefig(outf)
             plt.close()
         # plt.show()
+        T.open_path_and_file(outdir)
 
         pass
 

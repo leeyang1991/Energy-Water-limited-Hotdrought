@@ -1,5 +1,6 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
+import numpy as np
 
 from meta_info import *
 
@@ -19,7 +20,8 @@ class Matrix:
         # self.copy_df()
         # self.rt_AI_Topt()
         # self.rt_AI_Tanomaly()
-        self.normal_condition_AI_Tanomaly()
+        self.rt_AI_Tanomaly_statistic()
+        # self.normal_condition_AI_Tanomaly()
         # self.VPD_AI_Tanomaly()
         # self.sm_AI_Tanomaly()
         # self.sm_anomaly_AI_Tanomaly()
@@ -245,7 +247,7 @@ class Matrix:
                 x_label = (name_T[0].left + name_T[0].right) / 2
                 x_label = np.round(x_label, 2)
                 x_label_list.append(x_label)
-                plt.scatter(bin_range[flag],y_label,c=rt_mean,vmin=-.3,vmax=.3,cmap='RdBu',marker='s')
+                plt.scatter(bin_range[flag],y_label,c=rt_mean,vmin=-.6,vmax=.6,cmap='RdBu',marker='s')
                 # print(flag,rt_mean)
                 flag += 1
         plt.ylabel('AI')
@@ -259,6 +261,115 @@ class Matrix:
         # plt.savefig(outf)
         # plt.close()
 
+        pass
+    def rt_AI_Tanomaly_statistic(self):
+        outdir = join(self.this_class_arr, 'rt_AI_Tanomaly_statistic')
+        T.mkdir(outdir,force=True)
+        outf = join(outdir,'rt_AI_Tanomaly_statistic.npy')
+        if os.path.exists(outf):
+            arr = np.load(outf)
+            arr_dryland = arr[:6,-4:]
+            arr_dryland_mean = np.nanmean(arr_dryland)
+
+            arr_humid_50_90 = arr[6:,25:36]
+            arr_humid_50_90_mean = np.nanmean(arr_humid_50_90)
+
+            arr_humid_above_90 = arr[6:, 36:]
+            arr_humid_above_90_mean = np.nanmean(arr_humid_above_90)
+            print(arr_humid_above_90_mean)
+            # print(arr_dryland_mean)
+            # plt.imshow(arr_dryland,interpolation='nearest',cmap='RdBu',vmin=-.6,vmax=.6)
+            plt.imshow(arr_humid_above_90,interpolation='nearest',cmap='RdBu',vmin=-.6,vmax=.6)
+            plt.colorbar()
+            plt.show()
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df, 10)
+        df = df[df['aridity_index']<=3]
+        df = df.dropna(subset=['optimal_temp'])
+        # T_anomaly = df['Temperature-anomaly_detrend_progress']
+        T_anomaly_vals = []
+        NDVI_anomaly_vals = []
+        AI_vals = []
+        T_anomaly_vals_dict = {}
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            T_anomaly = row['Temperature-anomaly_detrend_progress'].tolist()
+            NDVI_anomaly = row['NDVI_progress'].tolist()
+            # T_anomaly = row['Temperature-origin_progress'].tolist()
+            AI_val = row['aridity_index']
+            # optimal_temp = row['optimal_temp']
+            # if np.isnan(optimal_temp):
+            #     continue
+            # print(optimal_temp)
+            if np.isnan(AI_val):
+                continue
+            NDVI_anomaly_reshape = np.reshape(NDVI_anomaly, (-1, 6))
+            drought_year_NDVI_anomaly = NDVI_anomaly_reshape[1]
+            NDVI_anomaly_mean = np.nanmean(drought_year_NDVI_anomaly)
+            NDVI_anomaly_vals.append(NDVI_anomaly_mean)
+
+            T_anomaly_reshape = np.reshape(T_anomaly, (-1, 6))
+            drought_year_T_anomaly = T_anomaly_reshape[1]
+            T_anomaly_mean = np.nanmean(drought_year_T_anomaly)
+            # T_anomaly_mean = np.nanmax(drought_year_T_anomaly) - optimal_temp
+            # T_anomaly_mean = np.nanmax(drought_year_T_anomaly) - optimal_temp
+            T_anomaly_vals.append(T_anomaly_mean)
+            # pix = row['pix']
+            # if not pix in T_anomaly_vals_dict:
+            #     T_anomaly_vals_dict[pix] = []
+            # T_anomaly_vals_dict[pix].append(T_anomaly_mean)
+
+            AI_vals.append(AI_val)
+        df['T_anomaly_mean'] = T_anomaly_vals
+        df['NDVI_anomaly_mean'] = NDVI_anomaly_vals
+        df = df[df['T_anomaly_mean']<=2]
+        df = df[df['T_anomaly_mean']>=-2]
+        bin_range = np.linspace(0,1,41)
+        T_quantile_bins =[]
+        AI_bins = np.linspace(0,2.5,26)
+        for b_i in bin_range:
+            T_quantile_bins.append(np.quantile(T_anomaly_vals,b_i))
+
+        df_group_AI, _ = T.df_bin(df,'aridity_index',AI_bins)
+        y_range = list(range(len(df_group_AI)))
+        # print(y_range)
+        # print(len(y_range))
+        # exit()
+
+        matrix = np.ones((25, 40)) * np.nan
+        y_label_list = []
+        plt.figure(figsize=(7, 3.5))
+        flag_y = 0
+        for name_AI, df_group_AI_i in df_group_AI:
+            matrix_i = []
+            y_label = (name_AI[0].left + name_AI[0].right) / 2
+            y_label = np.round(y_label, 2)
+            y_label_list.append(y_label)
+            x_label_list = []
+
+            df_group_T, _ = T.df_bin(df_group_AI_i,'T_anomaly_mean',T_quantile_bins)
+            # if len(df_group_T) != len(T_quantile_bins)-1:
+            #     continue
+            # print(len(T_quantile_bins))
+            flag = 0
+
+            for name_T, df_group_T_i in df_group_T:
+                rt = df_group_T_i['NDVI_anomaly_mean'].tolist()
+                rt_mean = np.nanmean(rt)
+                # rt_mean = len(rt)
+                x_label = (name_T[0].left + name_T[0].right) / 2
+                x_label = np.round(x_label, 2)
+                x_label_list.append(x_label)
+                # plt.scatter(bin_range[flag],y_label,c=rt_mean,vmin=-.6,vmax=.6,cmap='RdBu',marker='s')
+                matrix[flag_y,flag] = rt_mean
+                # print(flag,rt_mean)
+                flag += 1
+            # print(len(matrix_i))
+            flag_y += 1
+
+            # matrix.append(matrix_i)
+        np.save(outf, matrix)
+        # matrix = np.array(matrix)
         pass
 
     def VPD_AI_Tanomaly(self):
@@ -1005,8 +1116,8 @@ class Normal_year_Matrix:
         pass
 
 def main():
-    # Matrix().run()
-    Normal_year_Matrix().run()
+    Matrix().run()
+    # Normal_year_Matrix().run()
 
     pass
     main()

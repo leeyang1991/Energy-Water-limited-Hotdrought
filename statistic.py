@@ -1,4 +1,5 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
 
 from meta_info import *
 result_root_this_script = join(results_root, 'statistic')
@@ -1579,7 +1580,8 @@ class Drought_timing:
 
         # statistic
         # self.timing_trajectory(df)
-        self.timing_trajectory_1_year(df)
+        # self.timing_trajectory_1_year(df)
+        # self.timing_trajectory_1_year_positive(df)
         # self.timing_trajectory_CSIF(df)
         # self.timing_trajectory_GPP_NIRv(df)
         # self.timing_trajectory_sm(df)
@@ -1587,6 +1589,7 @@ class Drought_timing:
         # self.delta_season_tif(df)
         # self.seasonal_ndvi_tif(df)
         # self.seasonal_ndvi_tif_statistic()
+        self.seasonal_ndvi_tif_area_statistic()
         # self.delta_season_bar(df)
         # self.delta_season_boxplot(df)
 
@@ -1758,6 +1761,73 @@ class Drought_timing:
                 plt.close()
                 # plt.show()
         T.open_path_and_file(outdir)
+
+        pass
+
+    def timing_trajectory_1_year_positive(self,df):
+        outdir = join(self.this_class_png, 'timing_trajectory_1_year_positive')
+        T.mk_dir(outdir)
+        timing_list = global_drought_season_list
+        ELI_class_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+
+        season_list = []
+
+        for i,row in df.iterrows():
+            mon = row['drought_mon']
+            season = global_season_mon_dict[mon]
+            season_list.append(season)
+        df['drought_season'] = season_list
+        color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
+        # df = df[df['rt'] > 1]
+        # mode = 'positive'
+        mode = 'all'
+        drt = 'hot-drought'
+        df_drt = df[df['drought_type'] == drt]
+
+        for timing in timing_list:
+            plt.figure(figsize=(9*centimeter_factor,6*centimeter_factor))
+            # for drt in drought_type_list:
+            df_timing = df_drt[df_drt['drought_season'] == timing]
+            NDVI_process = df_timing['NDVI_progress'].tolist()
+            NDVI_process = np.array(NDVI_process)
+            NDVI_process_mean = np.nanmean(NDVI_process,axis=0)
+            # plt.plot(NDVI_process_mean)
+            # plt.show()
+            NDVI_process_std = np.nanstd(NDVI_process,axis=0) / 6.
+            # NDVI_process_std = T.uncertainty_err_2d(NDVI_process,axis=0)
+            NDVI_process_mean = NDVI_process_mean[6:2*6]
+            NDVI_process_std = NDVI_process_std[6:2*6]
+            x_list = list(range(len(NDVI_process_mean)))
+            x_list = np.array(x_list)
+            # x_list = np.insert(x_list,6,6.5)
+            # x_list = np.insert(x_list,13,12.5)
+
+            # NDVI_process_mean = np.insert(NDVI_process_mean,6,np.nan)
+            # NDVI_process_std = np.insert(NDVI_process_std,6,np.nan)
+            # NDVI_process_mean = np.insert(NDVI_process_mean,13,np.nan)
+            # NDVI_process_std = np.insert(NDVI_process_std,13,np.nan)
+            plt.plot(x_list,NDVI_process_mean)
+            plt.scatter(x_list,NDVI_process_mean,marker='o',s=10,c=color_dict[drt],zorder=10,alpha=0.5)
+            plt.fill_between(x_list,NDVI_process_mean-NDVI_process_std,NDVI_process_mean+NDVI_process_std,alpha=0.3)
+            # plt.legend()
+            plt.title(f'{timing}-{mode}')
+            # plt.ylim(-1.1,0.5)
+            # plt.grid()
+            # plt.xticks(list(range(len(NDVI_process_mean)))[::6],[-1,0,1])
+            plt.figure(figsize=(9*centimeter_factor,6*centimeter_factor))
+            plt.title(f'{timing}-{mode}')
+            sos = df_timing['SOS'].tolist()
+            plt.hist(sos,bins=100,range=(-20,20))
+            # print(sos);exit()
+
+            # plt.savefig(outf)
+            # plt.close()
+        plt.show()
+        # T.open_path_and_file(outdir)
 
         pass
 
@@ -2095,6 +2165,37 @@ class Drought_timing:
             print(key)
             vals = seasonal_ndvi_vals_dic[key]
             print(np.mean(vals))
+
+    def seasonal_ndvi_tif_area_statistic(self):
+        fdir = join(self.this_class_tif, 'seasonal_ndvi')
+        seasonal_ndvi_vals_dic = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            # if not 'spring_hot-drought_Energy-Limited' in f:
+            # if not 'summer_hot-drought_Energy-Limited' in f:
+            if not 'autumn_hot-drought_Energy-Limited' in f:
+                continue
+            # print(f)
+            key = f.replace('.tif', '')
+            fpath = join(fdir, f)
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            vals = []
+            for pix in spatial_dict:
+                val = spatial_dict[pix]
+                if np.isnan(val):
+                    continue
+                vals.append(val)
+            vals = np.array(vals)
+            vals_postive = vals>1.0
+            pos_count = 0
+            for t in vals_postive:
+                if t:
+                    pos_count += 1
+            pos_ratio = pos_count / len(vals)
+            print('pos_ratio',pos_ratio)
+            print('mean',np.nanmean(vals))
+
 
     def delta_season_bar(self,df):
         outdir = join(self.this_class_png, 'delta_season_bar')
