@@ -1503,8 +1503,9 @@ class SHAP:
     def run(self):
         # self.copy_df()
         df = self.__gen_df_init()
-        # self.pdp_shap(df)
-        self.plot_pdp_shap_result_line()
+        self.pdp_shap(df)
+        # self.pdp_shap_r2(df)
+        # self.plot_pdp_shap_result_line()
         # self.plot_pdp_shap_result_scatter(df)
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
@@ -1617,6 +1618,54 @@ class SHAP:
             outf_shap_values = join(outdir, 'shaply_shap_values')
             T.save_dict_to_binary(shap_values, outf_shap_values)
             # T.save_npy(shap_values, outf_shap_values)
+
+    def pdp_shap_r2(self,df):
+        from sklearn.model_selection import train_test_split
+
+        x_variables,y_variable = Attribution_Dataframe().variables_info()
+        df = Attribution_Dataframe().clean_df(df)
+        ELI_class_list = global_ELI_class_list
+
+        for ELI in ELI_class_list:
+            print(ELI)
+            outdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            # outf = join(outdir,self.y_variable)
+            T.mk_dir(outdir, force=True)
+            df_ELI = df[df['ELI_class']==ELI]
+
+            X = df_ELI[x_variables]
+            Y = df_ELI[y_variable]
+
+            '''
+            :param X: a dataframe of x variables
+            :param y: a dataframe of y variable
+            :return: a random forest model and the R^2
+            '''
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, Y, random_state=1, test_size=0.2)  # split the data into training and testing
+            # model = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=7,) # build a random forest model
+            # rf.fit(X_train, y_train) # train the model
+            # r2 = rf.score(X_test,y_test)
+            model = xgb.XGBRegressor(objective="reg:squarederror", booster='gbtree', n_estimators=50,
+                                     max_depth=20, eta=0.001, random_state=1, n_jobs=24)
+            # model = RandomForestRegressor(n_estimators=100, random_state=42,n_jobs=12)
+            model.fit(X_train, y_train)
+            # model.fit(X_train, y_train)
+            # Get predictions
+            y_pred = model.predict(X_test)
+            score = model.score(X_train, y_train)
+            # plt.scatter(y_test, y_pred)
+            # plt.show()
+            # r = stats.pearsonr(y_test, y_pred)
+            r = stats.pearsonr(y_train, y_pred)
+            r2 = r[0] ** 2
+            print('r2:', r2)
+            print('score:', score)
+        # Energy-Limited
+        # r2: 0.2160985352470629
+        # Water-Limited
+        # r2: 0.4068637636738952
+        exit()
 
     def plot_pdp_shap_result_line(self):
         ELI_class_list = global_ELI_class_list

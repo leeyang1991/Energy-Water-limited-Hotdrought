@@ -4642,8 +4642,8 @@ class MAT_MAP:
         # self.GEZ_MAT_MAP_scatter()
         # self.GEZ_AI_delta_NDVI()
         # self.GEZ_AI_anomaly_NDVI()
-        self.GEZ_MAT_anomaly_NDVI()
-        # self.GEZ_MAT_MAP()
+        # self.GEZ_MAT_anomaly_NDVI()
+        self.GEZ_MAT_MAP()
         pass
 
     def __gen_df_init(self):
@@ -5039,10 +5039,10 @@ class MAT_MAP:
             # plt.ylim(0,4000)
         # plt.colorbar()
         plt.legend()
-        # plt.show()
-        outf = join(outdir,f'GEZ_MAT_MAP.pdf')
-        plt.savefig(outf)
-        plt.close()
+        plt.show()
+        # outf = join(outdir,f'GEZ_MAT_MAP.pdf')
+        # plt.savefig(outf)
+        # plt.close()
         pass
 
     def GEZ_MAT_anomaly_NDVI(self):
@@ -5105,7 +5105,7 @@ def main():
     # Dataframe().run()
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
-    Drought_timing().run()
+    # Drought_timing().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5114,7 +5114,7 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-    # MAT_MAP().run()
+    MAT_MAP().run()
 
     pass
 
