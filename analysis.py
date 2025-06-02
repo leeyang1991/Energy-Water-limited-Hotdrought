@@ -2,8 +2,6 @@
 from meta_info import *
 result_root_this_script = join(results_root, 'analysis')
 import xymap
-# import warnings
-# warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Water_energy_limited_area:
 
