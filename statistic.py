@@ -1559,6 +1559,8 @@ class Drought_timing:
         # exit()
         # Dataframe
         # df = self.add_drought_season(df)
+        df = self.add_longterm_growing_season(df)
+        # T.print_head_n(df)
         # df = self.add_VPD_anomaly_process(df)
         # df = self.add_VPD_origin_process(df)
         # df = self.add_NDVI_percentage_process(df)
@@ -1569,8 +1571,8 @@ class Drought_timing:
         # df = self.add_NIRv_percentage_process(df)
         # df = self.add_NIRv_anomaly_process(df)
 
-        # T.save_df(df, self.dff)
-        # T.df_to_excel(df, self.dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
 
         # plot tifs
         # self.Drought_year_spatial_tif(df)
@@ -1589,7 +1591,7 @@ class Drought_timing:
         # self.delta_season_tif(df)
         # self.seasonal_ndvi_tif(df)
         # self.seasonal_ndvi_tif_statistic()
-        self.seasonal_ndvi_tif_area_statistic()
+        # self.seasonal_ndvi_tif_area_statistic()
         # self.delta_season_bar(df)
         # self.delta_season_boxplot(df)
 
@@ -1643,6 +1645,13 @@ class Drought_timing:
             season = global_season_mon_dict[mon]
             season_list.append(season)
         df['drought_season'] = season_list
+        return df
+
+    def add_longterm_growing_season(self,df):
+        import analysis
+        gs_f = join(analysis.Phenology().this_class_arr, 'longterm_growing_season', 'longterm_growing_season.npy')
+        gs_dict = T.load_npy(gs_f)
+        df = T.add_spatial_dic_to_df(df,gs_dict,'growing_season')
         return df
 
     def timing_trajectory(self,df):
@@ -3871,6 +3880,97 @@ class Drought_timing:
         T.open_path_and_file(outdir)
 
 
+class Dynamic_gs_analysis:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Dynamic_gs_analysis', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'Dataframe.df')
+        pass
+
+    def run(self):
+        # self.copy_df()
+        df = self.__gen_df_init()
+
+        # T.save_df(df, self.dff)
+        # T.df_to_excel(df, self.dff)
+        self.Figure1ab(df)
+        # self.Figure1b(df)
+        # self.Figure1c(df)
+
+    def Figure1ab(self,df):
+        outdir = join(self.this_class_tif,'Figure1ab')
+        T.mk_dir(outdir)
+        NDVI_dict,_,_ = Load_Data().NDVI_anomaly_detrend()
+        NDVI_drought_growing_season_mean_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            growing_season = row['growing_season']
+            if type(growing_season) == float:
+                NDVI_drought_growing_season_mean_list.append(np.nan)
+                continue
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1,12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list,NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            NDVI_drought_growing_season = NDVI_drought_year[growing_season-1]
+            NDVI_drought_growing_season_mean = np.nanmean(NDVI_drought_growing_season)
+            NDVI_drought_growing_season_mean_list.append(NDVI_drought_growing_season_mean)
+        df['NDVI_anomaly_drought_growing_season'] = NDVI_drought_growing_season_mean_list
+
+        df_normal_drought = df[df['drought_type']=='normal-drought']
+        df_hot_drought = df[df['drought_type']=='hot-drought']
+
+        drt_list = ['normal-drought','hot-drought']
+
+        df_drought_spatial_dict = T.df_groupby(df,'pix')
+        spatial_dict_NDVI = {}
+        for pix in df_drought_spatial_dict:
+            df_i = df_drought_spatial_dict[pix]
+            NDVI_anomaly_drought_growing_season = df_i['NDVI_anomaly_drought_growing_season'].tolist()
+            NDVI_anomaly_drought_growing_season_mean = np.nanmean(NDVI_anomaly_drought_growing_season)
+            spatial_dict_NDVI[pix] = NDVI_anomaly_drought_growing_season_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_NDVI)
+        outf = join(outdir,'NDVI_anomaly_drought_growing_season.tif')
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        pass
+
+    def Figure1b(self,df):
+
+        pass
+
+    def Figure1c(self,df):
+
+        pass
+
+    def copy_df(self):
+        print('Warning: this function will overwrite the dataframe')
+        print('Warning: this function will overwrite the dataframe')
+        print('Warning: this function will overwrite the dataframe')
+        pause()
+        pause()
+        dff = join(Drought_timing().this_class_arr,'Drought_timing.df')
+        df = T.load_df(dff)
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df,self.dff)
+            return df
+        else:
+            df,dff = self.__load_df()
+            return df
+
+    def __load_df(self):
+        dff = self.dff
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        print('len(df):',len(df))
+        return df,dff
+
+
 class Optimal_temperature_statistic:
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
@@ -5106,6 +5206,7 @@ def main():
     # Compensation_Excerbation().run()
     # Compensation_Excerbation_heatwave().run()
     # Drought_timing().run()
+    Dynamic_gs_analysis().run()
     # Random_Forests().run()
     # Random_Forests_delta().run()
     # Partial_Dependence_Plots().run()
@@ -5114,7 +5215,7 @@ def main():
     # Phenology_Statistic().run()
     # Optimal_temperature_statistic().run()
     # SEM().run()
-    MAT_MAP().run()
+    # MAT_MAP().run()
 
     pass
 

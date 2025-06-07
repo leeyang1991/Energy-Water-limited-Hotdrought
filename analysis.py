@@ -702,7 +702,8 @@ class Phenology:
         # self.hants_interpolation()
         # self.pick_phenology()
         # self.phenology_df()
-        self.check_phenology()
+        self.longterm_SOS_EOS()
+        # self.check_phenology()
         pass
 
     def hants_interpolation(self):
@@ -876,6 +877,32 @@ class Phenology:
         plt.imshow(arr,cmap='jet',interpolation='nearest')
         plt.colorbar()
         plt.show()
+
+    def longterm_SOS_EOS(self):
+        outdir = join(self.this_class_arr,'longterm_growing_season')
+        T.mkdir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        # exit()
+        phenology_dff = join(self.this_class_arr,'phenology_df','phenology_df.df')
+        phenology_df = T.load_df(phenology_dff)
+        phenology_dict = T.df_to_dic(phenology_df,'pix')
+        phenology_dict_longterm = {}
+        for pix in tqdm(phenology_dict):
+            early_start = phenology_dict[pix]['early_start']
+            late_end = phenology_dict[pix]['late_end']
+            early_start_list = [early_start[year] for year in early_start]
+            late_end_list = [late_end[year] for year in late_end]
+            # print(pix,early_start_list,late_end_list)
+            mean_early_start = np.nanmean(early_start_list)
+            mean_late_end = np.nanmean(late_end_list)
+            early_start_mon = self.__doy_to_month(mean_early_start)
+            late_end_mon = self.__doy_to_month(mean_late_end)
+            gs_range = np.array(list(range(early_start_mon,late_end_mon+1)))
+            phenology_dict_longterm[pix] = gs_range
+        outf = join(outdir,'longterm_growing_season.npy')
+        T.save_npy(phenology_dict_longterm,outf)
+
+
 
     def __doy_to_month(self,doy):
         '''
@@ -1988,9 +2015,9 @@ def main():
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
-    # Phenology().run()
+    Phenology().run()
     # Long_term_correlation().run()
-    Optimal_temperature().run()
+    # Optimal_temperature().run()
     # Optimal_temperature_monthly().run()
     # gen_world_grid_shp()
     pass

@@ -4,7 +4,7 @@ import semopy
 import shap
 import xgboost as xgb
 from meta_info import *
-import Rbeast as rb
+# import Rbeast as rb
 
 result_root_this_script = join(results_root, 'attribution')
 
@@ -1503,7 +1503,9 @@ class SHAP:
     def run(self):
         # self.copy_df()
         df = self.__gen_df_init()
-        self.pdp_shap(df)
+        pause()
+
+        # self.pdp_shap(df)
         # self.pdp_shap_r2(df)
         # self.plot_pdp_shap_result_line()
         # self.plot_pdp_shap_result_scatter(df)
