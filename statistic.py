@@ -3889,13 +3889,20 @@ class Dynamic_gs_analysis:
 
     def run(self):
         # self.copy_df()
-        df = self.__gen_df_init()
+        # df = self.__gen_df_init()
 
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
-        self.Figure1ab(df)
-        # self.Figure1b(df)
-        # self.Figure1c(df)
+        # self.Figure1ab(df)
+        # self.Figure1ab_percentage(df)
+        # self.plot_Figure1ab()
+        # self.Figure1c()
+        # self.plot_Figure1c()
+        self.Figure1de()
+        # self.Figure1f()
+
+        pass
+
 
     def Figure1ab(self,df):
         outdir = join(self.this_class_tif,'Figure1ab')
@@ -3918,30 +3925,288 @@ class Dynamic_gs_analysis:
             NDVI_drought_growing_season_mean_list.append(NDVI_drought_growing_season_mean)
         df['NDVI_anomaly_drought_growing_season'] = NDVI_drought_growing_season_mean_list
 
-        df_normal_drought = df[df['drought_type']=='normal-drought']
-        df_hot_drought = df[df['drought_type']=='hot-drought']
-
         drt_list = ['normal-drought','hot-drought']
+        for drt in drt_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_drought_spatial_dict = T.df_groupby(df_drt,'pix')
+            spatial_dict_NDVI = {}
+            for pix in tqdm(df_drought_spatial_dict,desc=drt):
+                df_i = df_drought_spatial_dict[pix]
+                NDVI_anomaly_drought_growing_season = df_i['NDVI_anomaly_drought_growing_season'].tolist()
+                NDVI_anomaly_drought_growing_season_mean = np.nanmean(NDVI_anomaly_drought_growing_season)
+                spatial_dict_NDVI[pix] = NDVI_anomaly_drought_growing_season_mean
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_NDVI)
+            outf = join(outdir,f'{drt}.tif')
+            DIC_and_TIF().arr_to_tif(arr,outf)
+        T.open_path_and_file(outdir)
+        pass
 
-        df_drought_spatial_dict = T.df_groupby(df,'pix')
-        spatial_dict_NDVI = {}
-        for pix in df_drought_spatial_dict:
-            df_i = df_drought_spatial_dict[pix]
-            NDVI_anomaly_drought_growing_season = df_i['NDVI_anomaly_drought_growing_season'].tolist()
-            NDVI_anomaly_drought_growing_season_mean = np.nanmean(NDVI_anomaly_drought_growing_season)
-            spatial_dict_NDVI[pix] = NDVI_anomaly_drought_growing_season_mean
-        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_NDVI)
-        outf = join(outdir,'NDVI_anomaly_drought_growing_season.tif')
+    def Figure1ab_percentage(self,df):
+        outdir = join(self.this_class_tif,'Figure1ab_percentage')
+        NDVI_dict, _, _ = Load_Data().NDVI_percentage()
+        NDVI_drought_growing_season_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            growing_season = row['growing_season']
+            if type(growing_season) == float:
+                NDVI_drought_growing_season_mean_list.append(np.nan)
+                continue
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1, 12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list, NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            # plt.plot(NDVI_vals)
+            # plt.show()
+            NDVI_drought_growing_season = NDVI_drought_year[growing_season - 1]
+            NDVI_drought_growing_season_mean = np.nanmean(NDVI_drought_growing_season)
+            # NDVI_drought_growing_season_mean = abs(NDVI_drought_growing_season_mean)
+            # print(NDVI_drought_growing_season_mean);exit()
+            # if NDVI_drought_growing_season_mean > 5:
+            #     sig_val = 0
+            # else:
+            #     sig_val = 1
+            NDVI_drought_growing_season_mean_list.append(NDVI_drought_growing_season_mean)
+        df['NDVI_anomaly_drought_growing_season'] = NDVI_drought_growing_season_mean_list
+
+        drt_list = ['normal-drought', 'hot-drought']
+        for drt in drt_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_drought_spatial_dict = T.df_groupby(df_drt, 'pix')
+            spatial_dict_NDVI_sig = {}
+            spatial_dict_NDVI_values = {}
+            for pix in tqdm(df_drought_spatial_dict, desc=drt):
+                df_i = df_drought_spatial_dict[pix]
+                NDVI_anomaly_drought_growing_season = df_i['NDVI_anomaly_drought_growing_season'].tolist()
+                NDVI_anomaly_drought_growing_season_mean = np.nanmean(NDVI_anomaly_drought_growing_season)
+                NDVI_anomaly_drought_growing_season_mean = abs(NDVI_anomaly_drought_growing_season_mean)
+                if NDVI_anomaly_drought_growing_season_mean > 5:
+                    sig_val = 0
+                else:
+                    sig_val = 1
+                spatial_dict_NDVI_sig[pix] = sig_val
+                spatial_dict_NDVI_values[pix] = NDVI_anomaly_drought_growing_season_mean
+            arr_sig = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_NDVI_sig)
+            arr_values = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_NDVI_values)
+            outf_values = join(outdir, f'{drt}_values.tif')
+            DIC_and_TIF().arr_to_tif(arr_values, outf_values)
+            outf_sig = join(outdir, f'{drt}_sig.tif')
+            DIC_and_TIF().arr_to_tif(arr_sig, outf_sig)
+        T.open_path_and_file(outdir)
+
+    def Figure1c(self):
+        fdir = join(self.this_class_tif,'Figure1ab')
+        fdir_sig = join(self.this_class_tif,'Figure1ab_percentage')
+        outdir = join(self.this_class_tif,'Figure1c')
+        T.mk_dir(outdir)
+        normal_drought_tif = join(fdir,'normal-drought.tif')
+        hot_drought_tif = join(fdir,'hot-drought.tif')
+        normal_drought_arr = DIC_and_TIF().spatial_tif_to_arr(normal_drought_tif)
+        hot_drought_arr = DIC_and_TIF().spatial_tif_to_arr(hot_drought_tif)
+        arr = hot_drought_arr - normal_drought_arr
+        outf = join(outdir,'NDVI_anomaly_drought_season.tif')
         DIC_and_TIF().arr_to_tif(arr,outf)
+
+        normal_drought_sig_tif = join(fdir_sig,'normal-drought_values.tif')
+        hot_drought_sig_tif = join(fdir_sig,'hot-drought_values.tif')
+        normal_drought_sig_arr = DIC_and_TIF().spatial_tif_to_arr(normal_drought_sig_tif)
+        hot_drought_sig_arr = DIC_and_TIF().spatial_tif_to_arr(hot_drought_sig_tif)
+        arr_sig = hot_drought_sig_arr - normal_drought_sig_arr
+        arr_sig = abs(arr_sig)
+        arr_copy = arr_sig.copy() * np.nan
+        arr_copy[arr_sig>=5] = 0
+        arr_copy[arr_sig<5] = 1
+        # plt.imshow(arr_copy,interpolation='nearest')
+        # plt.colorbar()
+        # plt.show()
+        outf_sig = join(outdir,'NDVI_anomaly_drought_season_sig.tif')
+        DIC_and_TIF().arr_to_tif(arr_copy,outf_sig)
+
+
+        T.open_path_and_file(outdir)
         pass
 
-    def Figure1b(self,df):
+    def plot_Figure1ab(self):
+        fdir = join(self.this_class_tif,'Figure1ab')
+        fdir_sig = join(self.this_class_tif,'Figure1ab_percentage')
+        outdir = join(self.this_class_png,'Figure1ab')
+        T.mk_dir(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            fpath_sig = join(fdir_sig,f.replace('.tif','_sig.tif'))
+            outf = join(outdir,f.replace('.tif','.png'))
+            m,ret = Plot().plot_ortho(fpath,vmin=-1,vmax=1,cmap='RdBu')
+            Plot().plot_ortho_significance_scatter(m, fpath_sig, temp_root,sig_level=0.05)
+            # m,ret = Plot().plot_ortho_significance_scatter(fpath,vmin=-1,vmax=1,cmap='RdBu')
+            plt.savefig(outf,dpi=900)
+            # plt.title(f.replace('.tif',''))
+            # plt.show()
+            plt.close()
+        T.open_path_and_file(outdir)
+
+    def plot_Figure1c(self):
+        fdir = join(self.this_class_tif,'Figure1c')
+        outdir = join(self.this_class_png,'Figure1c')
+        T.mk_dir(outdir)
+        f = 'NDVI_anomaly_drought_season.tif'
+        fpath = join(fdir,f)
+        fpath_sig = join(fdir,f.replace('.tif','_sig.tif'))
+        outf = join(outdir,f.replace('.tif','.png'))
+        m,ret = Plot().plot_ortho(fpath,vmin=-1,vmax=1,cmap='Spectral')
+        Plot().plot_ortho_significance_scatter(m, fpath_sig, temp_root,sig_level=0.05)
+        plt.savefig(outf,dpi=900)
+        # plt.title(f.replace('.tif',''))
+        # plt.show()
+        plt.close()
+        T.open_path_and_file(outdir)
+
+    def Figure1de(self):
+        fdir = join(self.this_class_tif,'Figure1ab')
+        fdir_percentage = join(self.this_class_tif,'Figure1ab_percentage')
+        outdir = join(self.this_class_png,'Figure1de')
+        T.mk_dir(outdir)
+        # fpath_normal_drought = join(fdir,'normal-drought.tif')
+        # fpath_hot_drought = join(fdir,'hot-drought.tif')
+        # fpath_normal_drought_sig = join(fdir_sig,'normal-drought_values.tif')
+        # fpath_hot_drought_sig = join(fdir_sig,'hot-drought_values.tif')
+        path_normal_drought = 'normal-drought.tif'
+        path_hot_drought = 'hot-drought.tif'
+        path_normal_drought_percentage = 'normal-drought_values.tif'
+        path_hot_drought_percentage = 'hot-drought_values.tif'
+
+        all_spatial_dict = {}
+        for f in [path_normal_drought,path_hot_drought,path_normal_drought_percentage,path_hot_drought_percentage]:
+            if 'values' in f:
+                fpath = join(fdir_percentage,f)
+                key = f.replace('values.tif','percentage')
+            else:
+                fpath = join(fdir,f)
+                key = f.replace('.tif','')
+            # print(fpath)
+            spatial_dict_i = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            all_spatial_dict[key] = spatial_dict_i
+        df = T.spatial_dics_to_df(all_spatial_dict)
+        df['hot-drought_percentage'] = abs(df['hot-drought_percentage'])
+        df['normal-drought_percentage'] = abs(df['normal-drought_percentage'])
+        df = Dataframe_func(df).df
+        T.print_head_n(df)
+        AI_class_list = global_AI_class_list
+        plt.figure(figsize=(10,6))
+        flag = 0
+        for AI_class in AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            drt_list = global_drought_type_list
+            for drt in drt_list:
+                df_AI_copy = df_AI.dropna(subset=[drt])
+
+                df_negative = df_AI_copy[df_AI_copy[drt]<=0]
+                df_positive = df_AI_copy[df_AI_copy[drt]>0]
+                df_negative_sig = df_negative[df_negative[drt+'_percentage']>=5]
+                df_positive_sig = df_positive[df_positive[drt+'_percentage']>=5]
+                df_negative_ratio = len(df_negative)/len(df_AI_copy)
+                df_positive_ratio = len(df_positive)/len(df_AI_copy)
+                df_negative_ratio_sig = len(df_negative_sig)/len(df_AI_copy)
+                df_positive_ratio_sig = len(df_positive_sig)/len(df_AI_copy)
+                df_negative_ratio = -df_negative_ratio
+                df_negative_ratio_sig = -df_negative_ratio_sig
+                plt.bar([f'{drt}-{AI_class}'],[df_negative_ratio],width=0.5,alpha=0.5)
+                plt.bar([f'{drt}-{AI_class}'],[df_positive_ratio],width=0.5,alpha=0.5)
+                plt.bar([f'{drt}-{AI_class}'],[df_negative_ratio_sig],width=0.5,alpha=0.5)
+                plt.bar([f'{drt}-{AI_class}'],[df_positive_ratio_sig],width=0.5,alpha=0.5)
+                plt.text(flag, df_negative_ratio, f'{df_negative_ratio * 100:.2f}')
+                plt.text(flag, df_positive_ratio, f'{df_positive_ratio * 100:.2f}')
+                plt.text(flag, df_negative_ratio_sig, f'{df_negative_ratio_sig * 100:.2f}')
+                plt.text(flag, df_positive_ratio_sig, f'{df_positive_ratio_sig * 100:.2f}')
+                flag += 1
+        plt.hlines(0,-1,4,linestyles='dashed')
+        outf_percentage = join(outdir,'Figure1de_percentage.pdf')
+        plt.savefig(outf_percentage,dpi=900)
+        plt.close()
+
+        plt.figure(figsize=(10,6))
+        for drt in global_drought_type_list:
+            for AI_class in AI_class_list:
+                df_AI = df[df['AI_class'] == AI_class]
+                vals = df_AI[drt].tolist()
+                vals = np.array(vals)
+                vals_mean = np.nanmean(vals)
+                vals = vals[~np.isnan(vals)]
+                err, up, bottom,err = self.mean_confidence_interval(vals)
+                label = f'{drt}-{AI_class}'
+                plt.bar([label],[vals_mean],yerr=[err],width=0.5,alpha=0.5)
+                plt.hlines(0,-1,4,linestyles='dashed')
+        outf = join(outdir,'Figure1de_values.pdf')
+        plt.savefig(outf,dpi=900)
+        plt.close()
+        T.open_path_and_file(outdir)
+        pass
+
+    def Figure1f(self):
+        outdir = join(self.this_class_png,'Figure1f')
+        T.mk_dir(outdir)
+        fdir = join(self.this_class_tif,'Figure1c')
+        fpath_value = join(fdir,'NDVI_anomaly_drought_season.tif')
+        fpath_sig = join(fdir,'NDVI_anomaly_drought_season_sig.tif')
+        spatial_dict_value = DIC_and_TIF().spatial_tif_to_dic(fpath_value)
+        spatial_dict_sig = DIC_and_TIF().spatial_tif_to_dic(fpath_sig)
+
+        all_spatial_dict = {}
+        all_spatial_dict['value'] = spatial_dict_value
+        all_spatial_dict['percentage'] = spatial_dict_sig
+        df = T.spatial_dics_to_df(all_spatial_dict)
+        df = Dataframe_func(df).df
+        T.print_head_n(df)
+        plt.figure(figsize=(10, 6))
+        for AI_class in global_AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            plt.bar(AI_class,df_AI['value'].mean(),yerr=df_AI['value'].sem(),width=0.5,alpha=0.5)
+        plt.hlines(0,-1,2,linestyles='dashed')
+
+        plt.figure(figsize=(10, 6))
+        flag = 0
+        for AI_class in global_AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            df_AI_negative = df_AI[df_AI['value'] < 0]
+            df_AI_positive = df_AI[df_AI['value'] > 0]
+            df_AI_negative_sig = df_AI_negative[df_AI_negative['percentage'] == 0]
+            df_AI_positive_sig = df_AI_positive[df_AI_positive['percentage'] == 0]
+
+            negative_ratio = len(df_AI_negative)/len(df_AI)
+            positive_ratio = len(df_AI_positive)/len(df_AI)
+            negative_ratio_sig = len(df_AI_negative_sig)/len(df_AI)
+            positive_ratio_sig = len(df_AI_positive_sig)/len(df_AI)
+            negative_ratio = -negative_ratio
+            negative_ratio_sig = -negative_ratio_sig
+            plt.bar([f'{AI_class}'],[negative_ratio],width=0.5,alpha=0.5)
+            plt.bar([f'{AI_class}'],[positive_ratio],width=0.5,alpha=0.5)
+            plt.bar([f'{AI_class}'],[negative_ratio_sig],width=0.5,alpha=0.5)
+            plt.bar([f'{AI_class}'],[positive_ratio_sig],width=0.5,alpha=0.5)
+            plt.text(flag,negative_ratio,f'{negative_ratio*100:.2f}')
+            plt.text(flag,positive_ratio,f'{positive_ratio*100:.2f}')
+            plt.text(flag,negative_ratio_sig,f'{negative_ratio_sig*100:.2f}')
+            plt.text(flag,positive_ratio_sig,f'{positive_ratio_sig*100:.2f}')
+            flag += 1
+
+        plt.hlines(0,-1,2,linestyles='dashed')
+        plt.show()
+        # outf_percentage = join(outdir,'Figure1f_percentage.pdf')
+        # plt.savefig(outf_percentage,dpi=900)
+        # plt.close()
+
+
+        # T.open_path_and_file(outdir)
+
 
         pass
 
-    def Figure1c(self,df):
-
-        pass
+    def mean_confidence_interval(self, data, confidence=0.95):
+        a = 1.0 * np.array(data)
+        n = len(a)
+        m, se = np.mean(a), scipy.stats.sem(a)
+        h = se * scipy.stats.t.ppf((1 + confidence) / 2., n - 1)
+        return m, m - h, m + h,h
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
