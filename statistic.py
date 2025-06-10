@@ -239,19 +239,19 @@ class Compensation_Excerbation:
         # self.spatial_two_mode_ratio(df)
         # self.ELI_gradient(df)
         # self.ELI_gradient_ratio(df)
-        self.Drought_year_spatial_tif(df)
-        self.plot_Drought_year_spatial_tif()
+        # self.Drought_year_spatial_tif(df)
+        # self.plot_Drought_year_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
 
-        self.Drought_year_NDVI_percentage_spatial_tif(df)
-        self.Drought_year_NDVI_percentage_sig_spatial_tif()
+        # self.Drought_year_NDVI_percentage_spatial_tif(df)
+        # self.Drought_year_NDVI_percentage_sig_spatial_tif()
         # self.delta_percentage_sig()
         # self.plot_Drought_year_NDVI_percentage_spatial_tif()
         # self.pdf_Drought_year_spatial_tif()
         # self.bar_Drought_year_NDVI_percentage_spatial_tif()
         # self.bar_Drought_year_NDVI_percentage_spatial_tif_all_area()
         # self.AI_gradient_Drought_year_spatial_tif()
-        # self.delta_area_ratio_gradient_bar()
+        self.delta_area_ratio_gradient_bar()
 
         # self.rs_rt_area_ratio_bar(df)
         # self.delta_area_ratio_bar()
@@ -1423,10 +1423,10 @@ class Compensation_Excerbation:
 
         # outf = join(outdir,'delta_area_ratio_bar.pdf')
         outf = join(outdir,'legend.pdf')
-        plt.savefig(outf)
-        plt.close()
-        T.open_path_and_file(outdir)
-        # plt.show()
+        # plt.savefig(outf)
+        # plt.close()
+        # T.open_path_and_file(outdir)
+        plt.show()
 
     def delta_area_statistic(self):
         tif = join(self.this_class_tif, 'delta_hot_normal/drought_year_1.tif')
@@ -3889,7 +3889,9 @@ class Dynamic_gs_analysis:
 
     def run(self):
         # self.copy_df()
-        # df = self.__gen_df_init()
+        df = self.__gen_df_init()
+        # self.add_T_anomaly_to_df(df)
+        # self.add_NDVI_anomaly_to_df(df)
 
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
@@ -3898,11 +3900,14 @@ class Dynamic_gs_analysis:
         # self.plot_Figure1ab()
         # self.Figure1c()
         # self.plot_Figure1c()
-        self.Figure1de()
+        # self.Figure1de()
         # self.Figure1f()
+        # self.Figure2a()
+        # self.Figure2b()
+        # self.Figure3a(df)
+        self.Figure3b()
 
         pass
-
 
     def Figure1ab(self,df):
         outdir = join(self.this_class_tif,'Figure1ab')
@@ -4191,15 +4196,324 @@ class Dynamic_gs_analysis:
 
         plt.hlines(0,-1,2,linestyles='dashed')
         plt.show()
-        # outf_percentage = join(outdir,'Figure1f_percentage.pdf')
-        # plt.savefig(outf_percentage,dpi=900)
+
+        pass
+
+    def Figure2a(self):
+        outdir = join(self.this_class_png, 'Figure2a')
+        T.mk_dir(outdir)
+        fpath = join(self.this_class_tif,'Figure1c/NDVI_anomaly_drought_season.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        df = T.spatial_dics_to_df({'delta':spatial_dict})
+        df = Dataframe_func(df).df
+        T.print_head_n(df)
+        gez_list = T.get_df_unique_val_list(df, 'GEZ')
+        gez_list = list(gez_list)
+        gez_list.remove('Water')
+        print(gez_list)
+        count_list = []
+        count_list_humid = []
+        count_list_arid = []
+        delta_list = []
+        # delta_max_list = []
+        delta_25_list = []
+        bar_delta_list = []
+        for gez in gez_list:
+            df_gez = df[df['GEZ'] == gez]
+            df_gez_humid = df_gez[df_gez['AI_class'] == 'Humid']
+            df_gez_arid = df_gez[df_gez['AI_class'] == 'Arid']
+            # T.print_head_n(df_gez);exit()
+            delta = df_gez['delta'].tolist()
+            count_list.append(len(df_gez))
+            count_list_humid.append(len(df_gez_humid))
+            count_list_arid.append(len(df_gez_arid))
+            delta_mean = np.nanmean(delta)
+            delta_25_percentile = np.percentile(delta,25)
+            delta_75_percentile = np.percentile(delta,75)
+            # delta_max = np.nanmax(delta)
+            # delta_min = np.nanmin(delta)
+            # count = len(df_gez)
+            # count_list.append(count)
+            delta_list.append(delta_mean)
+            bar_delta = delta_75_percentile - delta_25_percentile
+            bar_delta_list.append(bar_delta)
+            delta_25_list.append(delta_25_percentile)
+        # plt.scatter(gez_list,delta_max_list,label='max')
+        # plt.scatter(gez_list,delta_min_list,label='min')
+        plt.bar(gez_list,bar_delta_list,bottom=delta_25_list)
+        plt.scatter(gez_list,delta_list,label='mean')
+        # plt.legend()
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+
+        outf = join(outdir, 'delta_bar.pdf')
+        plt.savefig(outf)
+        # plt.show()
+        plt.close()
+
+        plt.figure()
+        # plt.bar(gez_list,count_list)
+        # print(count_list_humid);exit()
+        plt.bar(gez_list,count_list_humid,color='b')
+        plt.bar(gez_list,count_list_arid,bottom=count_list_humid,color='r')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        outf = join(outdir,'count.pdf')
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
+        T.open_path_and_file(outdir)
+        pass
+
+    def Figure2b(self):
+        outdir = join(self.this_class_png, 'Figure2b')
+        T.mk_dir(outdir)
+        tif = join(self.this_class_tif, 'Figure1c/NDVI_anomaly_drought_season.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(tif)
+
+        MAT_tif = join(data_root, r'CRU_tmp\mat', 'mat_gs.tif')
+        MAT_dict = DIC_and_TIF().spatial_tif_to_dic(MAT_tif)
+
+        MAP_tif = join(data_root, r'CRU_precip\map', 'map.tif')
+        MAP_dict = DIC_and_TIF().spatial_tif_to_dic(MAP_tif)
+        spatial_dict_all = {
+            'compensation_excerbation': spatial_dict,
+            'MAT': MAT_dict,
+            'MAP': MAP_dict
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = df.dropna(how='any')
+        map = df['MAP'].tolist()
+        # plt.hist(map, bins=100, range=(0, 1500), zorder=-99, color='gray', alpha=0.5)
+        # plt.show()
+        T.print_head_n(df)
+        # exit()
+        # df = df.dropna(how='any')
+        bins_Topt_MAT_delta = np.arange(-5, 36, 1)
+        bins_MAP = np.arange(0, 4001, 100)
+        plt.figure(figsize=(7, 6))
+        col_name = 'compensation_excerbation'
+        df_group_Topt_MAT_delta, bins_list_str_Topt_MAT_delta = T.df_bin(df, 'MAT', bins_Topt_MAT_delta)
+        for name_Topt_MAT_delta, df_group_i_Topt_MAT_delta in df_group_Topt_MAT_delta:
+            y_pos = name_Topt_MAT_delta[0].left
+            df_group_MAP, bins_list_str_MAP = T.df_bin(df_group_i_Topt_MAT_delta, 'MAP', bins_MAP)
+            for name_MAP, df_group_i_MAP in df_group_MAP:
+                x_pos = name_MAP[0].left
+                vals = df_group_i_MAP[col_name].tolist()
+                # if len(vals) < 10:
+                #     continue
+                if T.is_all_nan(vals):
+                    continue
+                mean = np.nanmean(vals)
+                ax=plt.scatter(y_pos, x_pos, s=40, c=mean, vmin=-0.7, vmax=0.7, cmap='RdBu', marker='s', linewidths=0)
+                # plt.scatter(x_pos,y_pos,s=13,c=mean,vmin=-0.01,vmax=0.01,cmap='RdBu',marker='s',linewidths=0)
+        plt.colorbar()
+        plt.xlabel('MAT')
+        plt.ylabel('MAP')
+        plt.ylim(-100, 4500)
+        plt.xlim(-13, 35)
+        # outf = join(outdir, 'compensation_excerbation_MAT_MAP.pdf')
+        outf = join(outdir, 'colorbar.pdf')
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
+        # exit()
+        pass
+
+    def Figure3a(self,df):
+        # exit()
+        outdir = join(self.this_class_png, 'Figure3a')
+        T.mkdir(outdir)
+        df = df[df['aridity_index'] <= 3]
+        df = df[df['Temperature-anomaly_detrend_drought_growing_season'] <= 2]
+        df = df[df['Temperature-anomaly_detrend_drought_growing_season'] >= -2]
+        df = df.dropna(subset=['Temperature-anomaly_detrend_drought_growing_season'], how='any')
+        T_anomaly_vals = df['Temperature-anomaly_detrend_drought_growing_season'].tolist()
+
+        bin_range = np.linspace(0, 1, 41)
+        T_quantile_bins = []
+        AI_bins = np.linspace(0, 2.5, 26)
+        for b_i in bin_range:
+            T_quantile_bins.append(np.quantile(T_anomaly_vals, b_i))
+            # AI_quantile_bins.append(np.quantile(AI_vals,b_i))
+        # print(T_quantile_bins);exit()
+
+        df_group_AI, _ = T.df_bin(df, 'aridity_index', AI_bins)
+
+        matrix = []
+        y_label_list = []
+        plt.figure(figsize=(7, 3.5))
+        for name_AI, df_group_AI_i in df_group_AI:
+            matrix_i = []
+            y_label = (name_AI[0].left + name_AI[0].right) / 2
+            y_label = np.round(y_label, 2)
+            y_label_list.append(y_label)
+            x_label_list = []
+
+            df_group_T, _ = T.df_bin(df_group_AI_i, 'Temperature-anomaly_detrend_drought_growing_season', T_quantile_bins)
+            # if len(df_group_T) != len(T_quantile_bins)-1:
+            #     continue
+            # print(len(T_quantile_bins))
+            flag = 0
+
+            for name_T, df_group_T_i in df_group_T:
+                rt = df_group_T_i['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                rt_mean = np.nanmean(rt)
+                matrix_i.append(rt_mean)
+                # print(rt_mean)
+                x_label = (name_T[0].left + name_T[0].right) / 2
+                x_label = np.round(x_label, 2)
+                x_label_list.append(x_label)
+                plt.scatter(bin_range[flag], y_label, c=rt_mean, vmin=-.6, vmax=.6, cmap='RdBu', marker='s')
+                # print(flag,rt_mean)
+                flag += 1
+        plt.ylabel('AI')
+        plt.xlabel('T_anomaly_quantile')
+        plt.colorbar()
+        # plt.xticks(range(len(x_label_list)),x_label_list,rotation=90)
+        # plt.yticks(range(len(y_label_list))[::-1],y_label_list)
+        # plt.tight_layout()
+        # plt.show()
+        outf = join(outdir,'matrix.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+        pass
+
+    def Figure3b(self):
+        outdir = join(self.this_class_png, 'delta_area_ratio_bar')
+        T.mk_dir(outdir)
+        tif = join(self.this_class_tif, 'Figure1c/NDVI_anomaly_drought_season.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(tif)
+        df = T.spatial_dics_to_df({'delta': spatial_dict})
+        df = Dataframe_func(df).df
+        threshold_list = [-np.inf, -0.5, -0.25, 0, 0.25, 0.5, np.inf]
+        color_list = T.gen_colors(len(threshold_list) - 1)
+        # threshold_list = [-np.inf,-0.2,-0.1,-0.05]
+        # threshold_list = np.array(threshold_list)
+        # threshold_list = threshold_list + 1
+        plt.figure(figsize=(15 * centimeter_factor, 6 * centimeter_factor))
+        bottom = 0
+        y_list_all = []
+        for i in range(len(threshold_list)):
+            if i + 1 == len(threshold_list):
+                break
+            x_list = []
+            y_list = []
+            AI_bins = np.arange(0.1, 2.6, 0.1)
+            df_group, bins_list_str = T.df_bin(df, 'aridity_index', AI_bins)
+            for name, df_group_i in df_group:
+                x = name[0].left
+                df_group_i = df_group_i.dropna(subset=['delta'], how='any')
+                vals = df_group_i['delta']
+                vals = np.array(vals)
+                threshold_left = threshold_list[i]
+                threshold_right = threshold_list[i + 1]
+
+                vals = vals[vals < threshold_right]
+                vals = vals[vals > threshold_left]
+                # vals = vals[vals < (1 - threshold)]
+                # vals = vals[vals > (1 + threshold)]
+                ratio = len(vals) / len(df_group_i) * 100
+
+                x_list.append(x)
+                y_list.append(ratio)
+
+            y_list = np.array(y_list)
+            y_list_all.append(y_list)
+            # y_list = y_list + bottom
+            plt.bar(x_list, y_list, bottom=bottom, label=f'{threshold_list[i]}~{threshold_list[i + 1]}',
+                    color=color_list[i], width=0.08)
+            # width=0.1,edgecolor='k')
+            bottom = bottom + y_list
+            print(bottom)
+
+        # plt.legend()
+        plt.xticks(rotation=0)
+        plt.ylim(0, 100)
+        # plt.xlim(-1,2)
+        plt.twinx()
+        self.__AI_gradient_Drought_year_spatial_tif(tif)
+        plt.tight_layout()
+
+        outf = join(outdir,'delta_AI_gradient.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+        # plt.show()
+
+    def __AI_gradient_Drought_year_spatial_tif(self,delta_fpath):
+        spatial_dics = {}
+        spatial_dics['delta'] = DIC_and_TIF().spatial_tif_to_dic(delta_fpath)
+        df = T.spatial_dics_to_df(spatial_dics)
+        df = Dataframe_func(df).df
+        print('-----')
+        # ELI_class_list = global_ELI_class_list
+        key = 'delta'
+        # plt.figure(figsize=(9*centimeter_factor,6*centimeter_factor))
+        AI_bins = np.arange(0.1, 2.6, 0.1)
+        df_group,bins_list_str = T.df_bin(df, 'aridity_index', AI_bins)
+        x_list = []
+        y_list = []
+        error_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i[key].tolist()
+            mean = np.nanmean(vals)
+            error = np.nanstd(vals) / 4
+            x = name[0].left
+            x_list.append(x)
+            y_list.append(mean)
+            error_list.append(error)
+        # plt.plot(x_list,y_list)
+        plt.errorbar(x_list,y_list,yerr=error_list,capsize=2)
+        plt.ylim(-0.55,0.55)
+        # plt.show()
+        # outf = join(outdir,'{}.pdf'.format(key))
+        # plt.savefig(outf)
         # plt.close()
-
-
         # T.open_path_and_file(outdir)
 
 
-        pass
+    def add_NDVI_anomaly_to_df(self,df):
+        NDVI_dict, var_name, _ = Load_Data().NDVI_anomaly_detrend()
+        NDVI_drought_growing_season_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            growing_season = row['growing_season']
+            if type(growing_season) == float:
+                NDVI_drought_growing_season_mean_list.append(np.nan)
+                continue
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1, 12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list, NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            NDVI_drought_growing_season = NDVI_drought_year[growing_season - 1]
+            NDVI_drought_growing_season_mean = np.nanmean(NDVI_drought_growing_season)
+            NDVI_drought_growing_season_mean_list.append(NDVI_drought_growing_season_mean)
+        df[f'{var_name}_drought_growing_season'] = NDVI_drought_growing_season_mean_list
+
+        return df
+
+    def add_T_anomaly_to_df(self, df):
+        NDVI_dict, var_name, _ = Load_Data().Temperature_anomaly_detrend()
+        NDVI_drought_growing_season_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            growing_season = row['growing_season']
+            if type(growing_season) == float:
+                NDVI_drought_growing_season_mean_list.append(np.nan)
+                continue
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1, 12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list, NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            NDVI_drought_growing_season = NDVI_drought_year[growing_season - 1]
+            NDVI_drought_growing_season_mean = np.nanmean(NDVI_drought_growing_season)
+            NDVI_drought_growing_season_mean_list.append(NDVI_drought_growing_season_mean)
+        df[f'{var_name}_drought_growing_season'] = NDVI_drought_growing_season_mean_list
+        return df
 
     def mean_confidence_interval(self, data, confidence=0.95):
         a = 1.0 * np.array(data)
@@ -5002,13 +5316,13 @@ class MAT_MAP:
 
     def run(self):
         # self.copy_df()
-        # self.compensation_excerbation_MAT_MAP_matrix()
+        self.compensation_excerbation_MAT_MAP_matrix()
         # self.compensation_excerbation_MAT_MAP_scatter()
         # self.GEZ_MAT_MAP_scatter()
         # self.GEZ_AI_delta_NDVI()
         # self.GEZ_AI_anomaly_NDVI()
         # self.GEZ_MAT_anomaly_NDVI()
-        self.GEZ_MAT_MAP()
+        # self.GEZ_MAT_MAP()
         pass
 
     def __gen_df_init(self):
