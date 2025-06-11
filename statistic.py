@@ -1649,7 +1649,8 @@ class Drought_timing:
 
     def add_longterm_growing_season(self,df):
         import analysis
-        gs_f = join(analysis.Phenology().this_class_arr, 'longterm_growing_season', 'longterm_growing_season.npy')
+        # gs_f = join(analysis.Phenology().this_class_arr, 'longterm_growing_season', 'longterm_growing_season.npy')
+        gs_f = join(analysis.Longterm_Phenology().this_class_arr, 'SOS_EOS', 'SOS_EOS.npy')
         gs_dict = T.load_npy(gs_f)
         df = T.add_spatial_dic_to_df(df,gs_dict,'growing_season')
         return df
@@ -3892,7 +3893,7 @@ class Dynamic_gs_analysis:
         df = self.__gen_df_init()
         # self.add_T_anomaly_to_df(df)
         # self.add_NDVI_anomaly_to_df(df)
-
+        #
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
         # self.Figure1ab(df)
@@ -3905,7 +3906,8 @@ class Dynamic_gs_analysis:
         # self.Figure2a()
         # self.Figure2b()
         # self.Figure3a(df)
-        self.Figure3b()
+        # self.Figure3b()
+        self.Figure4(df)
 
         pass
 
@@ -3997,7 +3999,7 @@ class Dynamic_gs_analysis:
             DIC_and_TIF().arr_to_tif(arr_values, outf_values)
             outf_sig = join(outdir, f'{drt}_sig.tif')
             DIC_and_TIF().arr_to_tif(arr_sig, outf_sig)
-        T.open_path_and_file(outdir)
+        # T.open_path_and_file(outdir)
 
     def Figure1c(self):
         fdir = join(self.this_class_tif,'Figure1ab')
@@ -4026,8 +4028,6 @@ class Dynamic_gs_analysis:
         # plt.show()
         outf_sig = join(outdir,'NDVI_anomaly_drought_season_sig.tif')
         DIC_and_TIF().arr_to_tif(arr_copy,outf_sig)
-
-
         T.open_path_and_file(outdir)
         pass
 
@@ -4168,6 +4168,9 @@ class Dynamic_gs_analysis:
             df_AI = df[df['AI_class'] == AI_class]
             plt.bar(AI_class,df_AI['value'].mean(),yerr=df_AI['value'].sem(),width=0.5,alpha=0.5)
         plt.hlines(0,-1,2,linestyles='dashed')
+        outf1 = join(outdir,'Figure1f_value.pdf')
+        plt.savefig(outf1)
+        plt.close()
 
         plt.figure(figsize=(10, 6))
         flag = 0
@@ -4195,7 +4198,11 @@ class Dynamic_gs_analysis:
             flag += 1
 
         plt.hlines(0,-1,2,linestyles='dashed')
-        plt.show()
+        outf2 = join(outdir,'Figure1f_percentage.pdf')
+        plt.savefig(outf2)
+        plt.close()
+
+        T.open_path_and_file(outdir)
 
         pass
 
@@ -4364,7 +4371,7 @@ class Dynamic_gs_analysis:
                 x_label = (name_T[0].left + name_T[0].right) / 2
                 x_label = np.round(x_label, 2)
                 x_label_list.append(x_label)
-                plt.scatter(bin_range[flag], y_label, c=rt_mean, vmin=-.6, vmax=.6, cmap='RdBu', marker='s')
+                plt.scatter(bin_range[flag], y_label, c=rt_mean, vmin=-.35, vmax=.35, cmap='RdBu', marker='s')
                 # print(flag,rt_mean)
                 flag += 1
         plt.ylabel('AI')
@@ -4441,6 +4448,10 @@ class Dynamic_gs_analysis:
         plt.close()
         T.open_path_and_file(outdir)
         # plt.show()
+
+    def Figure4(self,df):
+
+        pass
 
     def __AI_gradient_Drought_year_spatial_tif(self,delta_fpath):
         spatial_dics = {}

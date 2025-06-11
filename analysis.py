@@ -1,4 +1,6 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
+
 from meta_info import *
 result_root_this_script = join(results_root, 'analysis')
 import xymap
@@ -699,10 +701,10 @@ class Phenology:
         pass
 
     def run(self):
-        # self.hants_interpolation()
-        # self.pick_phenology()
+        self.hants_interpolation()
+        self.pick_phenology()
         # self.phenology_df()
-        self.longterm_SOS_EOS()
+        self.mean_SOS_EOS()
         # self.check_phenology()
         pass
 
@@ -878,8 +880,8 @@ class Phenology:
         plt.colorbar()
         plt.show()
 
-    def longterm_SOS_EOS(self):
-        outdir = join(self.this_class_arr,'longterm_growing_season')
+    def mean_SOS_EOS(self):
+        outdir = join(self.this_class_arr,'mean_SOS_EOS')
         T.mkdir(outdir,force=True)
         T.open_path_and_file(outdir)
         # exit()
@@ -899,7 +901,7 @@ class Phenology:
             late_end_mon = self.__doy_to_month(mean_late_end)
             gs_range = np.array(list(range(early_start_mon,late_end_mon+1)))
             phenology_dict_longterm[pix] = gs_range
-        outf = join(outdir,'longterm_growing_season.npy')
+        outf = join(outdir,'mean_SOS_EOS.npy')
         T.save_npy(phenology_dict_longterm,outf)
 
 
@@ -1017,6 +1019,328 @@ class Phenology:
         min_ind = median_right + peak
         return max_ind, min_ind
 
+
+class Longterm_Phenology:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Longterm_Phenology', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.longterm_NDVI_HANTS()
+        # self.pick_phenology()
+        # self.SOS_EOS()
+        self.early_peak_late_period()
+        # self.check_phenology()
+        pass
+
+    def longterm_NDVI_HANTS(self):
+        fdir = join(data_root, 'NDVI4g/per_pix_biweekly', global_year_range)
+        outdir = join(self.this_class_arr, 'longterm_NDVI_HANTS')
+        T.mk_dir(outdir, force=True)
+        dates_list = self.__get_date_list()
+        dates_list_daily = []
+        for i in range(365):
+            date = datetime.datetime(1982, 1, 1) + datetime.timedelta(days=i)
+            dates_list_daily.append(date)
+        for f in T.listdir(fdir):
+            fpath = join(fdir, f)
+            outf = join(outdir, f)
+            spatial_dict = T.load_npy(fpath)
+            smooth_dict = {}
+            for pix in tqdm(spatial_dict,desc=f):
+                vals = spatial_dict[pix]
+                vals = np.array(vals, dtype=float)
+                vals[vals > 10000] = np.nan
+                vals[vals <= 0] = np.nan
+                if T.is_all_nan(vals):
+                    continue
+                vals_reshape = vals.reshape(-1,24)
+                vals_reshape_mean = np.nanmean(vals_reshape, axis=0)
+                results_dict = HANTS().hants_interpolate(vals_reshape_mean, dates_list, valid_range=(0, 10000), nan_value=np.nan)
+                vals_smooth = results_dict[1982]
+                smooth_dict[pix] = vals_smooth
+                # plt.plot(vals_smooth)
+                # plt.plot(dates_list,vals_reshape_mean,'-o')
+                # plt.plot(dates_list_daily,vals_smooth)
+                # plt.show()
+                # pprint(results_dict);exit()
+            T.save_npy(smooth_dict, outf)
+        pass
+
+    def pick_phenology(self):
+        hants_fdir = join(self.this_class_arr,'longterm_NDVI_HANTS')
+        outdir = join(self.this_class_arr,'phenology')
+        T.mk_dir(outdir)
+        df_dict = {}
+        for f in T.listdir(hants_fdir):
+            fpath = join(hants_fdir,f)
+            hants_spatial_dict = T.load_npy(fpath)
+            if len(hants_spatial_dict) == 0:
+                continue
+            for pix in tqdm(hants_spatial_dict):
+                lon, lat = DIC_and_TIF().pix_to_lon_lat(pix)
+                if lat < 30:
+                    continue
+                vals = hants_spatial_dict[pix]
+                if T.is_all_nan(vals):
+                    continue
+                vals = np.array(vals, dtype=float)
+                # if True in list(np.isnan(vals)):
+                #     continue
+                vals[np.isnan(vals)] = 0.
+                try:
+                    phenology_info_dict = self.pick_early_peak_late_dormant_period(vals)
+                except:
+                    # DIC_and_TIF().plot_sites_location([lon], [lat],background_tif=global_land_tif)
+                    print(lon, lat)
+                    # plt.figure()
+                    # plt.plot(vals)
+                    # plt.show()
+                    continue
+                # phenology_info_dict = self.pick_early_peak_late_dormant_period(vals,)
+                # early_start = phenology_info_dict['early_start']
+                # early_end = phenology_info_dict['early_end']
+                # late_start = phenology_info_dict['late_start']
+                # late_end = phenology_info_dict['late_end']
+                df_dict[pix] = phenology_info_dict
+                # pprint(phenology_info_dict)
+                # plt.plot(vals)
+                # plt.scatter(early_start,vals[early_start],c='r')
+                # plt.scatter(early_end,vals[early_end],c='r')
+                # plt.scatter(late_start,vals[late_start],c='g')
+                # plt.scatter(late_end,vals[late_end],c='g')
+                # plt.show()
+
+        outf = join(outdir,'phenology.npy')
+        T.save_npy(df_dict,outf)
+
+    def SOS_EOS(self):
+        fpath = join(self.this_class_arr, 'phenology', 'phenology.npy')
+        outdir = join(self.this_class_arr, 'SOS_EOS')
+        T.mk_dir(outdir)
+        df_dict = T.load_npy(fpath)
+        gs_spatial_dict = {}
+        for pix in tqdm(df_dict):
+            phenology_info_dict = df_dict[pix]
+            early_start_mon = phenology_info_dict['early_start_mon']
+            late_end_mon = phenology_info_dict['late_end_mon']
+            gs_range = np.array(list(range(early_start_mon, late_end_mon + 1)))
+            gs_spatial_dict[pix] = gs_range
+        outf = join(outdir, 'SOS_EOS.npy')
+        T.save_npy(gs_spatial_dict, outf)
+
+        pass
+
+    def early_peak_late_period(self):
+        fpath = join(self.this_class_arr, 'phenology', 'phenology.npy')
+        outdir = join(self.this_class_arr, 'SOS_EOS')
+        T.mk_dir(outdir)
+        df_dict = T.load_npy(fpath)
+        gs_spatial_dict = {}
+        for pix in tqdm(df_dict):
+            phenology_info_dict = df_dict[pix]
+            pprint(phenology_info_dict);exit()
+            early_start_mon = phenology_info_dict['early_start_mon']
+            late_end_mon = phenology_info_dict['late_end_mon']
+            gs_range = np.array(list(range(early_start_mon, late_end_mon + 1)))
+            gs_spatial_dict[pix] = gs_range
+        outf = join(outdir, 'SOS_EOS.npy')
+        T.save_npy(gs_spatial_dict, outf)
+        pass
+
+    def check_phenology(self):
+        fpath = join(self.this_class_arr,'phenology','phenology.npy')
+        df_dict = T.load_npy(fpath)
+        gs_spatial_dict = {}
+        for pix in df_dict:
+            phenology_info_dict = df_dict[pix]
+            early_start_mon = phenology_info_dict['early_start_mon']
+            late_end_mon = phenology_info_dict['late_end_mon']
+            gs_range = np.array(list(range(early_start_mon, late_end_mon + 1)))
+            gs_spatial_dict[pix] = len(gs_range)
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(gs_spatial_dict)
+        plt.imshow(arr,cmap='jet',interpolation='nearest')
+        plt.colorbar()
+        plt.show()
+        pass
+
+
+    def pick_early_peak_late_dormant_period(self,NDVI_daily,threshold=0.3):
+        '''
+        :param NDVI_daily: 365-day NDVI time series
+        :param threshold: SOS and EOS threshold of minimum NDVI plus the 30% of the seasonal amplitude for multiyear NDVI
+        :return: details of phenology
+        '''
+        peak = np.argmax(NDVI_daily)
+        if peak == 0 or peak == (len(NDVI_daily)-1):
+            raise
+        try:
+            early_start = self.__search_SOS(NDVI_daily, peak, threshold)
+            late_end = self.__search_EOS(NDVI_daily, peak, threshold)
+        except:
+            early_start = np.nan
+            late_end = np.nan
+        # method 1
+        # early_end, late_start = self.__slope_early_late(vals,early_start,late_end,peak) # unstable
+        # method 2
+        early_end, late_start = self.__median_early_late(NDVI_daily,early_start,late_end,peak) # choose the median value before and after the peak
+
+        early_length = early_end - early_start
+        mid_length = late_start - early_end
+        late_length = late_end - late_start
+        dormant_length = 365 - (late_end - early_start)
+
+        result = {
+            'early_length':early_length,
+            'mid_length':mid_length,
+            'late_length':late_length,
+            'dormant_length':dormant_length,
+            'early_start':early_start,
+            'early_start_mon':self.__doy_to_month(early_start),
+            'early_end':early_end,
+            'early_end_mon':self.__doy_to_month(early_end),
+            'peak':peak,
+            'peak_mon':self.__doy_to_month(peak),
+            'late_start':late_start,
+            'late_start_mon':self.__doy_to_month(late_start),
+            'late_end':late_end,
+            'late_end_mon':self.__doy_to_month(late_end),
+            # 'growing_season':list(range(early_start,late_end)),
+            # 'growing_season_mon':[self.__doy_to_month(i) for i in range(early_start,late_end)],
+            # 'dormant_season':[i for i in range(0,early_start)]+[i for i in range(late_end,365)],
+            # 'dormant_season_mon':[self.__doy_to_month(i) for i in range(0,early_start)]+[self.__doy_to_month(i) for i in range(late_end,365)],
+        }
+        return result
+
+    def __get_date_list(self):
+        NDVI_bi_weekly_tif_dir = join(data_root, 'NDVI4g/bi_weekly_05')
+        outdir = join(self.this_class_arr, 'hants_interpolation')
+        T.mk_dir(outdir)
+        dates_list = []
+        for f in T.listdir(NDVI_bi_weekly_tif_dir):
+            date_str = f.split('.')[0]
+            year = int(date_str[:4])
+            month = int(date_str[4:6])
+            day = int(date_str[6:])
+            date_obj = datetime.datetime(year, month, day)
+            dates_list.append(date_obj)
+        dates_list = dates_list[:24]
+        return dates_list
+
+    def __doy_to_month(self,doy):
+        '''
+        :param doy: day of year
+        :return: month
+        '''
+        base = datetime.datetime(2000,1,1)
+        time_delta = datetime.timedelta(int(doy))
+        date = base + time_delta
+        month = date.month
+        day = date.day
+        if day > 15:
+            month = month + 1
+        if month >= 12:
+            month = 12
+        return month
+
+    def __interp(self, vals):
+        '''
+        :param vals: bi-weekly NDVI values
+        :return: 365-day NDVI time series with linear interpolation
+        '''
+        inx = list(range(len(vals)))
+        iny = vals
+        x_new = np.linspace(min(inx), max(inx), 365)
+        func = interpolate.interp1d(inx, iny)
+        y_new = func(x_new)
+        return x_new, y_new
+
+    def __search_SOS(self, vals, maxind, threshold_i):
+        '''
+        :param vals: 365-day NDVI time series
+        :param maxind: the index of the peak value
+        :param threshold_i: threshold of minimum NDVI plus the 30% of the seasonal amplitude for multiyear NDVI
+        :return: the index of the Start of Season (SOS)
+        '''
+        left_vals = vals[:maxind]
+        left_min = np.min(left_vals)
+        max_v = vals[maxind]
+        if left_min < 2000: # for NDVI, 2000 is equivalent to 0.2
+            left_min = 2000
+        threshold = (max_v - left_min) * threshold_i + left_min
+
+        ind = 999999
+        for step in range(365):
+            ind = maxind - step
+            if ind >= 365:
+                break
+            val_s = vals[ind]
+            if val_s <= threshold:
+                break
+
+        return ind
+
+    def __search_EOS(self, vals, maxind, threshold_i):
+        '''
+        :param vals: 365-day NDVI time series
+        :param maxind: the index of the peak value
+        :param threshold_i: threshold of minimum NDVI plus the 30% of the seasonal amplitude for multiyear NDVI
+        :return: the index of the End of Season (EOS)
+        '''
+        right_vals = vals[maxind:]
+        right_min = np.min(right_vals)
+        max_v = vals[maxind]
+        if right_min < 2000: # for NDVI, 2000 is equivalent to 0.2
+            right_min = 2000
+        threshold = (max_v - right_min) * threshold_i + right_min
+
+        ind = 999999
+        for step in range(365):
+            ind = maxind + step
+            if ind >= 365:
+                break
+            val_s = vals[ind]
+            if val_s <= threshold: # stop search when the value is lower than threshold
+                break
+        return ind
+
+    def __slope_early_late(self,vals,sos,eos,peak):
+        slope_left = []
+        for i in range(sos,peak):
+            if i-1 < 0:
+                slope_i = vals[1]-vals[0]
+            else:
+                slope_i = vals[i]-vals[i-1]
+            slope_left.append(slope_i)
+
+        slope_right = []
+        for i in range(peak,eos):
+            if i-1 < 0:
+                slope_i = vals[1]-vals[0]
+            else:
+                slope_i = vals[i]-vals[i-1]
+            slope_right.append(slope_i)
+
+        max_ind = np.argmax(slope_left) + sos
+        min_ind = np.argmin(slope_right) + peak
+
+        return max_ind, min_ind
+
+    def __median_early_late(self,vals,sos,eos,peak):
+        '''
+        :param vals: 365-day NDVI time series
+        :param sos: the index of the Start of Season (SOS)
+        :param eos: the index of the End of Season (EOS)
+        :param peak: the index of the peak index
+        :return: the index of the early end and late start
+        '''
+        median_left = int((peak-sos)/2.)
+        median_right = int((eos - peak)/2.)
+        max_ind = median_left + sos
+        min_ind = median_right + peak
+        return max_ind, min_ind
 
 class Long_term_correlation:
     def __init__(self):
@@ -2015,7 +2339,8 @@ def main():
     # Resistance_Resilience().run()
     # Net_effect_annual().run()
     # Net_effect_monthly().run()
-    Phenology().run()
+    # Phenology().run()
+    Longterm_Phenology().run()
     # Long_term_correlation().run()
     # Optimal_temperature().run()
     # Optimal_temperature_monthly().run()

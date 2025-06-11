@@ -185,6 +185,13 @@ class Load_Data:
         valid_range = (-3,3)
         return self.__load_data(data_path, path_type), var_name, valid_range
 
+    def NDVI_origin_biweekly(self,year_range=global_year_range):
+        data_path = join(data_root, 'NDVI4g/per_pix_biweekly', year_range)
+        path_type = 'dir'
+        var_name = 'NDVI-origin_biweekly'
+        valid_range = (0,10000)
+        return self.__load_data(data_path, path_type), var_name,valid_range
+
     def NDVI_origin(self,year_range=global_year_range):
         data_path = join(data_root, 'NDVI4g/per_pix', year_range)
         path_type = 'dir'
