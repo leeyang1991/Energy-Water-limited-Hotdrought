@@ -2,7 +2,8 @@
 import sys
 version = sys.version_info.major
 assert version == 3, 'Python Version Error'
-
+import warnings
+warnings.simplefilter("ignore", UserWarning)# ignore user warnings
 from lytools import *
 from matplotlib import pyplot as plt
 import numpy as np

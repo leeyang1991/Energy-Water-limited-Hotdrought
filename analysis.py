@@ -1,10 +1,8 @@
 # coding=utf-8
-import matplotlib.pyplot as plt
 
 from meta_info import *
 result_root_this_script = join(results_root, 'analysis')
 import xymap
-
 class Water_energy_limited_area:
 
     def __init__(self):
@@ -1135,19 +1133,59 @@ class Longterm_Phenology:
 
     def early_peak_late_period(self):
         fpath = join(self.this_class_arr, 'phenology', 'phenology.npy')
-        outdir = join(self.this_class_arr, 'SOS_EOS')
+        outdir = join(self.this_class_arr, 'early_peak_late_period')
         T.mk_dir(outdir)
         df_dict = T.load_npy(fpath)
-        gs_spatial_dict = {}
+        early_peak_late_period_dict = {}
         for pix in tqdm(df_dict):
             phenology_info_dict = df_dict[pix]
-            pprint(phenology_info_dict);exit()
             early_start_mon = phenology_info_dict['early_start_mon']
+            early_end_mon = phenology_info_dict['early_end_mon']
+            late_start_mon = phenology_info_dict['late_start_mon']
             late_end_mon = phenology_info_dict['late_end_mon']
+            peak_mon = phenology_info_dict['peak_mon']
+            if peak_mon == 12:
+                continue
             gs_range = np.array(list(range(early_start_mon, late_end_mon + 1)))
-            gs_spatial_dict[pix] = gs_range
-        outf = join(outdir, 'SOS_EOS.npy')
-        T.save_npy(gs_spatial_dict, outf)
+            if len(set(gs_range)) <= 2:
+                continue
+            if len(set(gs_range)) == 3:
+                early_range = np.array([gs_range[0]])
+                mid_range = np.array([gs_range[1]])
+                late_range = np.array([gs_range[2]])
+                # pprint((early_range, mid_range, late_range))
+            else:
+                # pprint(phenology_info_dict)
+                gs_range = np.array(list(range(early_start_mon, late_end_mon + 1)))
+                early_range = np.array(list(range(early_start_mon, early_end_mon + 1)))
+                late_range = np.array(list(range(late_start_mon, late_end_mon + 1)))
+                mid_range = []
+                for i in gs_range:
+                    if i not in early_range and i not in late_range:
+                        mid_range.append(i)
+                if len(mid_range) == 0:
+                    mid_range = [peak_mon]
+                    if peak_mon in early_range:
+                        early_range = np.delete(early_range, np.where(early_range == peak_mon))
+                    if peak_mon in late_range:
+                        late_range = np.delete(late_range, np.where(late_range == peak_mon))
+                early_range = np.array(early_range)
+                late_range = np.array(late_range)
+                mid_range = np.array(mid_range)
+                # print(len(early_range), len(mid_range), len(late_range))
+            # print(late_range)
+            if len(late_range) == 0:
+                pprint(phenology_info_dict);exit()
+            assert len(early_range) > 0
+            assert len(mid_range) > 0
+            assert len(late_range) > 0
+            assert sum([len(early_range), len(mid_range), len(late_range)]) == len(gs_range)
+            early_peak_late_period_dict[pix] = {'early_range': early_range,
+                                                'mid_range': mid_range,
+                                                'late_range': late_range}
+
+        outf = join(outdir, 'early_peak_late_period.npy')
+        T.save_npy(early_peak_late_period_dict, outf)
         pass
 
     def check_phenology(self):
