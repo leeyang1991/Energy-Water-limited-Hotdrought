@@ -4622,6 +4622,11 @@ class Dynamic_gs_analysis:
 
         pass
 
+    def Figure5(self,df):
+
+
+        pass
+
     def __AI_gradient_Drought_year_spatial_tif(self,delta_fpath):
         spatial_dics = {}
         spatial_dics['delta'] = DIC_and_TIF().spatial_tif_to_dic(delta_fpath)

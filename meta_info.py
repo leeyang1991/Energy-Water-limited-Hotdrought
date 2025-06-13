@@ -163,7 +163,8 @@ class Load_Data:
         data_path = join(data_root, f'GLEAM/SMRoot/anomaly/{year_range}')
         path_type = 'dir'
         var_name = 'GLEAM-SMRoot-anomaly'
-        return self.__load_data(data_path, path_type), var_name
+        valid_range = (-3,3)
+        return self.__load_data(data_path, path_type), var_name, valid_range
 
     def GLEAM_SMRoot_anomaly_detrend(self,year_range=global_year_range):
         data_path = join(data_root, f'GLEAM/SMRoot/anomaly_detrend/{year_range}')
