@@ -3190,6 +3190,34 @@ class Aridity_Index:
         T.open_path_and_file(self.datadir)
         pass
 
+class Aridity_Index_new:
+
+    def __init__(self):
+        # self.datadir = join(data_root, 'Aridity_Index')
+        self.datadir = join(data_root,'Aridity_Index_new')
+        pass
+
+    def run(self):
+        # self.resample()
+        self.rescale()
+        pass
+
+    def resample(self):
+        fpath = join(self.datadir,'Global-AI_ET0_v3_annual','ai_v3_yr.tif')
+        outpath = join(self.datadir,'ai_05.tif')
+        ToRaster().resample_reproj(fpath,outpath,res=0.5)
+        pass
+
+    def rescale(self):
+        fpath = join(self.datadir,'ai_05.tif')
+        outf = join(self.datadir,'ai_05_rescale.tif')
+        arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+        arr = np.array(arr,dtype=float)
+        arr[arr<=0] = np.nan
+        arr[arr>=60000] = np.nan
+        arr = arr / 10000
+        ToRaster().array2raster(outf, originX, originY, pixelWidth, pixelHeight, arr)
+
 
 class TCSIF:
 
@@ -3806,7 +3834,7 @@ def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
-    TMP().run()
+    # TMP().run()
     # TMX().run()
     # Precipitation().run()
     # VPD().run()
@@ -3832,6 +3860,7 @@ def main():
     # MODIS_LAI_Chen().run()
     # FAPAR().run()
     # Aridity_Index().run()
+    Aridity_Index_new().run()
     # TCSIF().run()
     # Global_Ecological_Zone().run()
     # IPCC_cliamte_zone().run()

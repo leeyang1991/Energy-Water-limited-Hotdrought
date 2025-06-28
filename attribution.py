@@ -1,6 +1,6 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
-# import semopy
+import semopy
 import shap
 import xgboost as xgb
 from meta_info import *
@@ -3535,7 +3535,7 @@ def main():
     # Random_forests().run()
     # SHAP().run()
     # Attribution_Dataframe_dynamic_GS().run()
-    SHAP_dynamic_GS().run()
+    # SHAP_dynamic_GS().run()
     # copy_files()
     pass
 
