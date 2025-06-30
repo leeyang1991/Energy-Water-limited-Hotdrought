@@ -3927,10 +3927,11 @@ class Dynamic_gs_analysis:
         # self.Figure3a_cdf(df)
         # self.Figure3b()
         # self.Figure4_values(df)
+        self.Figure4_values_boxplot(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
-        self.Figure_S6_1(df)
+        # self.Figure_S6_1(df)
 
         pass
 
@@ -4574,6 +4575,72 @@ class Dynamic_gs_analysis:
         T.open_path_and_file(outdir)
         # plt.show()
 
+    def Figure4_values_boxplot(self,df):
+        outdir = join(self.this_class_png, 'Figure4_values')
+        T.mk_dir(outdir)
+        df = df.dropna(subset=['early_range'], how='any')
+        df = df.drop('drought_season', axis=1)
+        # T.print_head_n(df)
+        # exit()
+        drought_season_list = []
+        for i,row in df.iterrows():
+            drought_mon = row['drought_mon']
+            growing_season = row['growing_season']
+            early_range = row['early_range']
+            mid_range = row['mid_range']
+            late_range = row['late_range']
+            if not drought_mon in growing_season:
+                drought_season_list.append(np.nan)
+                continue
+            if drought_mon in early_range:
+                drought_season = 'early'
+            elif drought_mon in mid_range:
+                drought_season = 'mid'
+            elif drought_mon in late_range:
+                drought_season = 'late'
+            else:
+                raise
+            drought_season_list.append(drought_season)
+        df['drought_season'] = drought_season_list
+        T.print_head_n(df)
+        label_list = []
+        mean_values_list = []
+        mean_pos_values_list = []
+        mean_neg_values_list = []
+        err_list = []
+        flag_list = []
+
+        flag = 0
+        plt.figure(figsize=(15 * centimeter_factor, 10 * centimeter_factor))
+
+        NDVI_vals_list = []
+        label_list = []
+        for AI_class in global_AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            for season in ['early', 'mid', 'late']:
+                df_season = df_AI[df_AI['drought_season'] == season]
+                for drt in global_drought_type_list:
+                    df_drt = df_season[df_season['drought_type'] == drt]
+                    NDVI_vals = df_drt['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                    NDVI_vals = np.array(NDVI_vals)
+                    label = f'{drt}_{season}_{AI_class}'
+                    label_list.append(label)
+                    NDVI_vals_list.append(NDVI_vals)
+
+                    # plt.plot([mean_neg,mean,mean_pos],[flag] * 3,color='k')
+                    # flag = flag + 1
+
+        plt.boxplot(NDVI_vals_list,labels=label_list,patch_artist=True,showfliers=False)
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        # plt.show()
+        outf = join(outdir, 'Figure4_values_boxplot.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+
+        pass
+
     def Figure4_values(self,df):
         outdir = join(self.this_class_png, 'Figure4_values')
         T.mk_dir(outdir)
@@ -4603,8 +4670,15 @@ class Dynamic_gs_analysis:
         df['drought_season'] = drought_season_list
         T.print_head_n(df)
         label_list = []
-        values_list = []
+        mean_values_list = []
+        mean_pos_values_list = []
+        mean_neg_values_list = []
         err_list = []
+        flag_list = []
+
+        flag = 0
+        plt.figure(figsize=(15 * centimeter_factor, 6 * centimeter_factor))
+
         for AI_class in global_AI_class_list:
             df_AI = df[df['AI_class'] == AI_class]
             for season in ['early', 'mid', 'late']:
@@ -4612,17 +4686,32 @@ class Dynamic_gs_analysis:
                 for drt in global_drought_type_list:
                     df_drt = df_season[df_season['drought_type'] == drt]
                     NDVI_vals = df_drt['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                    NDVI_vals = np.array(NDVI_vals)
+                    NDVI_vals_pos = NDVI_vals[NDVI_vals > 0]
+                    NDVI_vals_neg = NDVI_vals[NDVI_vals < 0]
                     label = f'{drt}_{season}_{AI_class}'
                     mean = np.nanmean(NDVI_vals)
+                    mean_pos = np.nanmean(NDVI_vals_pos)
+                    mean_neg = np.nanmean(NDVI_vals_neg)
+
                     # std = np.nanstd(NDVI_vals)
                     _,_,_,err = self.mean_confidence_interval(NDVI_vals)
                     err_list.append(err)
                     label_list.append(label)
-                    values_list.append(mean)
+                    mean_values_list.append(mean)
+                    mean_pos_values_list.append(mean_pos)
+                    mean_neg_values_list.append(mean_neg)
+                    flag_list.append(flag)
+                    plt.plot([mean_neg,mean,mean_pos],[flag] * 3,color='k')
+                    flag = flag + 1
 
-        plt.figure(figsize=(15 * centimeter_factor, 6 * centimeter_factor))
-        plt.barh(label_list, values_list,xerr=err_list, height=0.4)
+        # plt.barh(flag_list, mean_values_list,xerr=err_list, height=0.4)
+        plt.scatter(mean_values_list, flag_list, color='k', s=40)
+        plt.scatter(mean_pos_values_list, flag_list, color='r', s=20)
+        plt.scatter(mean_neg_values_list, flag_list, color='b', s=20)
+        plt.xlim(-0.8,0.4)
         # plt.xticks(rotation=45)
+        plt.yticks(range(len(flag_list)), label_list)
         plt.tight_layout()
         # plt.show()
         outf = join(outdir, 'Figure4_values.pdf')
@@ -4670,8 +4759,6 @@ class Dynamic_gs_analysis:
                     NDVI_vals = np.array(NDVI_vals)
                     # print(len(NDVI_vals))
                     NDVI_vals = NDVI_vals[~np.isnan(NDVI_vals)]
-                    # print(len(NDVI_vals))
-                    # exit()
 
                     positive_ratio1 = len(NDVI_vals[NDVI_vals > 0]) / len(NDVI_vals)
                     neagative_ratio1 = len(NDVI_vals[NDVI_vals < -0]) / len(NDVI_vals)
@@ -4687,10 +4774,14 @@ class Dynamic_gs_analysis:
         plt.xticks(rotation=45,ha='right')
         plt.tight_layout()
         plt.show()
-        outf = join(outdir, 'Figure4_ratio.pdf')
-        plt.savefig(outf)
-        plt.close()
-        T.open_path_and_file(outdir)
+        # outf = join(outdir, 'Figure4_ratio.pdf')
+        # plt.savefig(outf)
+        # plt.close()
+        # T.open_path_and_file(outdir)
+
+        pass
+
+    def Figure4_values_ratio(self,df):
 
         pass
 
