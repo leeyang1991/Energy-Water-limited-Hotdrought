@@ -7,7 +7,7 @@ T = Tools()
 
 class ESA_CCI:
     def __init__(self):
-        self.data_dir = "D:/ESA_CCI_LC/"
+        self.data_dir = r"E:\yang\ESA-CCI_LC/"
         # self.data_dir = '/mnt/disk3/ESA_CCI_LC/'
         pass
 
@@ -43,7 +43,7 @@ class ESA_CCI:
         fdir = join(self.data_dir,'ESACCI-LC-L4-PFT-Map-300m-P1Y-1992-2020-v2.0.8')
         # print(isdir(r'D:\ESA_CCI_LC\ESACCI-LC-L4-PFT-Map-300m-P1Y-1992-2020-v2.0.8'))
         # print(fdir);exit()
-        outdir = join(self.data_dir,'df05')
+        outdir = join(self.data_dir,'tif05')
         # outdir = join(self.data_dir,'df25')
         pix_size = .5
         T.mk_dir(outdir,force=True)

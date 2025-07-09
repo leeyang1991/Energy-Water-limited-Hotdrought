@@ -3924,14 +3924,14 @@ class Dynamic_gs_analysis:
         # self.Figure3a(df)
         # self.Figure3a_count(df)
         # self.Figure3a_cdf()
-        # self.Figure3a_cdf(df)
         # self.Figure3b()
         # self.Figure4_values(df)
-        self.Figure4_values_boxplot(df)
+        # self.Figure4_values_boxplot(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
         # self.Figure_S6_1(df)
+        self.Figure_SI_SOS(df)
 
         pass
 
@@ -4426,6 +4426,8 @@ class Dynamic_gs_analysis:
         df = df[df['Temperature-anomaly_detrend_drought_growing_season'] >= -2]
         df = df.dropna(subset=['Temperature-anomaly_detrend_drought_growing_season'], how='any')
         T_anomaly_vals = df['Temperature-anomaly_detrend_drought_growing_season'].tolist()
+        area_dict = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df, area_dict, 'area')
 
         bin_range = np.linspace(0, 1, 41)
         T_quantile_bins = []
@@ -4456,10 +4458,12 @@ class Dynamic_gs_analysis:
             flag = 0
 
             for name_T, df_group_T_i in df_group_T:
-                rt = df_group_T_i['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                # rt = df_group_T_i['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                rt = df_group_T_i['area'].tolist()
                 rt = np.array(rt)
                 rt = rt[~np.isnan(rt)]
-                rt_mean = len(rt)
+                rt_mean = np.nansum(rt)
+                rt_mean = np.log(rt_mean)
                 # print(rt_mean)
                 # rt_mean = np.nanmean(rt)
                 matrix_i.append(rt_mean)
@@ -4468,7 +4472,8 @@ class Dynamic_gs_analysis:
                 x_label = (name_T[0].left + name_T[0].right) / 2
                 x_label = np.round(x_label, 2)
                 x_label_list.append(x_label)
-                plt.scatter(bin_range[flag], y_label, c=rt_mean, cmap='Blues', marker='s',vmin=0,vmax=400)
+                # plt.scatter(bin_range[flag], y_label, c=rt_mean, cmap='Blues', marker='s',vmin=0,vmax=400)
+                plt.scatter(bin_range[flag], y_label, c=rt_mean, cmap='Blues', marker='s',vmin=22,vmax=28)
                 # print(flag,rt_mean)
                 flag += 1
         # plt.hist(all_vals,bins=100)
@@ -4480,7 +4485,8 @@ class Dynamic_gs_analysis:
         # plt.yticks(range(len(y_label_list))[::-1],y_label_list)
         # plt.tight_layout()
         # plt.show()
-        outf = join(outdir,'matrix_count_new.pdf')
+        # outf = join(outdir,'matrix_count_new.pdf')
+        outf = join(outdir,'matrix_count_area.pdf')
         plt.savefig(outf)
         plt.close()
         T.open_path_and_file(outdir)
@@ -4495,17 +4501,25 @@ class Dynamic_gs_analysis:
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
         df = T.spatial_dics_to_df({'aridity_index1': spatial_dict})
         df = Dataframe_func(df).df
-        # T.print_head_n(df)
-        aridity_index1 = df['aridity_index1'].tolist()
-        # x,y=Plot().plot_hist_smooth(aridity_index1,bins=100,range=(0,2.5),cumulative=True,density=True)
-        # plt.plot(x,y)
-        tops, bins, _ = plt.hist(aridity_index1,bins=100,range=(0,2.5),cumulative=True,density=True)
-        # print(tops)
-        # print(bins)
-        # plt.figure(figsize=(7, 3.5))
-        plt.plot(bins[:-1],tops)
+        area_dict = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df,area_dict,'area')
+        # T.print_head_n(df);exit()
+        # aridity_index1 = df['aridity_index1'].tolist()
+        bins = np.linspace(0,2.5,100)
+        df_group, bins_list_str = T.df_bin(df, 'aridity_index1', bins)
+        sum_area_list = []
+        sum_area_all = 0
+        for name,df_group_i in df_group:
+            vals = df_group_i['area'].tolist()
+            sum_area = np.nansum(vals)
+            sum_area_all += sum_area
+            sum_area_list.append(sum_area_all)
+        plt.plot(bins[1:],sum_area_list)
+        plt.xlabel('AI')
+        plt.ylabel('area')
+        plt.tight_layout()
         # plt.show()
-        outf = join(outdir,'matrix_cdf_new.pdf')
+        outf = join(outdir,'matrix_cdf_area.pdf')
         # outf = join(outdir,'matrix_cdf.pdf')
         plt.savefig(outf)
         plt.close()
@@ -4902,6 +4916,43 @@ class Dynamic_gs_analysis:
         T.open_path_and_file(outdir_png)
 
         pass
+
+    def Figure_SI_SOS(self,df):
+        df = df.dropna(subset=['drought_season'], how='any')
+        outdir = join(self.this_class_png,'Figure_SI_SOS')
+        T.mkdir(outdir)
+        drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
+        # drought_type = 'All'
+        df = df[df['drought_type']==drought_type]
+        print('------------')
+        T.print_head_n(df)
+        bin_y = np.linspace(0, 2.6, 14)
+        # print(bin_y);exit()
+        bin_x = np.linspace(-20, 20, 21)
+        val_col_name = 'NDVI-anomaly_detrend_drought_growing_season'
+        col_name_x = 'SOS'
+        col_name_y = 'aridity_index'
+        for season in ['early','mid','late']:
+            print(season)
+            df_season = df[df['drought_season'] == season]
+            # df_group, bins_list_str = T.df_bin(df_season, 'SOS', sos_bins)
+            matrix_dict,x_ticks_list,y_ticks_list = T.df_bin_2d(df_season,val_col_name,col_name_x,col_name_y,
+                                                                bin_x,bin_y,round_x=10,round_y=10)
+            # print(y_ticks_list);exit()
+            # print(x_ticks_list)
+            # print(y_ticks_list)
+            plt.figure(figsize=(7.5,3.96))
+            # T.plot_df_bin_2d_matrix(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list)
+            T.plot_df_bin_2d_scatter(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list,s=200)
+            plt.colorbar()
+            plt.title(f'{season}_{drought_type}')
+            outf = join(outdir,f'{season}_{drought_type}.pdf')
+            # plt.show()
+            plt.savefig(outf)
+            plt.close()
+            pass
+        T.open_path_and_file(outdir)
 
     def __AI_gradient_Drought_year_spatial_tif(self,delta_fpath):
         spatial_dics = {}

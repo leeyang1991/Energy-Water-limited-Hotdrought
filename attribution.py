@@ -1504,12 +1504,13 @@ class SHAP:
     def run(self):
         # self.copy_df()
         df = self.__gen_df_init()
-        pause()
+        # pause()
 
         # self.pdp_shap(df)
         # self.pdp_shap_r2(df)
         # self.plot_pdp_shap_result_line()
         # self.plot_pdp_shap_result_scatter(df)
+        self.plot_pdp_shap_result_line_only_for_SOS(df)
         # self.pdp_shap_split_df(df)
         # self.plot_pdp_shap_split_df_scatter()
         # self.plot_pdp_shap_split_df_line()
@@ -1779,7 +1780,95 @@ class SHAP:
             plt.close()
         T.open_path_and_file(outdir)
 
+    def plot_pdp_shap_result_line_only_for_SOS(self,df):
+        df_clean = Attribution_Dataframe().clean_df(df)
+        ELI_class_list = ['Energy-Limited']
+        # ELI_class_list = ['Water-Limited']
+        variables_range_dict = Attribution_Dataframe().variables_threshold()
+        ylim_dict = self.__ylim()
+        drought_type_zorder_dict = {
+            'hot-drought': 99,
+            'normal-drought': 0
+        }
+        drought_type_color_dict = {
+            'normal-drought': 'b',
+            'hot-drought': 'r',
+        }
+        drought_type_alpha_dict = {
+            'normal-drought': 1,
+            'hot-drought': .2,
+        }
+        drought_type_size_dict = {
+            'normal-drought': 1,
+            'hot-drought': .5,
+        }
 
+        for ELI in ELI_class_list:
+            df_ELI = df_clean[df_clean['ELI_class'] == ELI]
+            df_ELI = df_ELI[df_ELI['drought_type'] =='hot-drought']
+
+            # T.print_head_n(df_ELI)
+            drought_type_list = df_ELI['drought_type'].tolist()
+            drought_mon_list = df_ELI['drought_mon'].tolist()
+            fdir = join(self.this_class_arr, 'pdp_shap', str(ELI))
+            outdir = join(self.this_class_png, 'pdp_shap', str(ELI))
+            # outdir = join(self.this_class_png, 'pdp_shap_split', str(ELI))
+            T.mk_dir(outdir, force=True)
+            imp_dict_fpath = join(fdir, 'shaply_imp_dict.npy')
+            shap_values_fpath = join(fdir, 'shaply_shap_values.pkl')
+            shap_values = T.load_dict_from_binary(shap_values_fpath)
+            # exit()
+            imp_dict = T.load_npy(imp_dict_fpath)
+            x_list = []
+            y_list = []
+            for key in imp_dict.keys():
+                if not key == 'SOS':
+                    continue
+                x_list.append(key)
+                y_list.append(imp_dict[key])
+
+            flag = 1
+            for x_var in x_list:
+                print(ELI, x_var)
+
+                shap_values_mat = shap_values[:, x_var]
+                outf_i = join(outdir, f'shaply_{x_var}')
+                # T.save_npy(shap_values_mat, outf_i)
+                data_i = shap_values_mat.data
+                # print('data_i',len(data_i))
+                # exit()
+                value_i = shap_values_mat.values
+                # df_i = pd.DataFrame({x_var: data_i, 'shap_v': value_i,
+                #                      'drought_mon': drought_mon_list,
+                #                      'drought_type': drought_type_list
+                #                      })
+                # print('---------------')
+                # T.print_head_n(df_i)
+                sos_bins = np.linspace(-20,20,11)
+                # df_group, bins_list_str = T.df_bin(df_i, 'SOS', sos_bins)
+                df_group, bins_list_str = T.df_bin(df_ELI, 'SOS', sos_bins)
+                drought_mon_list_unique = [5,6,7,8,9,10]
+                plt.figure(figsize=(6, 3))
+                for name,df_group_i in df_group:
+                    for mon in drought_mon_list_unique:
+                        df_group_i_mon = df_group_i[df_group_i['drought_mon'] == mon]
+                        if len(df_group_i_mon) == 0:
+                            continue
+                        x = name[0].left
+                        y = mon
+                        # z = np.array(df_group_i_mon['shap_v'].tolist()).mean()
+                        z = np.array(df_group_i_mon['NDVI-anomaly_detrend'].tolist()).mean()
+                        # plt.scatter(x, y, c=z,vmin=-0.03,vmax=0.03,
+                        #             cmap='RdBu',s=600,marker='s')
+                        plt.scatter(x, y, c=z, vmin=-0.5, vmax=0.5,
+                                    cmap='RdBu', s=600, marker='s')
+                plt.colorbar()
+                plt.ylim(4.5,10.5)
+                plt.xlabel(x_var)
+                plt.ylabel('drought_mon')
+                plt.tight_layout()
+                plt.show()
+            pass
     def plot_pdp_shap_result_scatter(self,df):
         df_clean = Attribution_Dataframe().clean_df(df)
         ELI_class_list = global_ELI_class_list
@@ -3533,7 +3622,7 @@ def main():
     # MAT_Topt1().run()
     # Attribution_Dataframe().run()
     # Random_forests().run()
-    # SHAP().run()
+    SHAP().run()
     # Attribution_Dataframe_dynamic_GS().run()
     # SHAP_dynamic_GS().run()
     # copy_files()
