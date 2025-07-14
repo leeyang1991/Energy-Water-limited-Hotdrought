@@ -3926,12 +3926,13 @@ class Dynamic_gs_analysis:
         # self.Figure3a_cdf()
         # self.Figure3b()
         # self.Figure4_values(df)
+        self.Figure4_values_std(df)
         # self.Figure4_values_boxplot(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
         # self.Figure_S6_1(df)
-        self.Figure_SI_SOS(df)
+        # self.Figure_SI_SOS(df)
 
         pass
 
@@ -4729,6 +4730,84 @@ class Dynamic_gs_analysis:
         plt.tight_layout()
         # plt.show()
         outf = join(outdir, 'Figure4_values.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+
+        pass
+
+    def Figure4_values_std(self,df):
+        outdir = join(self.this_class_png, 'Figure4_values')
+        T.mk_dir(outdir)
+        df = df.dropna(subset=['early_range'], how='any')
+        df = df.drop('drought_season', axis=1)
+        # T.print_head_n(df)
+        # exit()
+        drought_season_list = []
+        for i,row in df.iterrows():
+            drought_mon = row['drought_mon']
+            growing_season = row['growing_season']
+            early_range = row['early_range']
+            mid_range = row['mid_range']
+            late_range = row['late_range']
+            if not drought_mon in growing_season:
+                drought_season_list.append(np.nan)
+                continue
+            if drought_mon in early_range:
+                drought_season = 'early'
+            elif drought_mon in mid_range:
+                drought_season = 'mid'
+            elif drought_mon in late_range:
+                drought_season = 'late'
+            else:
+                raise
+            drought_season_list.append(drought_season)
+        df['drought_season'] = drought_season_list
+        T.print_head_n(df)
+        label_list = []
+        mean_values_list = []
+        mean_pos_values_list = []
+        mean_neg_values_list = []
+        err_list = []
+        flag_list = []
+
+        flag = 0
+        plt.figure(figsize=(15 * centimeter_factor, 6 * centimeter_factor))
+
+        for AI_class in global_AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            for season in ['early', 'mid', 'late']:
+                df_season = df_AI[df_AI['drought_season'] == season]
+                for drt in global_drought_type_list:
+                    df_drt = df_season[df_season['drought_type'] == drt]
+                    NDVI_vals = df_drt['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                    NDVI_vals = np.array(NDVI_vals)
+                    NDVI_vals_std = np.nanstd(NDVI_vals)
+                    label = f'{drt}_{season}_{AI_class}'
+                    mean = np.nanmean(NDVI_vals)
+                    err = NDVI_vals_std
+                    # _,_,_,err = self.mean_confidence_interval(NDVI_vals)
+                    err_list.append(err)
+                    label_list.append(label)
+                    mean_values_list.append(mean)
+                    mean_neg = mean - err
+                    mean_pos = mean + err
+                    mean_pos_values_list.append(mean_pos)
+                    mean_neg_values_list.append(mean_neg)
+                    flag_list.append(flag)
+                    plt.plot([mean_neg,mean,mean_pos],[flag] * 3,color='k')
+                    flag = flag + 1
+
+        # plt.barh(flag_list, mean_values_list,xerr=err_list, height=0.4)
+        plt.scatter(mean_values_list, flag_list, color='k', s=40)
+        plt.scatter(mean_pos_values_list, flag_list, color='r', s=20)
+        plt.scatter(mean_neg_values_list, flag_list, color='b', s=20)
+        plt.xlim(-2,1)
+        # plt.xticks(rotation=45)
+        plt.yticks(range(len(flag_list)), label_list)
+        plt.tight_layout()
+        # plt.show()
+        outf = join(outdir, 'Figure4_values_std.pdf')
         plt.savefig(outf)
         plt.close()
         T.open_path_and_file(outdir)
