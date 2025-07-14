@@ -3893,6 +3893,7 @@ class Dynamic_gs_analysis:
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
             T.mk_class_dir('Dynamic_gs_analysis', result_root_this_script, mode=2)
         self.dff = join(self.this_class_arr, 'Dataframe.df')
+        # print(self.this_class_arr);exit()
         pass
 
     def run(self):
@@ -4738,6 +4739,7 @@ class Dynamic_gs_analysis:
 
     def Figure4_values_std(self,df):
         outdir = join(self.this_class_png, 'Figure4_values')
+        # T.print_head_n(df);exit()
         T.mk_dir(outdir)
         df = df.dropna(subset=['early_range'], how='any')
         df = df.drop('drought_season', axis=1)

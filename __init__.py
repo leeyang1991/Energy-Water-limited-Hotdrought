@@ -1,4 +1,6 @@
 # coding=utf-8
+
+
 import sys
 version = sys.version_info.major
 assert version == 3, 'Python Version Error'
@@ -92,3 +94,5 @@ def pause():
 T = Tools()
 if __name__ == '__main__':
     pass
+
+    print(1)

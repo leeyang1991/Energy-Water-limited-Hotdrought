@@ -1,13 +1,15 @@
 # coding=utf-8
+# In[1]
 from __init__ import *
 # import warnings
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 # plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['font.size'] = 8
 centimeter_factor = 1 / 2.54
-
+# In[2]
 # this_root = '/Volumes/NVME2T/Energy_water_hotdrought/'
-this_root = r'D:\Energy_water_hotdrought/'
+# this_root = r'D:\Energy_water_hotdrought/'
+this_root = '/media/yangli/HDD/Energy_water_hotdrought/'
 # this_root = '/root/Desktop/disk/Energy_water_hotdrought/'
 # this_root = '/home/liyang/Desktop/disk/Energy_water_hotdrought/'
 # this_root = '/mnt/disk/Energy_water_hotdrought/'
@@ -15,7 +17,7 @@ this_root = r'D:\Energy_water_hotdrought/'
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
-
+# In[3]
 global_drought_type_list = ['normal-drought', 'hot-drought']
 global_drought_type_color_dict = {
     'normal-drought': 'blue',
