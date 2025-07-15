@@ -3903,6 +3903,7 @@ class Dynamic_gs_analysis:
         # self.add_NDVI_anomaly_to_df(df)
         # self.add_NDVI_anomaly_drought_year_to_df(df)
         # self.add_NDVI_percentage_to_df(df)
+        # self.add_NDVI_percentage_drought_year_to_df(df)
         # self.add_early_peak_late_period_to_df(df)
         # df = self.add_drought_season_to_df(df)
         # df = self.add_AI_new_to_df(df)
@@ -5167,6 +5168,25 @@ class Dynamic_gs_analysis:
 
         return df
 
+    def add_NDVI_percentage_drought_year_to_df(self,df):
+        NDVI_dict, var_name, _ = Load_Data().NDVI_percentage()
+        NDVI_drought_growing_season_mean_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            growing_season = row['growing_season']
+            if type(growing_season) == float:
+                NDVI_drought_growing_season_mean_list.append(np.nan)
+                continue
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1, 12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list, NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            NDVI_drought_growing_season_mean_list.append(NDVI_drought_year)
+        df[f'{var_name}_drought_year_vals'] = NDVI_drought_growing_season_mean_list
+
+        return df
+
     def add_early_peak_late_period_to_df(self,df):
         import analysis
         fpath = join(analysis.Longterm_Phenology().this_class_arr,'early_peak_late_period','early_peak_late_period.npy')
@@ -5249,18 +5269,22 @@ class Dynamic_gs_analysis:
         return m, m - h, m + h,h
 
     def season_excerbation_alleviation_ratio_tif(self,df):
-        # T.print_head_n(df)
+        df = df.dropna(subset=['drought_season'])
         drought_season_list = T.get_df_unique_val_list(df, 'drought_season')
-        print(drought_season_list)
+        # print(drought_season_list)
+        # T.print_head_n(df)
+
         # exit()
         outdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio')
         T.mk_dir(outdir)
         drought_season_list = ['early', 'mid', 'late']
         ELI_class_list = global_ELI_class_list[::-1]
-        NDVI_col_name = 'NDVI-percentage_drought_growing_season'
+        NDVI_col_name = 'NDVI-percentage_drought_year_vals'
 
         for season in drought_season_list:
             df_season = df[df['drought_season'] == season]
+            # season_range = df_season[f'{season}_range'].tolist()
+            # print(season_range);exit()
             df_pix_dict = T.df_groupby(df_season, 'pix')
             spatial_dict_normal = {}
             spatial_dict_hot = {}
@@ -5268,14 +5292,37 @@ class Dynamic_gs_analysis:
                 df_pix = df_pix_dict[pix]
                 df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
                 df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                df_hot_season_range = df_hot[f'{season}_range'].tolist()
+                df_hot_season_range = np.array(df_hot_season_range) - 1
+                df_normal_season_range = df_normal[f'{season}_range'].tolist()
+                df_normal_season_range = np.array(df_normal_season_range) - 1
+                # T.print_head_n(df_hot)
+                # print(df_hot_season_range);exit()
                 NDVI_vals_hot = df_hot[NDVI_col_name].tolist()
-                NDVI_vals_hot_mean = np.nanmean(NDVI_vals_hot)
+                NDVI_vals_hot = np.array(NDVI_vals_hot)
+                NDVI_vals_hot_pix_mean = np.nanmean(NDVI_vals_hot, axis=0)
+
+                # print(len(NDVI_vals_hot));exit()
+                if len(df_hot_season_range) == 0:
+                    NDVI_vals_hot_vals_mean = np.nan
+                else:
+                    NDVI_vals_hot_vals = NDVI_vals_hot_pix_mean[df_hot_season_range]
+                    NDVI_vals_hot_vals_mean = np.nanmean(NDVI_vals_hot_vals)
 
                 NDVI_vals_normal = df_normal[NDVI_col_name].tolist()
-                NDVI_vals_normal_mean = np.nanmean(NDVI_vals_normal)
+                NDVI_vals_normal = np.array(NDVI_vals_normal)
+                NDVI_vals_normal_pix_mean = np.nanmean(NDVI_vals_normal,axis=0)
+                # print(NDVI_vals_normal_pix_mean)
+                if len(df_normal_season_range) == 0:
+                    NDVI_vals_normal_vals_mean = np.nan
+                else:
+                    # print(df_normal_season_range)
+                    # print(NDVI_vals_normal)
+                    NDVI_vals_normal_vals = NDVI_vals_normal_pix_mean[df_normal_season_range]
+                    NDVI_vals_normal_vals_mean = np.nanmean(NDVI_vals_normal_vals)
 
-                drought_season_vals_hot_mean = NDVI_vals_hot_mean
-                drought_season_vals_normal_mean = NDVI_vals_normal_mean
+                drought_season_vals_hot_mean = NDVI_vals_hot_vals_mean
+                drought_season_vals_normal_mean = NDVI_vals_normal_vals_mean
 
                 spatial_dict_hot[pix] = drought_season_vals_hot_mean
                 spatial_dict_normal[pix] = drought_season_vals_normal_mean
@@ -5323,7 +5370,7 @@ class Dynamic_gs_analysis:
         df = T.spatial_dics_to_df(spatial_dict_all)
         df = Dataframe_func(df).df
         # T.print_head_n(df);exit()
-        T.print_head_n(df)
+        # T.print_head_n(df)
         ratio_dict = {}
         ELI_class_list = global_ELI_class_list
         flag = 0
@@ -5395,9 +5442,9 @@ class Dynamic_gs_analysis:
             plt.tight_layout()
             plt.ylim(-95, 40)
             outf = join(outdir, f'{ELI}.pdf')
-            # plt.savefig(outf, dpi=300)
-            # plt.close()
-            plt.show()
+            plt.savefig(outf, dpi=300)
+            plt.close()
+            # plt.show()
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
