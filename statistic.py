@@ -1601,8 +1601,8 @@ class Drought_timing:
         # self.delta_season_bar(df)
         # self.delta_season_boxplot(df)
 
-        # self.season_excerbation_alleviation_ratio_tif(df)
-        # self.season_excerbation_alleviation_ratio_statistic()
+        self.season_excerbation_alleviation_ratio_tif(df)
+        self.season_excerbation_alleviation_ratio_statistic()
         self.plot_season_excerbation_alleviation_ratio()
 
         # self.season_excerbation_alleviation_ratio_tif_CSIF(df)
@@ -3927,8 +3927,11 @@ class Dynamic_gs_analysis:
         # self.Figure3a_cdf()
         # self.Figure3b()
         # self.Figure4_values(df)
-        self.Figure4_values_std(df)
+        # self.Figure4_values_std(df)
         # self.Figure4_values_boxplot(df)
+        # self.season_excerbation_alleviation_ratio_tif(df)
+        # self.season_excerbation_alleviation_ratio_statistic()
+        self.plot_season_excerbation_alleviation_ratio()
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
@@ -4823,6 +4826,8 @@ class Dynamic_gs_analysis:
         df = df.drop('drought_season', axis=1)
         # T.print_head_n(df)
         # exit()
+        area_dict = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df, area_dict, 'area')
         drought_season_list = []
         for i,row in df.iterrows():
             drought_mon = row['drought_mon']
@@ -4850,10 +4855,22 @@ class Dynamic_gs_analysis:
                 df_season = df_AI[df_AI['drought_season'] == season]
                 for drt in global_drought_type_list:
                     df_drt = df_season[df_season['drought_type'] == drt]
+                    df_drt = df_drt.dropna(subset=['NDVI-anomaly_detrend_drought_growing_season'], how='any')
                     NDVI_vals = df_drt['NDVI-anomaly_detrend_drought_growing_season'].tolist()
+                    area_vals = df_drt['area'].tolist()
                     NDVI_vals = np.array(NDVI_vals)
+                    area_vals = np.array(area_vals)
                     # print(len(NDVI_vals))
-                    NDVI_vals = NDVI_vals[~np.isnan(NDVI_vals)]
+                    # NDVI_vals = NDVI_vals[~np.isnan(NDVI_vals)]
+                    # total_area = np.nansum(area_vals)
+                    # pos_area1 = area_vals[NDVI_vals > 0]
+                    # neg_area1 = area_vals[NDVI_vals < 0]
+                    # pos_area2 = area_vals[NDVI_vals > .5]
+                    # neg_area2 = area_vals[NDVI_vals < -.5]
+                    # positive_ratio1 = np.nansum(pos_area1) / total_area
+                    # neagative_ratio1 = np.nansum(neg_area1) / total_area
+                    # positive_ratio2 = np.nansum(pos_area2) / total_area
+                    # neagative_ratio2 = np.nansum(neg_area2) / total_area
 
                     positive_ratio1 = len(NDVI_vals[NDVI_vals > 0]) / len(NDVI_vals)
                     neagative_ratio1 = len(NDVI_vals[NDVI_vals < -0]) / len(NDVI_vals)
@@ -4867,6 +4884,7 @@ class Dynamic_gs_analysis:
                     plt.bar(label,positive_ratio1,color='none',lw=1,edgecolor='k')
                     plt.bar(label,neagative_ratio1,color='none',lw=1,edgecolor='k')
         plt.xticks(rotation=45,ha='right')
+        plt.ylim(-0.8,0.6)
         plt.tight_layout()
         plt.show()
         # outf = join(outdir, 'Figure4_ratio.pdf')
@@ -5229,6 +5247,157 @@ class Dynamic_gs_analysis:
         m, se = np.mean(a), scipy.stats.sem(a)
         h = se * scipy.stats.t.ppf((1 + confidence) / 2., n - 1)
         return m, m - h, m + h,h
+
+    def season_excerbation_alleviation_ratio_tif(self,df):
+        # T.print_head_n(df)
+        drought_season_list = T.get_df_unique_val_list(df, 'drought_season')
+        print(drought_season_list)
+        # exit()
+        outdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio')
+        T.mk_dir(outdir)
+        drought_season_list = ['early', 'mid', 'late']
+        ELI_class_list = global_ELI_class_list[::-1]
+        NDVI_col_name = 'NDVI-percentage_drought_growing_season'
+
+        for season in drought_season_list:
+            df_season = df[df['drought_season'] == season]
+            df_pix_dict = T.df_groupby(df_season, 'pix')
+            spatial_dict_normal = {}
+            spatial_dict_hot = {}
+            for pix in tqdm(df_pix_dict):
+                df_pix = df_pix_dict[pix]
+                df_hot = df_pix[df_pix['drought_type'] == 'hot-drought']
+                df_normal = df_pix[df_pix['drought_type'] == 'normal-drought']
+                NDVI_vals_hot = df_hot[NDVI_col_name].tolist()
+                NDVI_vals_hot_mean = np.nanmean(NDVI_vals_hot)
+
+                NDVI_vals_normal = df_normal[NDVI_col_name].tolist()
+                NDVI_vals_normal_mean = np.nanmean(NDVI_vals_normal)
+
+                drought_season_vals_hot_mean = NDVI_vals_hot_mean
+                drought_season_vals_normal_mean = NDVI_vals_normal_mean
+
+                spatial_dict_hot[pix] = drought_season_vals_hot_mean
+                spatial_dict_normal[pix] = drought_season_vals_normal_mean
+            arr_hot = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_hot)
+            outf_hot = join(outdir, f'hot_{season}.tif')
+            DIC_and_TIF().arr_to_tif(arr_hot, outf_hot)
+
+            arr_normal = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_normal)
+            outf_normal = join(outdir, f'normal_{season}.tif')
+            DIC_and_TIF().arr_to_tif(arr_normal, outf_normal)
+
+        pass
+
+    def season_excerbation_alleviation_ratio_statistic(self):
+        fdir = join(self.this_class_tif, 'season_excerbation_alleviation_ratio')
+        outdir = join(self.this_class_arr, 'season_excerbation_alleviation_ratio_statistic')
+        drt_list = ['hot', 'normal']
+        T.mk_dir(outdir)
+        spatial_dict_all = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir, f)
+            # arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+            # plt.imshow(arr, cmap='RdBu', vmin=-0.2, vmax=0.2, interpolation='nearest')
+            # plt.colorbar()
+            # plt.show()
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            spatial_dict_mode = {}
+            for pix in spatial_dict:
+                val = spatial_dict[pix]
+                if np.isnan(val):
+                    continue
+
+                if val > 5:
+                    mode = 'alleviation'
+                elif val < -5:
+                    mode = 'excerbation'
+                else:
+                    mode = 'normal'
+                    # raise ValueError
+                spatial_dict_mode[pix] = mode
+            key = f.replace('.tif', '')
+            spatial_dict_all[key] = spatial_dict_mode
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        df = Dataframe_func(df).df
+        # T.print_head_n(df);exit()
+        T.print_head_n(df)
+        ratio_dict = {}
+        ELI_class_list = global_ELI_class_list
+        flag = 0
+        for drt in drt_list:
+            for season in global_drought_timing_list:
+                col_name = f'{drt}_{season}'
+                df_season = df.dropna(subset=[col_name])
+                for ELI_class in ELI_class_list:
+                    df_ELI = df_season[df_season['ELI_class'] == ELI_class]
+                    mode_list = T.get_df_unique_val_list(df_ELI, col_name)
+                    # print(mode_list)
+                    for mode in mode_list:
+                        df_mode = df_ELI[df_ELI[col_name] == mode]
+                        count = len(df_mode)
+                        ratio = count / len(df_ELI)
+                        # print(season, ELI_class, mode, count, f'{ratio:.3f}%')
+                        ratio_dict[flag] = {
+                            'season': season,
+                            'drt': drt,
+                            'ELI_class': ELI_class,
+                            'mode': mode,
+                            'count': count,
+                            'ratio': f'{ratio*100:.3f}%'
+                        }
+                        flag += 1
+        df_result = T.dic_to_df(ratio_dict, 'flag')
+        T.print_head_n(df_result)
+        outf = join(outdir, 'ratio')
+        T.df_to_excel(df_result, outf)
+
+        pass
+
+    def plot_season_excerbation_alleviation_ratio(self):
+        fpath = join(self.this_class_arr, 'season_excerbation_alleviation_ratio_statistic', 'ratio.xlsx')
+        outdir = join(self.this_class_png, 'plot_season_excerbation_alleviation_ratio')
+        T.mk_dir(outdir)
+        df = pd.read_excel(fpath, index_col=0)
+        T.print_head_n(df)
+        # exit()
+        drt_list = ['hot', 'normal']
+        ELI_class_list = global_ELI_class_list
+        mode_list = ['alleviation', 'excerbation']
+
+        for ELI in ELI_class_list:
+            plt.figure(figsize=(5, 5))
+            df_ELI = df[df['ELI_class'] == ELI]
+            for season in global_drought_timing_list:
+                df_season = df_ELI[df_ELI['season'] == season]
+                for drt in drt_list[::-1]:
+                    df_drt = df_season[df_season['drt'] == drt]
+                    for mode in mode_list:
+                        df_mode = df_drt[df_drt['mode'] == mode]
+                        print(df_mode)
+                        if len(df_mode) != 1:
+                            raise
+                        ratio_str = df_mode['ratio'].tolist()[0]
+                        ratio = ratio_str.split('%')[0]
+                        ratio = float(ratio)
+                        color = 'blue'
+                        if mode == 'excerbation':
+                            ratio = -ratio
+                            color = 'red'
+                        plt.bar(f'{season} {drt}', ratio, color=color)
+                        # key = f'{season} {ELI} {drt} {mode}'
+                        # bar_dict[key] = {'ratio':ratio,'color':color}
+            # pprint(bar_dict)
+            plt.title(f'{ELI}')
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.ylim(-95, 40)
+            outf = join(outdir, f'{ELI}.pdf')
+            # plt.savefig(outf, dpi=300)
+            # plt.close()
+            plt.show()
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
