@@ -5357,9 +5357,11 @@ class Dynamic_gs_analysis:
                 if np.isnan(val):
                     continue
 
-                if val > 5:
+                # if val > 5:
+                if val > 0:
                     mode = 'alleviation'
-                elif val < -5:
+                # elif val < -5:
+                elif val < 0:
                     mode = 'excerbation'
                 else:
                     mode = 'normal'
@@ -5440,11 +5442,11 @@ class Dynamic_gs_analysis:
             plt.title(f'{ELI}')
             plt.xticks(rotation=90)
             plt.tight_layout()
-            plt.ylim(-95, 40)
+            plt.ylim(-95, 60)
             outf = join(outdir, f'{ELI}.pdf')
-            plt.savefig(outf, dpi=300)
-            plt.close()
-            # plt.show()
+            # plt.savefig(outf, dpi=300)
+            # plt.close()
+            plt.show()
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
