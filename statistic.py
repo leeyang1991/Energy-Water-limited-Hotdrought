@@ -3932,7 +3932,8 @@ class Dynamic_gs_analysis:
         # self.Figure4_values_boxplot(df)
         # self.season_excerbation_alleviation_ratio_tif(df)
         # self.season_excerbation_alleviation_ratio_statistic()
-        self.plot_season_excerbation_alleviation_ratio()
+        # self.plot_season_excerbation_alleviation_ratio()
+        self.plot_drought_events_timeseries_different_season(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
@@ -5447,6 +5448,47 @@ class Dynamic_gs_analysis:
             # plt.savefig(outf, dpi=300)
             # plt.close()
             plt.show()
+
+    def plot_drought_events_timeseries_different_season(self,df):
+        outdir = join(self.this_class_png, 'drought_events_timeseries_different_season')
+        T.mk_dir(outdir)
+        df = df.dropna(subset=['drought_season'])
+        for AI_class in global_AI_class_list:
+            df_AI = df[df['AI_class'] == AI_class]
+            year_list = T.get_df_unique_val_list(df_AI,'drought_year')
+            result_dict = {}
+            df_group_dict = T.df_groupby(df_AI, 'drought_year')
+            key_list = []
+            for year in tqdm(df_group_dict):
+                df_i = df_group_dict[year]
+                result_dict_i = {}
+                for season in global_drought_timing_list:
+                    df_season = df_i[df_i['drought_season'] == season]
+                    key = f'{season}'
+                    if not key in key_list:
+                        key_list.append(key)
+                    count = len(df_season)
+                    result_dict_i[key] = count
+                result_dict[year] = result_dict_i
+            df_result = T.dic_to_df(result_dict,'year')
+            T.print_head_n(df_result)
+            for timing in global_drought_timing_list:
+                count_list = []
+                for year in year_list:
+                    df_year = df_result[df_result['year'] == year]
+                    count = df_year[f'{timing}'].tolist()[0]
+                    count_list.append(count)
+                plt.plot(year_list, count_list, label=timing)
+            plt.title(f'{AI_class}')
+            plt.xlabel('year')
+            plt.ylabel('count')
+            plt.legend()
+            plt.tight_layout()
+            outf = join(outdir, f'{AI_class}.pdf')
+            plt.savefig(outf, dpi=300)
+            plt.close()
+
+        pass
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
