@@ -3933,7 +3933,9 @@ class Dynamic_gs_analysis:
         # self.season_excerbation_alleviation_ratio_tif(df)
         # self.season_excerbation_alleviation_ratio_statistic()
         # self.plot_season_excerbation_alleviation_ratio()
-        self.plot_drought_events_timeseries_different_season(df)
+        # self.plot_drought_events_timeseries_different_season(df)
+        # self.plot_spatial_trend_of_temperature_during_drought(df)
+        self.plot_temporal_trend_of_temperature_during_drought(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
@@ -5487,6 +5489,62 @@ class Dynamic_gs_analysis:
             outf = join(outdir, f'{AI_class}.pdf')
             plt.savefig(outf, dpi=300)
             plt.close()
+
+        pass
+
+    def plot_spatial_trend_of_temperature_during_drought(self,df):
+        outdir = join(self.this_class_tif, 'plot_spatial_trend_of_temperature_during_drought')
+        T.mk_dir(outdir)
+        drt_type_list = global_drought_type_list
+        col = 'Temperature-anomaly_detrend'
+        for drt in drt_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_pix = T.df_groupby(df_drt, 'pix')
+            spatial_dict = {}
+            for pix in tqdm(df_pix, desc=drt):
+                df_pix_i = df_pix[pix]
+                drought_year = df_pix_i['drought_year'].tolist()
+                temperature_list = df_pix_i[col].tolist()
+                # plt.plot(drought_year, temperature_list, label=pix)
+                # plt.show()
+                # pause()
+                try:
+                    a,b,r,p = T.nan_line_fit(drought_year,temperature_list)
+                    spatial_dict[pix] = a
+                except:
+                    pass
+            outf = join(outdir, f'{drt}.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+
+        pass
+
+    def plot_temporal_trend_of_temperature_during_drought(self,df):
+        # outdir = join(self.this_class_tif, 'plot_spatial_trend_of_temperature_during_drought')
+        # T.mk_dir(outdir)
+        drt_type_list = global_drought_type_list
+        col = 'Temperature-anomaly_detrend'
+        for drt in drt_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_year = T.df_groupby(df_drt, 'drought_year')
+            year_list = []
+            temperature_mean_list = []
+            temperature_std_list = []
+            for year in tqdm(df_year, desc=drt):
+                df_year_i = df_year[year]
+                temperature_list = df_year_i[col].tolist()
+                temperature_mean = np.nanmean(temperature_list)
+                temperature_std = np.nanstd(temperature_list)
+                year_list.append(year)
+                temperature_mean_list.append(temperature_mean)
+                temperature_std_list.append(temperature_std)
+            plt.errorbar(year_list, temperature_mean_list, yerr=temperature_std_list, label=drt)
+            plt.title(f'{drt}')
+            plt.xlabel('year')
+            plt.ylabel('Temperature-anomaly_detrend')
+            plt.legend()
+            plt.show()
+            # pause()
+
 
         pass
 
