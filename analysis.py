@@ -1026,10 +1026,10 @@ class Longterm_Phenology:
         pass
 
     def run(self):
-        # self.longterm_NDVI_HANTS()
+        self.longterm_NDVI_HANTS()
         # self.pick_phenology()
         # self.SOS_EOS()
-        self.early_peak_late_period()
+        # self.early_peak_late_period()
         # self.check_phenology()
         pass
 

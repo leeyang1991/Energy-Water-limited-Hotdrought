@@ -6,14 +6,24 @@ from __init__ import *
 # plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['font.size'] = 8
 centimeter_factor = 1 / 2.54
-# In[2]
-# this_root = '/Volumes/NVME2T/Energy_water_hotdrought/'
-# this_root = r'D:\Energy_water_hotdrought/'
-this_root = '/media/yangli/HDD/Energy_water_hotdrought/'
-# this_root = '/root/Desktop/disk/Energy_water_hotdrought/'
-# this_root = '/home/liyang/Desktop/disk/Energy_water_hotdrought/'
-# this_root = '/mnt/disk/Energy_water_hotdrought/'
-# this_root = '/mnt/ata-ST4000DM004-2CV104_WFN26VAE-part1/Energy_water_hotdrought/'
+import platform
+os_version = platform.version()
+# print(os_version);exit()
+# #27~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Jul 22 17:38:49 UTC 2
+# Darwin Kernel Version 24.6.0: Mon Jul 14 11:30:40 PDT 2025; root:xnu-11417.140.69~1/RELEASE_ARM64_T6041
+plt.rcParams['font.size'] = 8
+if 'Ubuntu' in os_version:
+    # Dell
+    this_root = '/media/yangli/HDD/Energy_water_hotdrought/'
+elif 'Darwin' in os_version:
+    import matplotlib
+    # m4pro
+    this_root = '/Volumes/HDD/Energy_water_hotdrought/'
+    matplotlib.use('TkAgg')
+else:
+    raise ValueError('os not recognized')
+if not isdir(this_root):
+    raise ValueError(f'working directory not found: {this_root}')
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
@@ -510,3 +520,4 @@ USAGE[
     BBOX[-90,-180,90,180]],
 ID["EPSG",4326]]'''
     return wkt
+

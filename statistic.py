@@ -3904,6 +3904,7 @@ class Dynamic_gs_analysis:
         # self.add_NDVI_anomaly_drought_year_to_df(df)
         # self.add_NDVI_percentage_to_df(df)
         # self.add_NDVI_percentage_drought_year_to_df(df)
+        # self.add_NDVI_anomaly_whole_year_to_df(df)
         # self.add_early_peak_late_period_to_df(df)
         # df = self.add_drought_season_to_df(df)
         # df = self.add_AI_new_to_df(df)
@@ -3935,12 +3936,14 @@ class Dynamic_gs_analysis:
         # self.plot_season_excerbation_alleviation_ratio()
         # self.plot_drought_events_timeseries_different_season(df)
         # self.plot_spatial_trend_of_temperature_during_drought(df)
-        self.plot_temporal_trend_of_temperature_during_drought(df)
+        # self.plot_temporal_trend_of_temperature_during_drought(df)
+        # self.plot_NDVI_seasonal_time_series_during_drought(df)
         # self.Figure4_ratio(df)
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
         # self.Figure_S6_1(df)
         # self.Figure_SI_SOS(df)
+        self.plot_NDVI_seasonal_time_series_during_drought(df)
 
         pass
 
@@ -5130,6 +5133,21 @@ class Dynamic_gs_analysis:
 
         return df
 
+    def add_NDVI_anomaly_whole_year_to_df(self,df):
+        NDVI_dict, var_name, _ = Load_Data().NDVI_anomaly_detrend()
+        NDVI_drought_growing_season_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI_vals = NDVI_dict[pix]
+            NDVI_vals_reshape = np.array(NDVI_vals).reshape(-1, 12)
+            NDVI_vals_annual_dict = T.dict_zip(global_year_range_list, NDVI_vals_reshape)
+            NDVI_drought_year = NDVI_vals_annual_dict[drought_year]
+            NDVI_drought_growing_season_list.append(NDVI_drought_year)
+        df[f'{var_name}_drought_year_whole_year'] = NDVI_drought_growing_season_list
+
+        return df
+
     def add_T_anomaly_to_df(self, df):
         NDVI_dict, var_name, _ = Load_Data().Temperature_anomaly_detrend()
         NDVI_drought_growing_season_mean_list = []
@@ -5537,16 +5555,91 @@ class Dynamic_gs_analysis:
                 year_list.append(year)
                 temperature_mean_list.append(temperature_mean)
                 temperature_std_list.append(temperature_std)
+            plt.figure()
             plt.errorbar(year_list, temperature_mean_list, yerr=temperature_std_list, label=drt)
             plt.title(f'{drt}')
             plt.xlabel('year')
             plt.ylabel('Temperature-anomaly_detrend')
             plt.legend()
-            plt.show()
-            # pause()
+        plt.show()
+        # pause()
 
 
         pass
+
+    def plot_NDVI_seasonal_time_series_during_drought(self,df):
+        outdir = join(self.this_class_png, 'plot_NDVI_seasonal_time_series_during_drought')
+        T.mk_dir(outdir)
+        gs = np.arange(5,11)
+        print(gs)
+        AI_class_list = global_AI_class_list
+        df = df.dropna(subset=['drought_season'])
+        # drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
+        drought_type = 'all'
+        # df = df[df['drought_type'] == drought_type]
+        for sos_type in [0,1]:
+            if sos_type == 0:
+                df_sos = df[df['SOS'] < 0]
+                sos_type_str = 'advanced'
+            else:
+                df_sos = df[df['SOS'] > 0]
+                sos_type_str = 'delayed'
+            for season in global_drought_timing_list:
+                df_season = df_sos[df_sos['drought_season'] == season]
+                plt.figure(figsize=(2.4465,1.6519))
+                for AI_class in AI_class_list:
+                    df_AI = df_season[df_season['AI_class'] == AI_class]
+                    NDVI_vals = df_AI['NDVI-anomaly_detrend_drought_year_whole_year'].tolist()
+                    NDVI_vals_mean = np.nanmean(NDVI_vals,axis=0)
+                    NDVI_vals_std = np.nanstd(NDVI_vals,axis=0)/4.
+                    # NDVI_vals_std = self.uncertainty_err_2d(NDVI_vals,axis=0)
+                    # print(f'{sos_type}_{season}_{AI_class}')
+                    # print(len(NDVI_vals))
+                    plt.plot(NDVI_vals_mean,label=f'{AI_class}')
+                    plt.fill_between(range(len(NDVI_vals_mean)),NDVI_vals_mean-NDVI_vals_std,NDVI_vals_mean+NDVI_vals_std,alpha=0.5)
+                plt.ylim(-1.2,.7)
+                plt.hlines(0,0,11,colors='black',linestyles='--')
+                # plt.legend()
+                plt.title(f'{drought_type}_{sos_type_str}_{season}')
+                # plt.show()
+                # exit()
+                outf = join(outdir, f'{drought_type}_{sos_type_str}_{season}.pdf')
+                plt.savefig(outf)
+                plt.close()
+                # exit()
+
+        pass
+
+    def uncertainty_err(self, vals):
+        vals = np.array(vals)
+        vals = vals[~np.isnan(vals)]
+        mean = np.nanmean(vals)
+        std = np.nanstd(vals)
+        up, bottom = stats.t.interval(0.95, len(vals) - 1, loc=mean, scale=std / np.sqrt(len(vals)))
+        err = mean - bottom
+        return err, up, bottom
+
+    def uncertainty_err_2d(self, vals, axis=0):
+        vals = np.array(vals)
+        if axis == 0:
+            vals_T = vals.T
+            vals_err = []
+            for val in tqdm(vals_T, desc='uncertainty'):
+                err, _, _ = self.uncertainty_err(val)
+                vals_err.append(err)
+            vals_err = np.array(vals_err)
+        elif axis == 1:
+            vals_T = vals
+            vals_err = []
+            for val in tqdm(vals_T, desc='uncertainty'):
+                err, _, _ = self.uncertainty_err(val)
+                vals_err.append(err)
+            vals_err = np.array(vals_err)
+        else:
+            raise Exception('axis must be 0 or 1')
+        return vals_err
+
 
     def copy_df(self):
         print('Warning: this function will overwrite the dataframe')
