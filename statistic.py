@@ -1,4 +1,5 @@
 # coding=utf-8
+
 import matplotlib.pyplot as plt
 
 from meta_info import *
@@ -3943,7 +3944,9 @@ class Dynamic_gs_analysis:
         # self.Figure_S6(df)
         # self.Figure_S6_1(df)
         # self.Figure_SI_SOS(df)
-        self.plot_NDVI_seasonal_time_series_during_drought(df)
+        # self.plot_SOS_NDVI_seasonal_time_series_during_drought(df)
+        # self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
+        self.plot_seasonal_drought_number_gradient(df)
 
         pass
 
@@ -5567,8 +5570,8 @@ class Dynamic_gs_analysis:
 
         pass
 
-    def plot_NDVI_seasonal_time_series_during_drought(self,df):
-        outdir = join(self.this_class_png, 'plot_NDVI_seasonal_time_series_during_drought')
+    def plot_SOS_NDVI_seasonal_time_series_during_drought(self,df):
+        outdir = join(self.this_class_png, 'plot_SOS_NDVI_seasonal_time_series_during_drought')
         T.mk_dir(outdir)
         gs = np.arange(5,11)
         print(gs)
@@ -5587,7 +5590,7 @@ class Dynamic_gs_analysis:
                 sos_type_str = 'delayed'
             for season in global_drought_timing_list:
                 df_season = df_sos[df_sos['drought_season'] == season]
-                plt.figure(figsize=(2.4465,1.6519))
+                plt.figure(figsize=(2.0111, 1.3594))
                 for AI_class in AI_class_list:
                     df_AI = df_season[df_season['AI_class'] == AI_class]
                     NDVI_vals = df_AI['NDVI-anomaly_detrend_drought_year_whole_year'].tolist()
@@ -5596,12 +5599,13 @@ class Dynamic_gs_analysis:
                     # NDVI_vals_std = self.uncertainty_err_2d(NDVI_vals,axis=0)
                     # print(f'{sos_type}_{season}_{AI_class}')
                     # print(len(NDVI_vals))
-                    plt.plot(NDVI_vals_mean,label=f'{AI_class}')
+                    plt.plot(NDVI_vals_mean,label=f'{AI_class}',marker='o',markersize=3)
                     plt.fill_between(range(len(NDVI_vals_mean)),NDVI_vals_mean-NDVI_vals_std,NDVI_vals_mean+NDVI_vals_std,alpha=0.5)
                 plt.ylim(-1.2,.7)
                 plt.hlines(0,0,11,colors='black',linestyles='--')
                 # plt.legend()
                 plt.title(f'{drought_type}_{sos_type_str}_{season}')
+                # plt.grid()
                 # plt.show()
                 # exit()
                 outf = join(outdir, f'{drought_type}_{sos_type_str}_{season}.pdf')
@@ -5609,6 +5613,105 @@ class Dynamic_gs_analysis:
                 plt.close()
                 # exit()
 
+        pass
+
+    def plot_SOS_NDVI_seasonal_bar_during_drought(self,df):
+        outdir = join(self.this_class_png, 'plot_SOS_NDVI_seasonal_bar_during_drought')
+        T.mk_dir(outdir)
+        gs = np.arange(5,11)
+        print(gs)
+        AI_class_list = global_AI_class_list[::-1]
+        df = df.dropna(subset=['drought_season'])
+        # drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
+        drought_type = 'all'
+        # df = df[df['drought_type'] == drought_type]
+        for sos_type in [0,1]:
+            if sos_type == 0:
+                df_sos = df[df['SOS'] < 0]
+                sos_type_str = 'advanced'
+            else:
+                df_sos = df[df['SOS'] > 0]
+                sos_type_str = 'delayed'
+            x_ticks = []
+            NDVI_vals_mean_list = []
+            NDVI_vals_std_list = []
+            plt.figure(figsize=(2.0111, 1.3594))
+            for AI_class in AI_class_list:
+                for season in global_drought_timing_list:
+                    df_AI = df_sos[df_sos['AI_class'] == AI_class]
+                    df_season = df_AI[df_AI['drought_season'] == season]
+
+                    NDVI_vals = df_season['NDVI-anomaly_detrend_drought_year_whole_year'].tolist()
+                    NDVI_vals_mean = np.nanmean(NDVI_vals)
+                    # NDVI_vals_std = np.nanstd(NDVI_vals)
+                    NDVI_vals = np.array(NDVI_vals)
+                    NDVI_vals_flatten = NDVI_vals.flatten()
+                    err, up, bottom = T.uncertainty_err(NDVI_vals_flatten)
+                    err = abs(err)
+                    # print(err, up, bottom)
+                    # NDVI_vals_std = self.uncertainty_err_2d(NDVI_vals,axis=0)
+                    # print(f'{sos_type}_{season}_{AI_class}')
+                    # print(len(NDVI_vals))
+                    x_ticks.append(f'{season} {AI_class}')
+                    NDVI_vals_mean_list.append(NDVI_vals_mean)
+                    NDVI_vals_std_list.append(err)
+            plt.bar(x_ticks,NDVI_vals_mean_list,yerr=NDVI_vals_std_list)
+            plt.title(f'{drought_type}_{sos_type_str}')
+            plt.xticks(rotation=90)
+            plt.ylim(-.31,.1)
+            # plt.show()
+            # pause()
+            outf = join(outdir,f'{drought_type}_{sos_type_str}.pdf')
+            plt.savefig(outf)
+            plt.close()
+
+        pass
+
+    def plot_seasonal_drought_number_gradient(self,df):
+        outdir = join(self.this_class_png,'plot_seasonal_drought_number_gradient')
+        T.mk_dir(outdir)
+        AI_class_list = global_AI_class_list[::-1]
+        df = df.dropna(subset=['drought_season'])
+        # drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
+        drought_type = 'all'
+        # df = df[df['drought_type'] == drought_type]
+        # T.print_head_n(df)
+        # exit()
+        for sos_type in [0, 1]:
+            if sos_type == 0:
+                df_sos = df[df['SOS'] < 0]
+                sos_type_str = 'advanced'
+            else:
+                df_sos = df[df['SOS'] > 0]
+                sos_type_str = 'delayed'
+            x_ticks = []
+            for season in global_drought_timing_list:
+                df_season = df_sos[df_sos['drought_season'] == season]
+                season_range = df_season[f'{season}_range'].tolist()
+                season_range_flatten = [item for sublist in season_range for item in sublist]
+                season_range_flatten = np.array(season_range_flatten,dtype=float)
+                # plt.hist(season_range_flatten,bins=12,range=(0,12))
+                x,y = Plot().plot_hist_smooth(season_range_flatten,bins=12,range=(0,12),alpha=0.,interpolate_window=1)
+                plt.close()
+                x_interp = np.linspace(0,12,120)
+                y_interp = np.interp(x_interp,x,y)
+                y_interp_smooth = SMOOTH().smooth_convolve(y_interp,window_len=11)
+                # plt.plot(x_interp,y_interp_smooth)
+                # plt.show()
+                # exit()
+                y_interp_smooth = T.normalize(y_interp_smooth, norm_max=1., norm_min=0)
+                arr = np.ones((len(x_interp),len(x_interp))) * y_interp_smooth
+                plt.figure(figsize=(2.0111, 1.3594))
+                # plt.imshow(arr,cmap='gray_r',vmin=0,vmax=2,zorder=0)
+                rgba = plt.cm.gray_r(arr)
+                rgba[...,-1] = arr
+                plt.imshow(rgba,alpha=0.5,aspect='auto')
+                plt.title(f'{drought_type}_{sos_type_str}_{season}')
+                outf = join(outdir, f'{drought_type}_{sos_type_str}_{season}.pdf')
+                plt.savefig(outf)
+                plt.close()
         pass
 
     def uncertainty_err(self, vals):
