@@ -3943,10 +3943,10 @@ class Dynamic_gs_analysis:
         # self.Figure4_trajectory(df)
         # self.Figure_S6(df)
         # self.Figure_S6_1(df)
-        # self.Figure_SI_SOS(df)
+        # self.SOS_drought_timing_AI(df)
         # self.plot_SOS_NDVI_seasonal_time_series_during_drought(df)
-        # self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
-        self.plot_seasonal_drought_number_gradient(df)
+        self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
+        # self.plot_seasonal_drought_number_gradient(df)
 
         pass
 
@@ -5026,14 +5026,14 @@ class Dynamic_gs_analysis:
 
         pass
 
-    def Figure_SI_SOS(self,df):
+    def SOS_drought_timing_AI(self,df):
         df = df.dropna(subset=['drought_season'], how='any')
-        outdir = join(self.this_class_png,'Figure_SI_SOS')
+        outdir = join(self.this_class_png,'SOS_drought_timing_AI')
         T.mkdir(outdir)
-        drought_type = 'normal-drought'
+        # drought_type = 'normal-drought'
         # drought_type = 'hot-drought'
-        # drought_type = 'All'
-        df = df[df['drought_type']==drought_type]
+        drought_type = 'All'
+        # df = df[df['drought_type']==drought_type]
         print('------------')
         T.print_head_n(df)
         bin_y = np.linspace(0, 2.6, 14)
@@ -5051,17 +5051,20 @@ class Dynamic_gs_analysis:
             # print(y_ticks_list);exit()
             # print(x_ticks_list)
             # print(y_ticks_list)
-            plt.figure(figsize=(7.5,3.96))
+            plt.figure(figsize=(3.0776,1.6736))
             # T.plot_df_bin_2d_matrix(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list)
-            T.plot_df_bin_2d_scatter(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list,s=200)
+            # T.plot_df_bin_2d_scatter(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list,s=200)
+            T.plot_df_bin_2d_scatter(matrix_dict,-0.6,0.6,x_ticks_list,y_ticks_list,s=36.75269376)
             plt.colorbar()
             plt.title(f'{season}_{drought_type}')
             outf = join(outdir,f'{season}_{drought_type}.pdf')
             # plt.show()
+            # pause()
+            plt.xlim(-20,20)
+            plt.ylim(0,2.6)
             plt.savefig(outf)
             plt.close()
-            pass
-        T.open_path_and_file(outdir)
+            # exit()
 
     def __AI_gradient_Drought_year_spatial_tif(self,delta_fpath):
         spatial_dics = {}
@@ -5577,10 +5580,10 @@ class Dynamic_gs_analysis:
         print(gs)
         AI_class_list = global_AI_class_list
         df = df.dropna(subset=['drought_season'])
-        # drought_type = 'normal-drought'
+        drought_type = 'normal-drought'
         # drought_type = 'hot-drought'
-        drought_type = 'all'
-        # df = df[df['drought_type'] == drought_type]
+        # drought_type = 'all'
+        df = df[df['drought_type'] == drought_type]
         for sos_type in [0,1]:
             if sos_type == 0:
                 df_sos = df[df['SOS'] < 0]
@@ -5623,9 +5626,9 @@ class Dynamic_gs_analysis:
         AI_class_list = global_AI_class_list[::-1]
         df = df.dropna(subset=['drought_season'])
         # drought_type = 'normal-drought'
-        # drought_type = 'hot-drought'
-        drought_type = 'all'
-        # df = df[df['drought_type'] == drought_type]
+        drought_type = 'hot-drought'
+        # drought_type = 'all'
+        df = df[df['drought_type'] == drought_type]
         for sos_type in [0,1]:
             if sos_type == 0:
                 df_sos = df[df['SOS'] < 0]
@@ -5673,10 +5676,10 @@ class Dynamic_gs_analysis:
         T.mk_dir(outdir)
         AI_class_list = global_AI_class_list[::-1]
         df = df.dropna(subset=['drought_season'])
-        # drought_type = 'normal-drought'
+        drought_type = 'normal-drought'
         # drought_type = 'hot-drought'
-        drought_type = 'all'
-        # df = df[df['drought_type'] == drought_type]
+        # drought_type = 'all'
+        df = df[df['drought_type'] == drought_type]
         # T.print_head_n(df)
         # exit()
         for sos_type in [0, 1]:
@@ -5708,6 +5711,7 @@ class Dynamic_gs_analysis:
                 rgba = plt.cm.gray_r(arr)
                 rgba[...,-1] = arr
                 plt.imshow(rgba,alpha=0.5,aspect='auto')
+                plt.xlim(0,len(x_interp))
                 plt.title(f'{drought_type}_{sos_type_str}_{season}')
                 outf = join(outdir, f'{drought_type}_{sos_type_str}_{season}.pdf')
                 plt.savefig(outf)
