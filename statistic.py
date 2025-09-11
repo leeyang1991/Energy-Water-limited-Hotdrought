@@ -3945,8 +3945,9 @@ class Dynamic_gs_analysis:
         # self.Figure_S6_1(df)
         # self.SOS_drought_timing_AI(df)
         # self.plot_SOS_NDVI_seasonal_time_series_during_drought(df)
-        self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
+        # self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
         # self.plot_seasonal_drought_number_gradient(df)
+        self.plot_Temperature_vs_SOS(df)
 
         pass
 
@@ -5716,6 +5717,44 @@ class Dynamic_gs_analysis:
                 outf = join(outdir, f'{drought_type}_{sos_type_str}_{season}.pdf')
                 plt.savefig(outf)
                 plt.close()
+        pass
+
+    def plot_Temperature_vs_SOS(self,df):
+        outdir = join(self.this_class_png,'plot_Temperature_vs_SOS')
+        T.mk_dir(outdir)
+        drt = 'hot-drought'
+        # drt = 'normal-drought'
+        df = df[df['drought_type']==drt]
+        df = df[df['SOS']<30]
+        df = df[df['SOS']>-30]
+        Temperature_col = 'Temperature-anomaly'
+        sos_col = 'SOS'
+        temp_bin = np.linspace(-1.5,1.5,31)
+        df_group, bins_list_str = T.df_bin(df,Temperature_col,temp_bin)
+        mean_list = []
+        err_list = []
+        x_list = []
+        for name,df_group_i in df_group:
+            x = name[0].left
+            vals = df_group_i[sos_col].tolist()
+            mean = np.nanmean(vals)
+            err = np.nanstd(vals)
+            mean_list.append(mean)
+            err_list.append(err)
+            x_list.append(x)
+        x_list = np.array(x_list)
+        mean_list = np.array(mean_list)
+        err_list = np.array(err_list)
+        plt.plot(x_list,mean_list,'o-')
+        plt.fill_between(x_list,mean_list-err_list,mean_list+err_list,alpha=0.5)
+        plt.xlim(-1.5,1.5)
+        plt.ylim(-20,20)
+        # plt.show()
+        outf = join(outdir,f'{drt}.pdf')
+        plt.savefig(outf)
+        plt.close()
+
+
         pass
 
     def uncertainty_err(self, vals):
