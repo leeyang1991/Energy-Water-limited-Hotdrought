@@ -3948,6 +3948,9 @@ class Dynamic_gs_analysis:
         # self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
         # self.plot_seasonal_drought_number_gradient(df)
         self.plot_Temperature_vs_SOS(df)
+        # self.print_early_peak_late_reduction(df)
+        # self.plot_SOS_during_drought(df)
+        # self.check_df(df)
 
         pass
 
@@ -5622,12 +5625,10 @@ class Dynamic_gs_analysis:
     def plot_SOS_NDVI_seasonal_bar_during_drought(self,df):
         outdir = join(self.this_class_png, 'plot_SOS_NDVI_seasonal_bar_during_drought')
         T.mk_dir(outdir)
-        gs = np.arange(5,11)
-        print(gs)
         AI_class_list = global_AI_class_list[::-1]
         df = df.dropna(subset=['drought_season'])
-        # drought_type = 'normal-drought'
-        drought_type = 'hot-drought'
+        drought_type = 'normal-drought'
+        # drought_type = 'hot-drought'
         # drought_type = 'all'
         df = df[df['drought_type'] == drought_type]
         for sos_type in [0,1]:
@@ -5663,7 +5664,7 @@ class Dynamic_gs_analysis:
             plt.bar(x_ticks,NDVI_vals_mean_list,yerr=NDVI_vals_std_list)
             plt.title(f'{drought_type}_{sos_type_str}')
             plt.xticks(rotation=90)
-            plt.ylim(-.31,.1)
+            plt.ylim(-.41,.1)
             # plt.show()
             # pause()
             outf = join(outdir,f'{drought_type}_{sos_type_str}.pdf')
@@ -5724,7 +5725,7 @@ class Dynamic_gs_analysis:
         T.mk_dir(outdir)
         drt = 'hot-drought'
         # drt = 'normal-drought'
-        df = df[df['drought_type']==drt]
+        # df = df[df['drought_type']==drt]
         df = df[df['SOS']<30]
         df = df[df['SOS']>-30]
         Temperature_col = 'Temperature-anomaly'
@@ -5749,11 +5750,57 @@ class Dynamic_gs_analysis:
         plt.fill_between(x_list,mean_list-err_list,mean_list+err_list,alpha=0.5)
         plt.xlim(-1.5,1.5)
         plt.ylim(-20,20)
-        # plt.show()
-        outf = join(outdir,f'{drt}.pdf')
-        plt.savefig(outf)
-        plt.close()
+        plt.show()
+        # outf = join(outdir,f'{drt}.pdf')
+        # plt.savefig(outf)
+        # plt.close()
+        pass
 
+    def print_early_peak_late_reduction(self,df):
+        drought_season_list = global_drought_timing_list
+        for drought_season in drought_season_list:
+            df_season = df[df['drought_season'] == drought_season]
+            vals = df_season['NDVI-anomaly_detrend_drought_growing_season'].values
+            vals_mean = np.nanmean(vals)
+            print(f'{drought_season}: {vals_mean}')
+        pass
+
+    def plot_SOS_during_drought(self,df):
+        outtif_dir = join(self.this_class_tif,'SOS_during_drought')
+        outpng_dir = join(self.this_class_png,'SOS_during_drought')
+        T.mk_dir(outtif_dir)
+        T.mk_dir(outpng_dir)
+        drt_list = global_drought_type_list
+        for drt in drt_list:
+            df_drt = df[df['drought_type'] == drt]
+            pix_dict = T.df_groupby(df_drt,'pix')
+            spatial_dict = {}
+            for pix in pix_dict:
+                df_pix = pix_dict[pix]
+                SOS = df_pix['SOS'].tolist()
+                SOS_mean = np.nanmean(SOS)
+                spatial_dict[pix] = SOS_mean
+            outf = join(outtif_dir,f'{drt}.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict,outf)
+            color_list = [
+                '#075125',
+                '#449364',
+                '#ffffff',
+                '#cc9999',
+                '#79287a',
+            ]
+            cmap = T.cmap_blend(color_list)
+            Plot().plot_ortho(outf, ax=None, cmap=cmap, vmin=-10, vmax=10, is_plot_colorbar=True, is_reproj=True,is_discrete=False,colormap_n=11)
+            plt.title(drt)
+            outpng = join(outpng_dir,f'{drt}.png')
+            plt.savefig(outpng,dpi=1200)
+            plt.close()
+
+        pass
+
+    def check_df(self,df):
+        df_drop_dup = df.drop_duplicates(subset=['drought_year','drought_mon','pix'],)
+        T.print_head_n(df_drop_dup)
 
         pass
 
