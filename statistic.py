@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from meta_info import *
 result_root_this_script = join(results_root, 'statistic')
@@ -3910,6 +3911,7 @@ class Dynamic_gs_analysis:
         # df = self.add_drought_season_to_df(df)
         # df = self.add_AI_new_to_df(df)
         # df = self.add_AI_new_class_to_df(df)
+        # df = self.add_eos(df)
         # T.print_head_n(df);exit()
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
@@ -3947,9 +3949,13 @@ class Dynamic_gs_analysis:
         # self.plot_SOS_NDVI_seasonal_time_series_during_drought(df)
         # self.plot_SOS_NDVI_seasonal_bar_during_drought(df)
         # self.plot_seasonal_drought_number_gradient(df)
-        self.plot_Temperature_vs_SOS(df)
+        # self.plot_Temperature_vs_SOS(df)
         # self.print_early_peak_late_reduction(df)
         # self.plot_SOS_during_drought(df)
+        # self.GS_length_during_drought(df)
+        # self.GS_length_during_drought_vs_AI()
+        self.plot_AI_histogram(df)
+        # self.plot_GS_length_during_drought()
         # self.check_df(df)
 
         pass
@@ -5292,6 +5298,46 @@ class Dynamic_gs_analysis:
         df['AI_class_new'] = AI_class_list
         return df
 
+    def add_eos(self,df):
+        import analysis
+        pheno_str = 'late_end'
+        fpath = join(analysis.Phenology().this_class_arr, 'phenology_df/phenology_df.df')
+        phenology_df = T.load_df(fpath)
+        cols = list(phenology_df.columns)
+        print(cols)
+        # exit()
+        pheno_spatial_dict = {}
+        for i, row in phenology_df.iterrows():
+            pix = row['pix']
+            early_start = row[pheno_str]
+            early_start_dict = dict(early_start)
+            phenology_anomaly_dict = self.phenology_anomaly_dict(early_start_dict)
+            pheno_spatial_dict[pix] = phenology_anomaly_dict
+        pheno_val_list = []
+        for i, row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            year = row['drought_year']
+            if not pix in pheno_spatial_dict:
+                pheno_val_list.append(np.nan)
+                continue
+            if not year in pheno_spatial_dict[pix]:
+                pheno_val_list.append(np.nan)
+                continue
+            pheno_val = pheno_spatial_dict[pix][year]
+            pheno_val_list.append(pheno_val)
+        df['EOS'] = pheno_val_list
+        return df
+
+    def phenology_anomaly_dict(self,phenology_dict):
+        vals = list(phenology_dict.values())
+        mean = np.nanmean(vals)
+        phenology_anomaly_dict = {}
+        for year in phenology_dict:
+            val = phenology_dict[year]
+            anomaly = val - mean
+            phenology_anomaly_dict[year] = anomaly
+        return phenology_anomaly_dict
+
     def mean_confidence_interval(self, data, confidence=0.95):
         a = 1.0 * np.array(data)
         n = len(a)
@@ -5801,6 +5847,124 @@ class Dynamic_gs_analysis:
     def check_df(self,df):
         df_drop_dup = df.drop_duplicates(subset=['drought_year','drought_mon','pix'],)
         T.print_head_n(df_drop_dup)
+
+        pass
+
+    def GS_length_during_drought(self,df):
+        outdir = join(self.this_class_tif,'GS_length_during_drought')
+        T.mk_dir(outdir)
+        spatial_dict = {}
+        df_group = T.df_groupby(df,'pix')
+        for pix in tqdm(df_group):
+            df_i = df_group[pix]
+            SOS_list = df_i['SOS'].tolist()
+            EOS_list = df_i['EOS'].tolist()
+            SOS_mean = np.nanmean(SOS_list)
+            EOS_mean = np.nanmean(EOS_list)
+            spatial_dict[pix] = EOS_mean - SOS_mean
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+        outf = join(outdir,'all_drought.tif')
+        DIC_and_TIF().arr_to_tif(arr,outf)
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            spatial_dict = {}
+            df_group = T.df_groupby(df_drt,'pix')
+            for pix in df_group:
+                df_i = df_group[pix]
+                SOS_list = df_i['SOS'].tolist()
+                EOS_list = df_i['EOS'].tolist()
+                SOS_mean = np.nanmean(SOS_list)
+                EOS_mean = np.nanmean(EOS_list)
+                spatial_dict[pix] = EOS_mean - SOS_mean
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+            outf = join(outdir,f'{drt}.tif')
+            DIC_and_TIF().arr_to_tif(arr,outf)
+        T.open_path_and_file(outdir)
+        pass
+
+    def plot_GS_length_during_drought(self):
+        fdir = join(self.this_class_tif,'GS_length_during_drought')
+        outdir = join(self.this_class_png,'GS_length_during_drought')
+        T.mk_dir(outdir)
+        drought_type_list = [
+            'all_drought',
+            'hot-drought',
+            'normal-drought'
+        ]
+        for drt in drought_type_list:
+            fpath = join(fdir,f'{drt}.tif')
+            # arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+            outf = join(outdir,f'{drt}.png')
+            Plot().plot_ortho(fpath,ax=None,cmap='RdBu',vmin=-20,vmax=20,is_plot_colorbar=True,is_reproj=True,is_discrete=False)
+            plt.title(drt)
+            plt.savefig(outf,dpi=1200)
+            plt.close()
+        T.open_path_and_file(outdir)
+        pass
+
+    def GS_length_during_drought_vs_AI(self):
+        fdir = join(self.this_class_tif,'GS_length_during_drought')
+        outdir = join(self.this_class_png,'GS_length_during_drought_vs_AI')
+        T.mk_dir(outdir)
+        f = join(data_root, 'Aridity_Index/aridity_index.tif')
+        spatial_dict_AI = DIC_and_TIF().spatial_tif_to_dic(f)
+        drought_type_list = [
+            'all_drought',
+            'hot-drought',
+            'normal-drought'
+        ]
+        all_dict = {}
+        for drt in drought_type_list:
+            fpath = join(fdir,f'{drt}.tif')
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            all_dict[drt] = spatial_dict
+        df = T.spatial_dics_to_df(all_dict)
+        df = T.add_spatial_dic_to_df(df, spatial_dict_AI, 'aridity_index')
+
+        AI_bins = np.linspace(0.1,2.6,12)
+        df_group, bins_list_str = T.df_bin(df,'aridity_index',AI_bins)
+        for drt in drought_type_list:
+            mean_list = []
+            err_list = []
+            for name,df_group_i in df_group:
+                vals = df_group_i[drt].tolist()
+                mean = np.nanmean(vals)
+                err,_,_ = T.uncertainty_err(vals)
+                mean_list.append(mean)
+                err_list.append(err)
+            plt.plot(AI_bins[1:],mean_list,label=drt)
+            mean_list = np.array(mean_list)
+            plt.fill_between(AI_bins[1:],mean_list-err_list,mean_list+err_list,alpha=0.5)
+        plt.legend()
+        # plt.show()
+        outf = join(outdir,'all_drought.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+
+        pass
+
+    def plot_AI_histogram(self,df):
+        outdir = join(self.this_class_png,'AI_histogram')
+        T.mk_dir(outdir)
+        df_group = T.df_groupby(df,'pix')
+        spatial_dict_AI = {}
+        for pix in df_group:
+            df_i = df_group[pix]
+            AI_list = df_i['aridity_index']
+            AI = np.nanmean(AI_list)
+            spatial_dict_AI[pix] = AI
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_AI)
+        arr_flatten = arr.flatten()
+        plt.figure(figsize=(6.5,2))
+        x,y = Plot().plot_hist_smooth(arr_flatten,range=(0.1,2.6),alpha=0,bins=50)
+        plt.plot(x,y)
+        outf = join(outdir,'AI_histogram.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+
 
         pass
 
