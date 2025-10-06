@@ -3952,10 +3952,12 @@ class Dynamic_gs_analysis:
         # self.plot_Temperature_vs_SOS(df)
         # self.print_early_peak_late_reduction(df)
         # self.plot_SOS_during_drought(df)
+
         # self.GS_length_during_drought(df)
-        # self.GS_length_during_drought_vs_AI()
-        self.plot_AI_histogram(df)
         # self.plot_GS_length_during_drought()
+        # self.GS_length_during_drought_vs_AI()
+        # self.plot_AI_histogram(df)
+        self.GS_length_during_drought_advanced_delayed_SOS(df)
         # self.check_df(df)
 
         pass
@@ -5966,6 +5968,64 @@ class Dynamic_gs_analysis:
         T.open_path_and_file(outdir)
 
 
+        pass
+
+    def GS_length_during_drought_advanced_delayed_SOS(self,df):
+        outdir = join(self.this_class_tif,'GS_length_during_drought_advanced_delayed_SOS')
+        outdir_png = join(self.this_class_png,'GS_length_during_drought_advanced_delayed_SOS')
+
+        # outdir = join(self.this_class_tif,'EOS_during_drought_advanced_delayed_SOS')
+        # outdir_png = join(self.this_class_png,'EOS_during_drought_advanced_delayed_SOS')
+        T.mk_dir(outdir)
+        T.mk_dir(outdir_png)
+
+        advanced_delay_list = ['advanced','delayed']
+
+        for adv in advanced_delay_list:
+            if adv == 'advanced':
+                df_adv = df[df['SOS']<0]
+            else:
+                df_adv = df[df['SOS']>0]
+            spatial_dict = {}
+            df_group = T.df_groupby(df_adv,'pix')
+            for pix in tqdm(df_group):
+                df_i = df_group[pix]
+                SOS_list = df_i['SOS'].tolist()
+                EOS_list = df_i['EOS'].tolist()
+                SOS_mean = np.nanmean(SOS_list)
+                EOS_mean = np.nanmean(EOS_list)
+                spatial_dict[pix] = EOS_mean - SOS_mean
+                # spatial_dict[pix] = EOS_mean
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+            outf = join(outdir,f'{adv}_all_drought.tif')
+            DIC_and_TIF().arr_to_tif(arr,outf)
+            drought_type_list = global_drought_type_list
+            for drt in drought_type_list:
+                df_drt = df_adv[df_adv['drought_type'] == drt]
+                spatial_dict = {}
+                df_group = T.df_groupby(df_drt,'pix')
+                for pix in df_group:
+                    df_i = df_group[pix]
+                    SOS_list = df_i['SOS'].tolist()
+                    EOS_list = df_i['EOS'].tolist()
+                    SOS_mean = np.nanmean(SOS_list)
+                    EOS_mean = np.nanmean(EOS_list)
+                    spatial_dict[pix] = EOS_mean - SOS_mean
+                    # spatial_dict[pix] = EOS_mean
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                outf = join(outdir,f'{adv}_{drt}.tif')
+                DIC_and_TIF().arr_to_tif(arr,outf)
+        # T.open_path_and_file(outdir)
+        for f in T.listdir(outdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(outdir,f)
+            Plot().plot_ortho(fpath,ax=None,cmap='RdBu',vmin=-20,vmax=20,is_plot_colorbar=True,is_reproj=True,is_discrete=False)
+            # plt.title('EOS_'+f+'.png')
+            plt.title('GS_'+f+'.png')
+            plt.savefig(join(outdir_png,f),dpi=1200)
+            plt.close()
+        T.open_path_and_file(outdir_png)
         pass
 
     def uncertainty_err(self, vals):
