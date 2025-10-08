@@ -10,8 +10,9 @@ class Figure1:
 
     def run(self):
         # self.affected_area()
-        self.affected_area_sig_CDH_all_area()
+        # self.affected_area_sig_CDH_all_area()
         # self.affected_area_high_lat()
+        self.delta_NDVI_pos_neg_val()
         pass
 
     def affected_area(self):
@@ -128,6 +129,45 @@ class Figure1:
         # T.print_head_n(df_hot_pos)
         # ratio = df_hot_pos['area'].sum() / df['area'].sum() * 100
         # print(ratio)
+
+        pass
+
+    def delta_NDVI_pos_neg_val(self):
+        import statistic
+        fdir = join(results_root,'statistic/Dynamic_gs_analysis/tif/Figure1c')
+        all_dict = {}
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            col_name = f.replace('.tif','')
+            spatial_dict_i = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            all_dict[col_name] = spatial_dict_i
+        df = T.spatial_dics_to_df(all_dict)
+        df = statistic.Dataframe_func(df).df
+        T.print_head_n(df)
+        # exit()
+        df_humid = df[df['AI_class']=='Humid']
+        df_arid = df[df['AI_class']=='Arid']
+
+        df_postive_humid = df_humid[df_humid['NDVI_anomaly_drought_season']>0]
+        df_postive_arid = df_arid[df_arid['NDVI_anomaly_drought_season']>0]
+
+        df_negtive_humid = df_humid[df_humid['NDVI_anomaly_drought_season']<0]
+        df_negtive_arid = df_arid[df_arid['NDVI_anomaly_drought_season']<0]
+
+        positive_humid_val_mean = np.nanmean(df_postive_humid['NDVI_anomaly_drought_season'])
+        positive_arid_val_mean = np.nanmean(df_postive_arid['NDVI_anomaly_drought_season'])
+        negative_humid_val_mean = np.nanmean(df_negtive_humid['NDVI_anomaly_drought_season'])
+        negative_arid_val_mean = np.nanmean(df_negtive_arid['NDVI_anomaly_drought_season'])
+
+        print('positive_humid_val_mean',positive_humid_val_mean)
+        print('positive_arid_val_mean',positive_arid_val_mean)
+        print('negative_humid_val_mean',negative_humid_val_mean)
+        print('negative_arid_val_mean',negative_arid_val_mean)
+
+
+
 
         pass
 

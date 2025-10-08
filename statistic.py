@@ -3957,7 +3957,7 @@ class Dynamic_gs_analysis:
         # self.plot_GS_length_during_drought()
         # self.GS_length_during_drought_vs_AI()
         # self.plot_AI_histogram(df)
-        self.GS_length_during_drought_advanced_delayed_SOS(df)
+        # self.GS_length_during_drought_advanced_delayed_SOS(df)
         # self.check_df(df)
 
         pass
