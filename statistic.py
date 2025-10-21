@@ -3952,6 +3952,7 @@ class Dynamic_gs_analysis:
         # self.plot_Temperature_vs_SOS(df)
         # self.print_early_peak_late_reduction(df)
         # self.plot_SOS_during_drought(df)
+        self.plot_SOS_during_drought_hist(df)
 
         # self.GS_length_during_drought(df)
         # self.plot_GS_length_during_drought()
@@ -3959,6 +3960,7 @@ class Dynamic_gs_analysis:
         # self.plot_AI_histogram(df)
         # self.GS_length_during_drought_advanced_delayed_SOS(df)
         # self.check_df(df)
+        # self.bin_plot_sos_response(df)
 
         pass
 
@@ -5815,10 +5817,12 @@ class Dynamic_gs_analysis:
 
     def plot_SOS_during_drought(self,df):
         outtif_dir = join(self.this_class_tif,'SOS_during_drought')
-        outpng_dir = join(self.this_class_png,'SOS_during_drought')
+        outpng_dir = join(self.this_class_png,'SOS_during_drought1')
         T.mk_dir(outtif_dir)
         T.mk_dir(outpng_dir)
         drt_list = global_drought_type_list
+        df = df[df['SOS']>-30]
+        df = df[df['SOS']<30]
         for drt in drt_list:
             df_drt = df[df['drought_type'] == drt]
             pix_dict = T.df_groupby(df_drt,'pix')
@@ -5843,6 +5847,55 @@ class Dynamic_gs_analysis:
             outpng = join(outpng_dir,f'{drt}.png')
             plt.savefig(outpng,dpi=1200)
             plt.close()
+        T.open_path_and_file(outpng_dir)
+
+        pass
+
+
+    def plot_SOS_during_drought_hist(self,df):
+        outtif_dir = join(self.this_class_tif, 'SOS_during_drought_hist')
+        outpng_dir = join(self.this_class_png, 'SOS_during_drought_hist')
+        T.mk_dir(outtif_dir)
+        T.mk_dir(outpng_dir)
+        drt_list = global_drought_type_list
+        df = df[df['SOS'] > -30]
+        df = df[df['SOS'] < 30]
+        for drt in drt_list:
+            df_drt = df[df['drought_type'] == drt]
+            pix_dict = T.df_groupby(df_drt, 'pix')
+            spatial_dict = {}
+            SOS_mean_list = []
+            for pix in pix_dict:
+                df_pix = pix_dict[pix]
+                SOS = df_pix['SOS'].tolist()
+                SOS_mean = np.nanmean(SOS)
+                SOS_mean_list.append(SOS_mean)
+                spatial_dict[pix] = SOS_mean
+            # plt.hist(SOS_mean_list,range=(-30,30),bins=300)
+            x,y = Plot().plot_hist_smooth(SOS_mean_list,range=(-30,30),bins=300,alpha=0)
+            plt.plot(x,y)
+            plt.title(drt)
+            # plt.show()
+            outf_hist = join(outpng_dir, f'{drt}_hist.pdf')
+            plt.savefig(outf_hist)
+            plt.close()
+        #     outf = join(outtif_dir, f'{drt}.tif')
+        #     DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+        #     color_list = [
+        #         '#075125',
+        #         '#449364',
+        #         '#ffffff',
+        #         '#cc9999',
+        #         '#79287a',
+        #     ]
+        #     cmap = T.cmap_blend(color_list)
+        #     Plot().plot_ortho(outf, ax=None, cmap=cmap, vmin=-10, vmax=10, is_plot_colorbar=True, is_reproj=True,
+        #                       is_discrete=False, colormap_n=11)
+        #     plt.title(drt)
+        #     outpng = join(outpng_dir, f'{drt}.png')
+        #     plt.savefig(outpng, dpi=1200)
+        #     plt.close()
+        T.open_path_and_file(outpng_dir)
 
         pass
 
@@ -6026,6 +6079,27 @@ class Dynamic_gs_analysis:
             plt.savefig(join(outdir_png,f),dpi=1200)
             plt.close()
         T.open_path_and_file(outdir_png)
+        pass
+
+    def bin_plot_sos_response(self,df):
+        # NDVI_anomaly_drought_growing_season
+        # df = df[df['SOS']>-20]
+        # df = df[df['SOS']<20]
+        col = 'NDVI-anomaly_detrend_drought_growing_season'
+        sos_bin = np.linspace(-25,25,51)
+        df_group, bins_list_str = T.df_bin(df, 'SOS', sos_bin)
+        mean_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i[col].tolist()
+            mean = np.nanmean(vals)
+            mean_list.append(mean)
+            err = np.nanstd(vals) / 4.
+            err_list.append(err)
+        err_list = np.array(err_list)
+        plt.plot(bins_list_str,mean_list)
+        plt.fill_between(bins_list_str,mean_list-err_list,mean_list+err_list,alpha=0.5)
+        plt.show()
         pass
 
     def uncertainty_err(self, vals):
