@@ -1,5 +1,4 @@
 # coding=utf-8
-# In[1]
 from __init__ import *
 # import warnings
 # warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -14,11 +13,11 @@ os_version = platform.version()
 plt.rcParams['font.size'] = 8
 if 'Ubuntu' in os_version:
     # Dell
-    this_root = '/media/yangli/HDD/Energy_water_hotdrought/'
+    this_root = '/home/yangli/SSD4T/Energy_water_hotdrought/'
 elif 'Darwin' in os_version:
     import matplotlib
     # m4pro
-    this_root = '/Volumes/HDD/Energy_water_hotdrought/'
+    this_root = '/Volumes/NVME2T/Energy_Water_limited/'
     matplotlib.use('TkAgg')
 else:
     raise ValueError('os not recognized')

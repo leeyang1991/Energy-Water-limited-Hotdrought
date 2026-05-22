@@ -1571,7 +1571,7 @@ class Drought_timing:
         # T.print_head_n(df)
         # df = self.add_VPD_anomaly_process(df)
         # df = self.add_VPD_origin_process(df)
-        # df = self.add_NDVI_percentage_process(df)
+        df = self.add_NDVI_percentage_process(df)
         # df = self.add_CSIF_percentage_process(df)
         # df = self.add_CSIF_anomaly_process(df)
         # df = self.add_GPP_NIRv_percentage_process(df)

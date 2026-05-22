@@ -649,7 +649,7 @@ class Attribution_Dataframe:
         # df = self.add_VPD(df)
         # df = self.add_Temperature_quantile(df)
         # df = self.add_max_T(df)
-        # df = self.add_mean_T(df)
+        df = self.add_mean_T(df)
         # df = self.add_Topt(df)
         # df = self.add_PAR(df)
         # df = self.add_srad(df)
@@ -2974,7 +2974,11 @@ class SHAP_dynamic_GS:
                 print(len(X_))
                 flag += 1
                 print('flag', flag)
-                shap_values.append(explainer(X_))
+                shap_values_i = explainer(X_)
+                shap_values.append(shap_values_i)
+                print(type(shap_values_i))
+                pprint(shap_values_i)
+                exit()
             shap_values = np.concatenate(shap_values, axis=0)
 
             shap_values = explainer(X)

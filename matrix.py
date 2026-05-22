@@ -19,8 +19,8 @@ class Matrix:
     def run(self):
         # self.copy_df()
         # self.rt_AI_Topt()
-        # self.rt_AI_Tanomaly()
-        self.rt_AI_Tanomaly_statistic()
+        self.rt_AI_Tanomaly()
+        # self.rt_AI_Tanomaly_statistic()
         # self.normal_condition_AI_Tanomaly()
         # self.VPD_AI_Tanomaly()
         # self.sm_AI_Tanomaly()
@@ -152,6 +152,7 @@ class Matrix:
         T.mkdir(outdir)
         dff = self.dff
         df = T.load_df(dff)
+        # exit()
         T.print_head_n(df, 10)
         df = df[df['aridity_index']<=3]
         df = df.dropna(subset=['optimal_temp'])
@@ -171,6 +172,8 @@ class Matrix:
             # print(optimal_temp)
             if np.isnan(AI_val):
                 continue
+            # plt.plot(NDVI_anomaly)
+            # plt.show()
             NDVI_anomaly_reshape = np.reshape(NDVI_anomaly, (-1, 6))
             drought_year_NDVI_anomaly = NDVI_anomaly_reshape[1]
             NDVI_anomaly_mean = np.nanmean(drought_year_NDVI_anomaly)
@@ -247,7 +250,7 @@ class Matrix:
                 x_label = (name_T[0].left + name_T[0].right) / 2
                 x_label = np.round(x_label, 2)
                 x_label_list.append(x_label)
-                plt.scatter(bin_range[flag],y_label,c=rt_mean,vmin=-.6,vmax=.6,cmap='RdBu',marker='s')
+                plt.scatter(bin_range[flag],y_label,c=rt_mean,vmin=-.3,vmax=.3,cmap='RdBu',marker='s')
                 # print(flag,rt_mean)
                 flag += 1
         plt.ylabel('AI')

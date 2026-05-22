@@ -205,7 +205,7 @@ class Pick_Drought_Events:
         self.threshold = -2
 
     def run(self):
-        # self.pick_normal_drought_events()
+        self.pick_normal_drought_events()
         self.pick_normal_hot_events()
         self.pick_single_events(year_range_str)
         # self.check_drought_events()
